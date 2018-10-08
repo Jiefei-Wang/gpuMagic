@@ -1,0 +1,13 @@
+Package: gpuMagic
+Type: Package
+Title: An R interface to create OpenCl function
+Version: 0.1.0
+Date: 2018-10-07
+Author: Jiefei Wang
+Maintainer: Who to complain to <yourfault@somewhere.net>
+Description: More about what it does (maybe more than one line)
+License: What license is it under?
+LinkingTo: Rcpp
+Imports: Rcpp, hash
+RoxygenNote: 6.1.0
+Suggests: testthat
