@@ -61,6 +61,33 @@ void clear(void** address) {
 	delete *(openArray**)address;
 }
 
+extern "C" LibExport
+void createKernel(char** signature, char** kernel, char** code) {
+	//message(std::string(*code));
+	kernelManager::createKernel(std::string(*signature), std::string(*kernel), std::string(*code));
+}
+
+extern "C" LibExport
+void loadParameter(char** signature, char** kernel,void** address,int *ind) {
+	cl_kernel dev_kernel= kernelManager::getKernel(std::string(*signature), std::string(*kernel));
+	openArray* matrix = *(openArray**)address;
+	cl_int error = clSetKernelArg(dev_kernel, *ind, sizeof(cl_mem), matrix->getDeviceData());
+	if (error != CL_SUCCESS) errorHandle(std::string("kernel parameter uploading failure, error info:" + std::string(kernelManager::getErrorString(error))));
+}
+
+extern "C" LibExport
+void launchKernel(char** signature, char** kernel, int* blockSize, int* threadSize) {
+	cl_kernel dev_kernel = kernelManager::getKernel(std::string(*signature), std::string(*kernel));
+	cl_command_queue queue = kernelManager::getQueue();
+	size_t global_item_size = *blockSize; // Process the entire lists
+	size_t local_item_size = *threadSize;
+	cl_int error = clEnqueueNDRangeKernel(queue, dev_kernel, 1, NULL,
+		&global_item_size, &local_item_size, 0, NULL, NULL);
+	if (error != CL_SUCCESS) errorHandle(std::string("kernel launch failure, error info:"+ std::string(kernelManager::getErrorString(error))));
+}
+
+
+
 
 extern "C" LibExport
 void getDeviceList() {
@@ -90,6 +117,15 @@ void debug() {
 }
 
 int main(void) {
+	char* src = "\n__kernel void vector_add(__global const int *A, __global const int *B, __global int *C) {\n\n// Get the index of the current element to be processed\nint i = get_global_id(0);\n\n// Do the operation\nC[i] = A[i] + B[i];\n}\n";
+	char* sig = "a";
+	char* kernel = "vector_add";
+	createKernel(&sig, &kernel, &src);
+}
+
+
+void test1() {
+
 	{
 		double data[] = { 1,2,3 };
 		double dim[] = { 3,1 };
@@ -98,7 +134,7 @@ int main(void) {
 		upload(data, dim, type, ad);
 		double* data1 = new double[3];
 		download(data1, type, ad);
-		print_partial_matrix("f32", data1, 1, 3); 
+		print_partial_matrix("f32", data1, 1, 3);
 	}
 	{
 		double data[] = { 1,2,3 };

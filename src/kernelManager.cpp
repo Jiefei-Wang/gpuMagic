@@ -8,7 +8,6 @@ cl_device_id kernelManager::device_id = nullptr;
 cl_command_queue kernelManager::command_queue = nullptr;
 std::map<std::string, cl_program> kernelManager::programTable;
 std::map<std::string, cl_kernel> kernelManager::kernelTable;
-char* kernelManager::kernelFile = "src/kernel.cl";
 
 
 
@@ -68,11 +67,6 @@ void kernelManager::getCurDevice()
 	getDeviceInfo(deviceIndex);
 }
 
-void kernelManager::setKernelDirectory(char *dir)
-{
-	kernelFile = dir;
-}
-
 void kernelManager::setDevice(int device)
 {
 	cl_int error;
@@ -108,25 +102,22 @@ void kernelManager::destroyContext()
 	if (error != CL_SUCCESS) errorHandle("An error has occured in releasing context");
 }
 
-cl_kernel kernelManager::createKernel(std::string kernel)
+
+
+cl_kernel kernelManager::getKernel(std::string signature, string kernel)
 {
-	return createKernelWithExtCode(kernelFile, kernel, "");
+	if (kernelTable.find(signature+ kernel) != kernelTable.end())
+		return kernelTable[signature+ kernel];
+	errorHandle("The given kernel does not find");
 }
 
-
-cl_kernel kernelManager::createKernel(string kernel,string code)
+cl_kernel kernelManager::createKernel(std::string signature,string kernel,string code)
 {
-	return createKernelWithExtCode(kernelFile, kernel, code);
-}
-
-cl_kernel kernelManager::createKernelWithExtCode(string filename,string kernel,string code)
-{
-	if (programTable.find(filename + code) == programTable.end())
-		loadProgramWithExtCode(filename, code);
-	if (kernelTable.find(kernel+ code) != kernelTable.end())
-		return kernelTable[kernel + code];
+	if (kernelTable.find(signature+ kernel) != kernelTable.end())
+		return kernelTable[signature+ kernel];
+	cl_program program=loadProgram(signature+ kernel, code);
 	cl_int error;
-	cl_kernel dev_kernel = clCreateKernel(programTable[filename + code], kernel.c_str(), &error);
+	cl_kernel dev_kernel = clCreateKernel(program, kernel.c_str(), &error);
 
 	switch (error) {
 	case 0:
@@ -136,58 +127,27 @@ cl_kernel kernelManager::createKernelWithExtCode(string filename,string kernel,s
 		errorHandle(errorInfo.c_str());
 	}
 
-	kernelTable.insert(make_pair(kernel+ code, dev_kernel));
+	kernelTable.insert(make_pair(signature+ kernel, dev_kernel));
 	return dev_kernel;
 }
 
-void kernelManager::loadProgram(string filename)
-{
-	loadProgramWithExtCode(filename,"");
-}
 
-
-void kernelManager::loadProgramWithExtCode(string filename,string code)
+cl_program kernelManager::loadProgram(string signature,string code)
 {
 	if (context == nullptr)
 		initializeManager();
-	if (programTable.find(filename+code) != programTable.end())
-		return;
+	if (programTable.find(signature) != programTable.end())
+		return programTable[signature];
 
-	ifstream in(filename, std::ios_base::binary);
-	if (!in.good()) {
-		string errorInfo = string("Fail to find the program file");
-		errorHandle(errorInfo.c_str());
-	}
-
-	// get file length
-	in.seekg(0, std::ios_base::end);
-	size_t length = in.tellg();
-	in.seekg(0, std::ios_base::beg);
-
-	// read program source
-	std::vector<char> data(length + 1);
-	in.read(&data[0], length);
-	data[length] = 0;
-
-	string src = string(data.begin(), data.end());
-	//Substitude the magic code with the actual code
-	if (code.length() != 0) {
-		string magic = string("MagicCodeHere");
-		size_t start_pos = src.find(magic);
-		if (start_pos == string::npos)
-			errorHandle("Cannot find the give code");
-		src.replace(start_pos, magic.length(), code);
-		src = "#define OP_element_trans\r\n" + src;
-	}
 	// create and build program
 	cl_int error = 0;
-	const char* source = src.c_str();
+	const char* source = code.c_str();
 	//printf(source);
 	cl_program program = clCreateProgramWithSource(context, 1, &source, 0, &error);
 	if (error != CL_SUCCESS) {
 		string errorInfo = string("Fail to read program, error info: ") + string(getErrorString(error));
 		errorHandle(errorInfo.c_str());
-		return;
+		return NULL;
 	}
 	error = clBuildProgram(program, 1, &device_id, 0, 0, 0);
 	
@@ -195,8 +155,6 @@ void kernelManager::loadProgramWithExtCode(string filename,string code)
 	case CL_SUCCESS:
 		break;
 	case CL_BUILD_PROGRAM_FAILURE: {
-		errorHandle("Fail to build program, build info: ");
-
 		int strlen = 1024;
 		char* buffer = new char[strlen];
 		// Get the log
@@ -212,7 +170,8 @@ void kernelManager::loadProgramWithExtCode(string filename,string code)
 		errorHandle(errorInfo.c_str());
 	}
 	}
-	programTable.insert(make_pair(filename+code, program));
+	programTable.insert(make_pair(signature, program));
+	return program;
 }
 
 cl_context kernelManager::getContext()
@@ -259,8 +218,6 @@ cl_device_id kernelManager::getDeviceID(int k)
 		clGetDeviceIDs(platform_id[i], CL_DEVICE_TYPE_ALL, NULL, NULL, &device_num);
 		device_id = new cl_device_id[device_num];
 		clGetDeviceIDs(platform_id[i], CL_DEVICE_TYPE_ALL, device_num, device_id, NULL);
-		size_t name_size;
-		char* device_name;
 		if (k - device_count >= device_num)
 			device_count += device_num;
 		else

@@ -24,7 +24,11 @@ getTypeStr<-function(type){
     type,"auto","float","double","integer","longInteger"
   )
 }
-
+getTypeCXXStr<-function(typeStr){
+  switch(
+    getTypeNum(typeStr),stop("Auto type is not supported"),"float","double","int","long long int"
+  )
+}
 
 getTypeSize<-function(type){
   switch(
@@ -57,13 +61,14 @@ convertDataType<-function(data,type){
 
 #======================GPU address S5 class====================
 
-gpuRefAddress=setRefClass("gpuRefAddress", fields = c("address","dim","type"))
+gpuRefAddress=setRefClass("gpuRefAddress", fields = c("address","dim","type","isReady"))
 gpuRefAddress$methods(
   initialize = function(data,type) {
     data=as.matrix(data)
     .self$dim=dim(data)
     .self$type=type
     .self$address=.gpuResourcesManager$upload(data,type)
+    .self$isReady=TRUE
   }
   )
 gpuRefAddress$methods(
@@ -88,7 +93,16 @@ gpuRefAddress$methods(
     .gpuResourcesManager$download(.self$address,.self$dim,.self$type)
   }
 )
-
+gpuRefAddress$methods(
+  getReadyStatus = function() {
+    .self$isReady
+  }
+)
+gpuRefAddress$methods(
+  setReadyStatus = function(status) {
+    .self$isReady=status
+  }
+)
 
 
 #======================GPU resources manager====================
@@ -176,7 +190,7 @@ gpuRefAddress$methods(
       del(as.character(ind),e$addressSizeList)
     },
     releaseAll=function(){
-      for(i in keys(a)){
+      for(i in keys(e$addressList)){
         .C("clear",e$addressList[[i]])
       }
       clear(e$addressList)

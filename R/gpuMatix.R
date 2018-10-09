@@ -1,9 +1,7 @@
 
-
-
 .gpuMatrix=setClass(
   Class="gpuMatrix",
-  slots = c(data="vector",type="character",gpuAddress="ANY")
+  slots = c(data="vector",type="character",isReady="logical",gpuAddress="ANY")
 )
 
 gpuMatrix<-function(data,type=T_auto){
@@ -12,9 +10,15 @@ gpuMatrix<-function(data,type=T_auto){
    if(type=="auto")
      type=getDataType(data)
   ad=gpuRefAddress(data,type)
-  obj=.gpuMatrix(data=data,type=type,gpuAddress=ad)
+  obj=.gpuMatrix(data=data,type=type,isReady=TRUE,gpuAddress=ad)
   
   obj
+}
+.getAddress<-function(obj){
+  ad=obj@gpuAddress$getAddress()
+  if(is.null(ad))
+    stop("The GPU address does not exist")
+  ad
 }
 
 .data<-function(obj) obj@data
@@ -26,6 +30,11 @@ gpuMatrix<-function(data,type=T_auto){
 .type<-function(obj) obj@type
 ".type<-"<-function(obj,type){
   obj@type<-value
+  obj
+}
+.readyStatus<-function(obj) obj@isReady
+".readyStatus<-"<-function(obj,status){
+  obj@isReady<-status
   obj
 }
 
@@ -56,7 +65,24 @@ setMethod(
   }
 )
 
+setGeneric(name="sync",def=function(obj) standardGeneric("sync"))
 
+#' @export
+setMethod(
+  f="sync",
+  signature = "gpuMatrix",
+  definition = function(obj){
+    .data(obj)=obj@gpuAddress$download()
+    if(!.readyStatus(obj)){
+      upload(obj)
+    }
+    if(!obj@gpuAddress$getReadyStatus()){
+      obj=download(obj)
+    }
+    
+    obj
+  }
+)
 
 
 

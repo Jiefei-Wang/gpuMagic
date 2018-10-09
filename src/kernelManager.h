@@ -17,7 +17,6 @@ public:
 	static cl_command_queue command_queue;
 	static std::map<std::string, cl_program> programTable;
 	static std::map<std::string, cl_kernel> kernelTable;
-	static char* kernelFile;
 public:
 	//Print out all device name
 	static void getAllDeviceName();
@@ -28,20 +27,17 @@ public:
 	static const char* getErrorString(cl_int error);
 
 	//kernel setting functions
-	static void setKernelDirectory(char*);
 	static void setDevice(int device);
 	static void destroyContext();
-	static cl_kernel createKernel(std::string kernel);
-	static cl_kernel createKernel(std::string kernel, std::string code);
-	static cl_kernel createKernelWithExtCode(std::string filename, std::string kernel, std::string code);
+	static cl_kernel getKernel(std::string signature, std::string kernel);
+	static cl_kernel createKernel(std::string signature, std::string kernel, std::string code);
 
 	//Resources access
 	static cl_context getContext();
 	static cl_device_id getDevice();
 	static cl_command_queue getQueue();
 private:
-	static void loadProgram(std::string filename);
-	static void loadProgramWithExtCode(std::string filename,std::string code);
+	static cl_program loadProgram(std::string signature, std::string code);
 	static void initializeManager();
 	static cl_device_id getDeviceID(int k);
 };
