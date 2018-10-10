@@ -29,6 +29,7 @@ public:
 	//kernel setting functions
 	static void setDevice(int device);
 	static void destroyContext();
+	static bool hasKernel(std::string signature, std::string kernel);
 	static cl_kernel getKernel(std::string signature, std::string kernel);
 	static cl_kernel createKernel(std::string signature, std::string kernel, std::string code);
 

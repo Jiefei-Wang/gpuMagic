@@ -25,7 +25,7 @@ mydata2=11:20
 dev_data2=gpuMatrix(mydata2)
 mydata3=rep(0,10)
 dev_data3=gpuMatrix(mydata3)
-
+dev_data1+dev_data2
 
 
 fileName <- 'inst/script/kernelTest.cl'

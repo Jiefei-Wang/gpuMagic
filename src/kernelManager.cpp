@@ -102,6 +102,14 @@ void kernelManager::destroyContext()
 	if (error != CL_SUCCESS) errorHandle("An error has occured in releasing context");
 }
 
+bool kernelManager::hasKernel(std::string signature, std::string kernel)
+{
+	if (kernelTable.find(signature + kernel) != kernelTable.end())
+		return true;
+	else
+		return false;
+}
+
 
 
 cl_kernel kernelManager::getKernel(std::string signature, string kernel)

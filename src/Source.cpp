@@ -60,6 +60,11 @@ extern "C" LibExport
 void clear(void** address) {
 	delete *(openArray**)address;
 }
+extern "C" LibExport
+void hasKernel(char** signature, char** kernel, bool* res) {
+	*res = kernelManager::hasKernel(std::string(*signature), std::string(*kernel));
+}
+
 
 extern "C" LibExport
 void createKernel(char** signature, char** kernel, char** code) {
@@ -113,11 +118,11 @@ void getCurDevice() {
 
 extern "C" LibExport
 void debug() {
-	throw("test error");
+	
 }
 
 int main(void) {
-	char* src = "\n__kernel void vector_add(__global const int *A, __global const int *B, __global int *C) {\n\n// Get the index of the current element to be processed\nint i = get_global_id(0);\n\n// Do the operation\nC[i] = A[i] + B[i];\n}\n";
+	char* src = "__kernel void vector_add(__global long *A, __global int *B, __global double *C) {\r \r int i = get_global_id(0);\r \r C[i] = A[i] + B[i];\r }";
 	char* sig = "a";
 	char* kernel = "vector_add";
 	createKernel(&sig, &kernel, &src);

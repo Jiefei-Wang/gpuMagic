@@ -17,16 +17,20 @@ getTypeNum<-function(type){
     float=T_F32,
     double=T_F64,
     integer=T_I32,
-    longInteger=T_I64)
+    long=T_I64)
 }
 getTypeStr<-function(type){
   switch(
-    type,"auto","float","double","integer","longInteger"
+    type,"auto","float","double","integer","long"
   )
 }
-getTypeCXXStr<-function(typeStr){
+getTypeCXXStr<-function(type){
+  if(is.character(type))
+    type=getTypeNum(type)
   switch(
-    getTypeNum(typeStr),stop("Auto type is not supported"),"float","double","int","long long int"
+    type,stop("Auto type is not supported"),
+    "float","double",
+    "int","long"
   )
 }
 
@@ -37,7 +41,7 @@ getTypeSize<-function(type){
     float=4,
     double=8,
     integer=4,
-    longInteger=8
+    long=8
     )
 }
 getDataType<-function(data){
@@ -55,7 +59,7 @@ convertDataType<-function(data,type){
     float=as.double(data),
     double=as.double(data),
     integer=as.integer(data),
-    longInteger=as.double(data)
+    long=as.double(data)
   )
 }
 
@@ -86,6 +90,7 @@ gpuRefAddress$methods(
   upload = function(data,type) {
     .gpuResourcesManager$releaseAddress(.self$address)
     .self$initialize(data,type)
+    .self$isReady=TRUE
   }
 )
 gpuRefAddress$methods(
@@ -171,7 +176,7 @@ gpuRefAddress$methods(
       empData=convertDataType(rep(0,len),type)
       res=.C("download",empData,getTypeNum(type),ad)
       
-      res[[1]]
+      matrix(res[[1]],dim[1],dim[2])
     },
     getAddress=function(ind){
       return(e$addressList[[as.character(ind)]])
@@ -190,16 +195,20 @@ gpuRefAddress$methods(
       del(as.character(ind),e$addressSizeList)
     },
     releaseAll=function(){
+      warning("The function releaseAll may cause an incorrect release of the GPU memory.\nPlease clear the global environment before you release them.")
+      
       for(i in keys(e$addressList)){
         .C("clear",e$addressList[[i]])
       }
       clear(e$addressList)
       clear(e$addressSizeList)
       e$memoryUsage=0
+      gc()
+      invisible()
     },
     getGPUusage=function(){
-      message(paste0("Max GPU memory: ",e$totalMemory))
-      message(paste0("Current GPU usage: ",e$memoryUsage))
+      message(paste0("Max GPU memory: ",ceiling((e$totalMemory)/1024/1024),"MB"))
+      message(paste0("Current GPU usage: ",ceiling((e$memoryUsage)/1024/1024),"MB"))
       message(paste0("Max Memory container length: ",e$maxAddressNum))
       message(paste0("Current container length: ",length(e$addressList)))
     },
@@ -211,7 +220,41 @@ gpuRefAddress$methods(
 })
 
 
-
+#===========================Obtain device infomation==============
+#' The function is used to obtain all the opencl-enable devices
+#' @export
+getDeviceList=function(){
+  .C("getDeviceList")
+  invisible()
+}
+#' Get the ith device information, call 'getDeviceList()' first to figure out the index before use this function
+#' @param i numeric The device index
+#' @export
+getDeviceInfo=function(i){
+  .C("getDeviceInfo",as.integer(i))
+  invisible()
+}
+#' Get the device detailed information, call 'getDeviceList()' first to figure out the index before use this function
+#' @param i The device index
+#' @export
+getDeviceDetail=function(i){
+  .C("getDeviceDetail",as.integer(i))
+  invisible()
+}
+#' Get the current used device
+#' @export
+getCurDevice=function(){
+  .C("getCurDevice")
+  invisible()
+}
+#' Set which device will be used in the opencl, call 'getDeviceList()' first to figure out the index before use this function
+#' @param i numeric The device index
+#' @export
+setDevice=function(i){
+  .gpuResourcesManager$releaseAll()
+  .C("setDevice",as.integer(i))
+  invisible()
+}
 
 
 
