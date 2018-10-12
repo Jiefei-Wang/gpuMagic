@@ -122,7 +122,7 @@ void debug() {
 }
 
 int main(void) {
-	char* src = "__kernel void vector_add(__global long *A, __global int *B, __global double *C) {\r \r int i = get_global_id(0);\r \r C[i] = A[i] + B[i];\r }";
+	char* src = "double add(double A, double B){ return A+B; } __kernel void vector_add__global (double *A, __global  double *B, __global  double *C)  { int i = get_global_id(0); C[i] =add(A+i,B+i); }";
 	char* sig = "a";
 	char* kernel = "vector_add";
 	createKernel(&sig, &kernel, &src);

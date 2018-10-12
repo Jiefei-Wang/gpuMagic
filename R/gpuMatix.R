@@ -108,7 +108,7 @@ as.vector.gpuMatrix<-function(obj,...){
 setMethod("[",
           signature(x = "gpuMatrix", i = "ANY", j = "ANY", drop="missing"),
           function(x, i, j, drop) {
-            message(nargs())
+            message(list(sys = sys.call(), match = match.call()))
             if(missing(i)&&missing(j))
               return(.data(x))
             if(missing(i))
@@ -121,6 +121,7 @@ setMethod("[",
 setMethod("[<-",
           signature(x = "gpuMatrix", i = "ANY", j = "ANY", value = "numeric"),
           function(x, i, j, value) {
+            message(list(sys = sys.call(), match = match.call()))
             if(missing(i)&&missing(j))
               .data(x)=value
             else{

@@ -3,6 +3,7 @@
 cleanCode<-function(src){
   src=gsub("//.*?\n","",src)
   src=gsub("\t","",src)
+  src=gsub("\r","",src)
   src=gsub("\n+"," ",src)
   
   src
@@ -18,27 +19,19 @@ hasKernel<-function(sig,kernel){
   ##Read source file
   src=readChar(file, file.info(file)$size)
   src=cleanCode(src)
+  #Add a space to make it more stable
+  src=paste0(" ",src)
   ##Performing auto type conversion, tranfer R matrix and vector to GPUmatrix class
-  typeList=c()
   parms=list(...)
-  for(i in seq_len(length(parms))){
-    if(class(parms[[i]])!="gpuMatrix")
-      parms[[i]]=gpuMatrix(parms[[i]],T_F64)
-    type=getTypeCXXStr(.type(parms[[i]]))
-    typeList[i]=type
-    parms[[i]]@gpuAddress$setReadyStatus(FALSE)
-  }
-  sig=paste0(c(as.character(file.mtime(file)),autoType,typeList),collapse = "")
+  timeSig=as.character(file.mtime(file))
+  res=parseProgram(timeSig,src,parms,autoType)
+  src=res$src
+  sig=res$sig
+  parms=res$parms
   if(!hasKernel(sig,kernel)){
     message("kernel not exist")
-    if(autoType){
-      for(i in seq_len(length(parms))){
-        type=getTypeCXXStr(.type(parms[[i]]))
-        pattern=paste0("([^a-zA-Z0-9_])(",paste0("AUTO",i),")([^a-zA-Z0-9_])")
-        x=paste0("\\1",type,"\\3")
-        src=gsub(pattern,x,src)
-      }
-    }
+    if(autoType)
+      src=kernelSub(kernel,src,typeList)
     #Remove the other unidentified auto type
     src=gsub("([^a-zA-Z0-9_])(AUTO)([0-9]+[^a-zA-Z0-9_])","\\1double\\3",src)
     .C("createKernel",sig,kernel,src)
@@ -50,5 +43,40 @@ hasKernel<-function(sig,kernel){
     blockNum=length(.data(parms[[1]]))
   }
   .C("launchKernel",sig,kernel,as.integer(blockNum),as.integer(threadNum))
-  invisible()
+  list(src=src)
 }
+
+parseProgram<-function(timeSig,src,parms,autoType=TRUE){
+  typeList=c()
+  for(i in seq_len(length(parms))){
+    if(class(parms[[i]])!="gpuMatrix")
+      parms[[i]]=gpuMatrix(parms[[i]],T_F64)
+    type=getTypeCXXStr(.type(parms[[i]]))
+    typeList[i]=type
+    parms[[i]]@gpuAddress$setReadyStatus(FALSE)
+  }
+  sig=paste0(c(timeSig,autoType,typeList),collapse = "")
+  if(!hasKernel(sig,kernel)){
+    if(autoType)
+      src=kernelSub(kernel,src,typeList)
+  }
+  
+  list(src=src,sig=sig,parms=parms)
+}
+
+kernelSub<-function(kernel,src,typeList){
+  ind=regexpr("void vector_add[(].*?[)]",src)
+  code=substr(src,ind,ind+attr(ind,"match.length"))
+  src=gsub("void vector_add[(].*?[)]","PRESERVED_FUNCTION_CALL",src)
+  if(length(typeList)>0)
+  for(i in 1:length(typeList)){
+    pattern=paste0("([^a-zA-Z0-9_])(",paste0("AUTO",i),")([^a-zA-Z0-9_])")
+    x1=paste0("\\1 __global ",typeList[i],"\\3 ")
+    x2=paste0("\\1",typeList[i],"\\3")
+    code=gsub(pattern,x1,code)
+    src=gsub(pattern,x1,src)
+  }
+  code=paste0("__kernel ",code)
+  src=gsub("PRESERVED_FUNCTION_CALL",code,src)
+}
+

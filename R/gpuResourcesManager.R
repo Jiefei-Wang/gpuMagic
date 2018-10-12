@@ -9,6 +9,7 @@ T_F32=2L
 T_F64=3L
 T_I32=4L
 T_I64=5L
+T_DEFAULT="double"
 
 getTypeNum<-function(type){
   switch(
