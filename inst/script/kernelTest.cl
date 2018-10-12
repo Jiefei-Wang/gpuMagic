@@ -1,5 +1,5 @@
 AUTO3 add_element(AUTO1 *A, AUTO2 *B){
-return *A+*B;
+  return *A+*B;
 }
 
 void vector_add(AUTO1 *A,  AUTO2 *B,  AUTO3 *C) {

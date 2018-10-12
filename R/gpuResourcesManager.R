@@ -196,7 +196,8 @@ gpuRefAddress$methods(
       del(as.character(ind),e$addressSizeList)
     },
     releaseAll=function(){
-      warning("The function releaseAll may cause an incorrect release of the GPU memory.\nPlease clear the global environment before you release them.")
+      if(length(e$addressList)!=0)
+        warning("The function releaseAll may cause an incorrect release of the GPU memory.\nPlease clear the global environment before you release them.")
       
       for(i in keys(e$addressList)){
         .C("clear",e$addressList[[i]])
@@ -208,10 +209,26 @@ gpuRefAddress$methods(
       invisible()
     },
     getGPUusage=function(){
+      if(e$totalMemory>10^7){
       message(paste0("Max GPU memory: ",ceiling((e$totalMemory)/1024/1024),"MB"))
       message(paste0("Current GPU usage: ",ceiling((e$memoryUsage)/1024/1024),"MB(",ceiling(e$memoryUsage/e$totalMemory*100),"%)"))
+      }else{
+        if(e$totalMemory>10^4){
+        message(paste0("Max GPU memory: ",ceiling((e$totalMemory)/1024),"KB"))
+        message(paste0("Current GPU usage: ",ceiling((e$memoryUsage)/1024),"KB(",ceiling(e$memoryUsage/e$totalMemory*100),"%)"))
+        }else{
+          message(paste0("Max GPU memory: ",e$totalMemory,"Byte"))
+          message(paste0("Current GPU usage: ",e$memoryUsage,"Byte(",ceiling(e$memoryUsage/e$totalMemory*100),"%)"))
+        }
+      }
       message(paste0("Max Memory container length: ",e$maxAddressNum))
-      message(paste0("Current container length: ",length(e$addressList)))
+      message(paste0("Current container length: ",length(e$addressList)))  
+    },
+    setMaxMemLimit=function(mem=0){
+      if(mem==0) mem=10^9
+      tmp=e$totalMemory
+      e$totalMemory=mem
+      tmp
     },
     deleteEnv=function(){
       rm(list =ls(envir = e),envir=e)

@@ -1,7 +1,7 @@
 
 #' @export
-.kernel<-function(file="",kernel,...,autoType=TRUE,blockNum="length(FirstArg)",threadNum=1,src=""){
-  #message(blockNum)
+.kernel<-function(file="",kernel,...,autoType=TRUE,globalThreadNum="length(FirstArg)",localThreadNum="Auto",src="",verbose=FALSE){
+  #message(globalThreadNum)
   codePack=readCode(file,src)
   #message(codePack)
   ##Performing auto type conversion, tranfer R matrix and vector to GPUmatrix class
@@ -26,10 +26,31 @@
   for(i in seq_len(length(parms))){
     .C("loadParameter",sig,kernel,.getAddress(parms[[i]]),as.integer(i-1))
   }
-  if(blockNum=="length(FirstArg)"){
-    blockNum=length(.data(parms[[1]]))
+  if(globalThreadNum=="length(FirstArg)"){
+    globalThreadNum=length(.data(parms[[1]]))
   }
-  .C("launchKernel",sig,kernel,as.integer(blockNum),as.integer(threadNum))
+  if(localThreadNum=="Auto"){
+    Block=globalThreadNum
+    localThreadNum=1
+    repeat{
+      if(Block%%2==0&&localThreadNum<64&&Block>=64){
+        localThreadNum=localThreadNum*2
+        Block=Block/2
+      }else{
+        break
+      }
+    }
+  }
+  if(localThreadNum<=32){
+    warning(paste0("The current thread number is ",localThreadNum,". This may have negative effect on the performance. Please consider to increase the thread number"))
+  }
+  if(verbose){
+    message(paste0("Total thread number: ",globalThreadNum))
+    message(paste0("Block number: ",Block))
+    message(paste0("Thread number per block: ",localThreadNum))
+  }
+  
+  .C("launchKernel",sig,kernel,as.integer(globalThreadNum),as.integer(localThreadNum))
   invisible()
 }
 

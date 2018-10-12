@@ -287,6 +287,16 @@ void kernelManager::getDeviceFullInfo(int device_index)
 	cl_bool host_unified_memory;
 	(clGetDeviceInfo(device, CL_DEVICE_HOST_UNIFIED_MEMORY, sizeof(host_unified_memory), &host_unified_memory, NULL));
 	printf("CL_DEVICE_HOST_UNIFIED_MEMORY: %u\n", host_unified_memory);
+	cl_uint max_work_item_dimensions;
+	(clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, sizeof(max_work_item_dimensions), &max_work_item_dimensions, NULL));
+	printf("CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS: %u\n", max_work_item_dimensions);
+	size_t* max_work_item_sizes = (size_t*)malloc(sizeof(size_t) * max_work_item_dimensions);
+	(clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(size_t) * max_work_item_dimensions, max_work_item_sizes, NULL));
+	printf("CL_DEVICE_MAX_WORK_ITEM_SIZES: "); for (size_t i = 0; i < max_work_item_dimensions; ++i) printf("%lu\t", max_work_item_sizes[i]); printf("\n");
+	free(max_work_item_sizes);
+	size_t max_work_group_size;
+	(clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(max_work_group_size), &max_work_group_size, NULL));
+	printf("CL_DEVICE_MAX_WORK_GROUP_SIZE: %lu\n", max_work_group_size);
 	delete[] buffer;
 }
 
