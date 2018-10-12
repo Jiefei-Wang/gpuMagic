@@ -9,7 +9,7 @@ T_F32=2L
 T_F64=3L
 T_I32=4L
 T_I64=5L
-T_DEFAULT="double"
+T_DEFAULT=T_F64
 
 getTypeNum<-function(type){
   switch(
@@ -209,7 +209,7 @@ gpuRefAddress$methods(
     },
     getGPUusage=function(){
       message(paste0("Max GPU memory: ",ceiling((e$totalMemory)/1024/1024),"MB"))
-      message(paste0("Current GPU usage: ",ceiling((e$memoryUsage)/1024/1024),"MB"))
+      message(paste0("Current GPU usage: ",ceiling((e$memoryUsage)/1024/1024),"MB(",ceiling(e$memoryUsage/e$totalMemory*100),"%)"))
       message(paste0("Max Memory container length: ",e$maxAddressNum))
       message(paste0("Current container length: ",length(e$addressList)))
     },

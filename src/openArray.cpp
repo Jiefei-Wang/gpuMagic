@@ -67,7 +67,7 @@ void openArray::getHostData(void *source)
 	LARGEINDEX size = dimension[0] * dimension[1] * typesize(dataType);
 	cl_command_queue queue = kernelManager::getQueue();
 	cl_int error=clEnqueueReadBuffer(queue, data, CL_TRUE, 0, size, source, NULL, NULL, NULL);
-	if (error != CL_SUCCESS)errorHandle("Error in read GPU memory");
+	if (error != CL_SUCCESS)errorHandle(string("Error in read GPU memory, error info:")+ kernelManager::getErrorString(error));
 }
 
 void * openArray::getHostData()
