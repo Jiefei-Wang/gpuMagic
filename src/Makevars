@@ -1,6 +1,10 @@
+CXX_STD=CXX11
+CUDA_INC="${CUDA_PATH}/include"
+CUDA_LIB = "${CUDA_PATH}/lib/x64"
 
-CXX_STD = CXX11
-PKG_CPPFLAGS =  -I${R_HOME}/include
-PKG_LIBS= -lOpenCL
+
+# This defines what the shared object libraries will be
+PKG_LIBS=  -L${CUDA_LIB} -lOpenCL
+PKG_CPPFLAGS =  -I${R_HOME}/include -I${CUDA_INC}
 
 OBJECTS =  kernelManager.o Source.o openArray.o Tools.o
