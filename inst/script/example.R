@@ -6,7 +6,7 @@ library("tictoc")
 fileName <- 'inst/script/kernelMatrix.cpp'
 
 #C=A%*%B
-n=4000
+n=2000
 A=matrix(runif(n*n),n,n)
 B=matrix(runif(n*n),n,n)
 C=matrix(0,n,n)

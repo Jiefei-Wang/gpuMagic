@@ -1,4 +1,4 @@
-#' @import hash
+#' @import hash hash
 #' @importFrom Rcpp sourceCpp
 #' @useDynLib gpuMagic
 
@@ -10,7 +10,8 @@ T_F64=3L
 T_I32=4L
 T_I64=5L
 T_DEFAULT=T_F64
-
+T_DEFAULT_INT=T_I32
+T_DEFAULT_float=T_F64
 getTypeNum<-function(type){
   switch(
     type,
@@ -36,6 +37,7 @@ getTypeCXXStr<-function(type){
 }
 
 getTypeSize<-function(type){
+  if(is.numeric(type)) type=getTypeStr(type)
   switch(
     type,
     auto=stop("Auto type is not allowed."),

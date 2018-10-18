@@ -15,7 +15,7 @@ gpuMatrix<-function(data,type=T_auto){
   
   obj
 }
-
+#======================Get the slot data======================
 .getAddress<-function(obj){
   ad=obj@gpuAddress$getAddress()
   if(is.null(ad))
@@ -40,7 +40,7 @@ gpuMatrix<-function(data,type=T_auto){
   obj
 }
 
-
+#======================Functions======================
 
 setGeneric(name = "upload",def = function(obj) standardGeneric("upload"))
 
