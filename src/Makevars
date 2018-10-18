@@ -1,0 +1,6 @@
+
+CXX_STD = CXX11
+PKG_CPPFLAGS =  -I${R_HOME}/include
+PKG_LIBS= -lOpenCL
+
+OBJECTS =  kernelManager.o Source.o openArray.o Tools.o
