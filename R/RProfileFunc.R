@@ -1,4 +1,4 @@
-call_size<-function(varInfo,Exp){
+profile_size<-function(varInfo,Exp){
   ExpInfo=getEmpyTable(1)
   ExpInfo$dataType=T_scale
   ExpInfo$precisionType=T_DEFAULT_INT
@@ -27,7 +27,7 @@ call_size<-function(varInfo,Exp){
 # Exp=parse(text="matrix(a,ncol=2)")[[1]]
 # Exp=parse(text="matrix(a,2,2)")[[1]]
 
-call_matrix<-function(varInfo,Exp){
+profile_matrix<-function(varInfo,Exp){
   ExpRecord=Exp
   if(length(Exp)==1)
     stop("The matrix function is incomplete: ",deparse(ExpRecord))
@@ -109,57 +109,57 @@ call_matrix<-function(varInfo,Exp){
 
 
 
-call_arithmetic<-function(varInfo,Exp){
-    ExpInfo=getEmpyTable(1)
-    leftExp=Exp[[2]]
-    rightExp=Exp[[3]]
-    if(is.numeric(leftExp)){
-      leftInfo=getEmpyTable(1,type=T_scale)
-      leftInfo$compileData="Y"
-      leftInfo$value=deparse(leftExp)
-    }else{
-      leftInfo=getVarInfo(varInfo,leftExp)
-    }
-    if(is.numeric(rightExp)){
-      rightInfo=getEmpyTable(1,type=T_scale)
-      rightInfo$compileData="Y"
-      rightInfo$value=deparse(rightExp)
-    }else{
-      rightInfo=getVarInfo(varInfo,rightExp)
-    }
-    ExpInfo$precisionType=typeInherit(leftInfo$precisionType,rightInfo$precisionType)
-    if(leftInfo$compileSize=="Y"&&rightInfo$compileSize=="Y")
-      ExpInfo$compileSize="Y"
-    if(leftInfo$compileData=="Y"&&rightInfo$compileData=="Y"){
-      ExpInfo$compileData="Y"
-      ExpInfo$value=paste0("(",leftInfo$value,deparse(Exp[[1]]),rightInfo$value,")")
-    }
-    if(leftInfo$dataType==T_scale&&rightInfo$dataType==T_scale){
-      ExpInfo$dataType=T_scale
-      ExpInfo$size1=1
-      ExpInfo$size2=1
-    }
-    if(leftInfo$dataType==T_scale&&rightInfo$dataType==T_matrix){
-      ExpInfo$dataType=T_matrix
-      ExpInfo$size1=rightInfo$size1
-      ExpInfo$size2=rightInfo$size2
-    }
-    if(leftInfo$dataType==T_matrix&&rightInfo$dataType==T_scale){
-      ExpInfo$dataType=T_matrix
-      ExpInfo$size1=leftInfo$size1
-      ExpInfo$size2=leftInfo$size2
-    }
-    if(leftInfo$dataType==T_matrix&&rightInfo$dataType==T_matrix){
-      if(leftInfo$size1!=rightInfo$size1||leftInfo$size2!=rightInfo$size2)
-        stop("The matrix size does not match: ",deparse(Exp))
-      ExpInfo$dataType=T_matrix
-      ExpInfo$size1=leftInfo$size1
-      ExpInfo$size2=leftInfo$size2
-    }
-    return(ExpInfo)
+profile_arithmetic<-function(varInfo,Exp){
+  ExpInfo=getEmpyTable(1)
+  leftExp=Exp[[2]]
+  rightExp=Exp[[3]]
+  if(is.numeric(leftExp)){
+    leftInfo=getEmpyTable(1,type=T_scale)
+    leftInfo$compileData="Y"
+    leftInfo$value=deparse(leftExp)
+  }else{
+    leftInfo=getVarInfo(varInfo,leftExp)
+  }
+  if(is.numeric(rightExp)){
+    rightInfo=getEmpyTable(1,type=T_scale)
+    rightInfo$compileData="Y"
+    rightInfo$value=deparse(rightExp)
+  }else{
+    rightInfo=getVarInfo(varInfo,rightExp)
+  }
+  ExpInfo$precisionType=typeInherit(leftInfo$precisionType,rightInfo$precisionType)
+  if(leftInfo$compileSize=="Y"&&rightInfo$compileSize=="Y")
+    ExpInfo$compileSize="Y"
+  if(leftInfo$compileData=="Y"&&rightInfo$compileData=="Y"){
+    ExpInfo$compileData="Y"
+    ExpInfo$value=paste0("(",leftInfo$value,deparse(Exp[[1]]),rightInfo$value,")")
+  }
+  if(leftInfo$dataType==T_scale&&rightInfo$dataType==T_scale){
+    ExpInfo$dataType=T_scale
+    ExpInfo$size1=1
+    ExpInfo$size2=1
+  }
+  if(leftInfo$dataType==T_scale&&rightInfo$dataType==T_matrix){
+    ExpInfo$dataType=T_matrix
+    ExpInfo$size1=rightInfo$size1
+    ExpInfo$size2=rightInfo$size2
+  }
+  if(leftInfo$dataType==T_matrix&&rightInfo$dataType==T_scale){
+    ExpInfo$dataType=T_matrix
+    ExpInfo$size1=leftInfo$size1
+    ExpInfo$size2=leftInfo$size2
+  }
+  if(leftInfo$dataType==T_matrix&&rightInfo$dataType==T_matrix){
+    if(leftInfo$size1!=rightInfo$size1||leftInfo$size2!=rightInfo$size2)
+      stop("The matrix size does not match: ",deparse(Exp))
+    ExpInfo$dataType=T_matrix
+    ExpInfo$size1=leftInfo$size1
+    ExpInfo$size2=leftInfo$size2
+  }
+  return(ExpInfo)
 }
 
-call_subset<-function(varInfo,Exp){
+profile_subset<-function(varInfo,Exp){
   ExpInfo=getEmpyTable(1,type=T_scale)
   var_data=getVarInfo(varInfo,Exp[[2]])
   ExpInfo$precisionType=var_data$precisionType
@@ -172,9 +172,22 @@ call_subset<-function(varInfo,Exp){
   return(ExpInfo)
 }
 
-call_numeric<-function(){
-    ExpInfo=getEmpyTable(1,type=T_scale)
-    ExpInfo$value=as.character(Exp)
-    ExpInfo$compileData="Y"
-    return(ExpInfo)
+profile_numeric<-function(Exp){
+  ExpInfo=getEmpyTable(1,type=T_scale)
+  ExpInfo$value=as.character(Exp)
+  ExpInfo$compileData="Y"
+  return(ExpInfo)
+}
+profile_symbol<-function(varInfo,Exp){
+  ExpInfo=getEmpyTable(1)
+  var_data=getVarInfo(varInfo,Exp)
+  content=c("dataType","precisionType", "size1","size2","value",
+            "compileSize","compileData")
+  ExpInfo[,content]=var_data[,content]
+  ExpInfo
+}
+
+profile_floor<-function(varInfo,Exp){
+  ExpInfo=profile_symbol(varInfo,Exp[[2]])
+  return(ExpInfo)
 }

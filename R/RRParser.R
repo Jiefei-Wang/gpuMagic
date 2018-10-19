@@ -42,8 +42,8 @@ RRcompilerLevel3<-function(level2Exp){
       res=RRcompilerLevel3(list(tmpInd=tmpInd,Exp=loopBody))
       tmpInd=res$tmpInd
       if(!is.null(res$varList))
-        for(i in keys(res$varList)){
-          varList[[i]]=i
+        for(j in keys(res$varList)){
+          varList[[j]]=j
         }
       curExp[[4]]=res$Exp
       parsedExp[[i]]=curExp
@@ -52,8 +52,8 @@ RRcompilerLevel3<-function(level2Exp){
       res=RRcompilerLevel3(list(tmpInd=tmpInd,Exp=curExp[[3]]))
       tmpInd=res$tmpInd
       if(!is.null(res$varList))
-        for(i in keys(res$varList)){
-          varList[[i]]=i
+        for(j in keys(res$varList)){
+          varList[[j]]=j
         }
       curExp[[3]]=res$Exp
       parsedExp[[i]]=curExp
@@ -208,7 +208,17 @@ RRcompilerLevel1<-function(parsedExp,tmpInd=1){
       code=c(code,curExp)
       next
     }
-    
+    if(curExp[[1]]=="return"){
+      if(is.call(curExp[[2]])){
+        res=createNewVarLevel1(tmpInd,curExp[[2]])
+        tmpInd=res$tmpInd
+        tmpName=res$TmpName
+        code=c(code,res$code)
+        curExp[[2]]=as.symbol(tmpName)
+      }
+      code=c(code,curExp)
+      next
+      }
    stop("Unrecognized code: ",deparse(curExp))
   }
   return(list(tmpInd=tmpInd,Exp=code))
@@ -273,13 +283,4 @@ printExp<-function(Exp){
   for(i in Exp){
     message(deparse(i))
   }
-}
-
-addBugInfo<-function(bugLog,title,Exp){
-  if(!is.character(Exp))
-    Exp=deparse(Exp)
-  errorInfo=paste0(title," : ", Exp)
-  warning(errorInfo)
-  bugLog=c(bugLog,errorInfo)
-  bugLog
 }
