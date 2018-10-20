@@ -1,19 +1,34 @@
 
 #Profile the parameters only
-RProfilerLevel1<-function(level3Exp,parms){
+RProfilerLevel1<-function(level3Exp){
   tmpInd=level3Exp$tmpInd
   parsedExp=level3Exp$Exp
   
-  varInfo=profileVar(parms)
-  return(list(tmpInd=tmpInd,Exp=parsedExp,varInfo=varInfo))
+  workerData=names(level3Exp$parms)[1]
+  tmp_parms=c(level3Exp$parms,list(0))
+  names(tmp_parms)[1]=GPUVar$gpu_worker_data
+  names(tmp_parms)[length(tmp_parms)]=workerData
+  varInfo=profileVar(tmp_parms)
+  
+  
+  profileMeta1=level3Exp
+  profileMeta1$tmpInd=tmpInd
+  profileMeta1$Exp=parsedExp
+  profileMeta1$varInfo=varInfo
+  profileMeta1$workerData=workerData
+  
+  
+  return(profileMeta1)
 }
 
+#Profile a parameter and give the profile table back
 profileVar<-function(parms){
   varInfo=list()
   varInfo$profile=getEmpyTable(0)
   varInfo$requiredVar=c()
   varInfo$varTable=hash()
   varInfo$profileTblName="profile"
+  if(length(parms)==0) return(varInfo)
   varName=names(parms)
   for(i in 1:length(parms)){
   if(class(parms[[i]])=="gpuMatrix"){
@@ -47,7 +62,7 @@ profileVar<-function(parms){
 
 
 
-#Profile the variables
+#Profile the variables in the code
 #compileInfo1=RCcompilerLevel1(level3Exp,parms)
 #parsedExp=curExp[[4]]
 RProfilerLevel2<-function(profileMeta1){
@@ -100,14 +115,20 @@ RProfilerLevel2<-function(profileMeta1){
       tmpInd=res$tmpInd
       varInfo=res$varInfo
     }
-    
-    
-    
-    
-    
   }
-  return(list(tmpInd=tmpInd,Exp=parsedExp,varInfo=varInfo))
+  
+  
+  profileMeta2=profileMeta1
+  profileMeta2$tmpInd=tmpInd
+  profileMeta2$Exp=parsedExp
+  profileMeta2$varInfo=varInfo
+  
+  
+  return(profileMeta2)
 }
+
+
+
 #Get the right expression profile
 getExpInfo<-function(varInfo,Exp){
   ExpInfo=NULL
@@ -117,33 +138,16 @@ getExpInfo<-function(varInfo,Exp){
   }
   #If the expression is a function call
   if(is.call(Exp)){
-    if(Exp[[1]]=="nrow"||Exp[[1]]=="ncol"||Exp[[1]]=="length"){
-      ExpInfo=profile_size(varInfo,Exp)
+    func=deparse(Exp[[1]])
+    if(!is.null(.profileFuncs[[func]])){
+      ExpInfo=.profileFuncs[[func]](varInfo,Exp)
       return(ExpInfo)
     }
-    #If the expression is creating a matrix
-    if(Exp[[1]]=="matrix"){
-      ExpInfo=profile_matrix(varInfo,Exp)
-      return(ExpInfo)
-    }
-    if(Exp[[1]]=="+"||Exp[[1]]=="-"||Exp[[1]]=="*"||Exp[[1]]=="/"){
-      ExpInfo=profile_arithmetic(varInfo,Exp)
-      return(ExpInfo)
-    }
-    if(Exp[[1]]=="["){
-      ExpInfo=profile_subset(varInfo,Exp)
-      return(ExpInfo)
-    }
-    if(Exp[[1]]=="floor"){
-      ExpInfo=profile_floor(varInfo,Exp)
-      return(ExpInfo)
-    }
-    
     stop("Unsupported function: ",deparse(Exp))
   }
   
   #If not the above case, the expression will be treated as a variable
-  if(is.symbol(ExpInfo)){
+  if(is.symbol(Exp)){
     ExpInfo=profile_symbol(varInfo,Exp)
     return(ExpInfo)
   }

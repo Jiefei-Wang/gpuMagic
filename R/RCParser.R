@@ -1,35 +1,43 @@
 T_scale="scale"
 T_matrix="matrix"
+GPUVar=list()
+#Arguments
+GPUVar$gpu_tmp_var="gpuMagic_tmp"
+#Per worker length
+GPUVar$gpu_tmp_length_arg="gpu_tmp_length_arg"
+GPUVar$gpu_matrix_size1="gpu_matrix_size1"
+GPUVar$gpu_matrix_size2="gpu_matrix_size2"
+GPUVar$gpu_return_variable="gpu_return_variable"
+#Per worker size
+GPUVar$gpu_return_size="gpu_return_size"
+#The vector that is looped on
+GPUVar$gpu_worker_data="gpu_worker_data"
 
-RCcompilerLevel1<-function(profileMeta2){
-  tmpInd=profileMeta2$tmpInd
-  parsedExp=profileMeta2$Exp
-  varInfo=profileMeta2$varInfo
+
+#Deducted variable
+GPUVar$gpu_tmp_matrix_offSize="gpu_matrix_offSize"
+GPUVar$gpu_global_id="gpu_global_id"
+GPUVar$gpu_tmp_length="gpu_tmp_length"
+GPUVar$gpu_worker_offset="gpu_worker_offset"
+
+
+
+RCcompilerLevel1<-function(profileMeta3){
+  tmpInd=profileMeta3$tmpInd
+  parsedExp=profileMeta3$Exp
+  varInfo=profileMeta3$varInfo
   profile=varInfo$profile
-  GPUVar=list()
- 
-  #Define some gpu variable
-  #Arguments
-  gpu_tmp_var="gpuMagic_tmp"
-  gpu_tmp_length_arg="gpu_tmp_length_arg"
-  gpu_matrix_size1="gpu_matrix_size1"
-  gpu_matrix_size2="gpu_matrix_size2"
-  gpu_matrix_tmp_offSize="gpu_matrix_offSize"
+  
+  gpu_tmp_var=GPUVar$gpu_tmp_var
+  gpu_tmp_length_arg=GPUVar$gpu_tmp_length_arg
+  gpu_tmp_matrix_offSize=GPUVar$gpu_tmp_matrix_offSize
+  gpu_matrix_size1=GPUVar$gpu_matrix_size1
+  gpu_matrix_size2=GPUVar$gpu_matrix_size2
+  gpu_result=GPUVar$gpu_result
   #Deducted variables
-  gpu_global_id="gpu_global_id"
-  gpu_tmp_length="gpu_tmp_length"
-  gpu_worker_offset="gpu_worker_offset"
-  
-  
-  
-  GPUVar$gpu_tmp_var=gpu_tmp_var
-  GPUVar$gpu_tmp_length_arg=gpu_tmp_length_arg
-  GPUVar$gpu_matrix_size1=gpu_matrix_size1
-  GPUVar$gpu_matrix_size2=gpu_matrix_size2
-  GPUVar$gpu_matrix_tmp_offSize=gpu_matrix_tmp_offSize
-  # varInfo$gpu_global_id=gpu_global_id
-  # varInfo$gpu_tmp_length=gpu_tmp_length
-  varInfo$GPUVar=GPUVar
+  gpu_global_id=GPUVar$gpu_global_id
+  gpu_tmp_length=GPUVar$gpu_tmp_length
+  gpu_worker_offset=GPUVar$gpu_worker_offset
   
   gpu_code=c(
     paste0("unsigned long ",gpu_global_id,"=get_global_id(0);"),
@@ -69,7 +77,7 @@ RCcompilerLevel1<-function(profileMeta2){
                      "(",CXXtype,"*)(",
                      gpu_tmp_var,"+",
                      gpu_worker_offset,"+",
-                     gpu_matrix_tmp_offSize,"[",gpu_matrix_num,"]",");")
+                     gpu_tmp_matrix_offSize,"[",gpu_matrix_num,"]",");")
       gpu_code=c(gpu_code,curCode)
       profile[i,]$address=curVar$var
       gpu_matrix_num=gpu_matrix_num+1
@@ -79,9 +87,19 @@ RCcompilerLevel1<-function(profileMeta2){
   
   varInfo$profile=profile
   
+  
+  gpu_code=c(gpu_code,paste0(getTypeCXXStr(T_DEFAULT_float)," ",profileMeta3$workerData,";"))
+  gpu_code=c(gpu_code,paste0(profileMeta3$workerData,"=",GPUVar$gpu_worker_data,"[",gpu_global_id,"];"))
   gpu_code=c(gpu_code,RCTranslation(varInfo,parsedExp))
+             
+  GPUExp1=profileMeta3
+  GPUExp1$tmpInd=tmpInd
+  GPUExp1$Exp=parsedExp
+  GPUExp1$varInfo=varInfo
+  GPUExp1$gpu_code=gpu_code
+  
       
-  return(list(tmpInd=tmpInd,code=parsedExp,varInfo=varInfo,gpu_code=gpu_code))
+  return(GPUExp1)
 }
 
 
@@ -113,8 +131,15 @@ RCTranslation<-function(varInfo,parsedExp){
       gpu_code=c(gpu_code,ifFunc,curCode,"}")
     }
     if(curExp[[1]]=="return"){
-      
-      gpu_code=c(gpu_code,deparse(curExp),"return;")
+      returnVar=curExp[[2]]
+      returnInfo=getVarInfo(varInfo,returnVar)
+      if(returnInfo$dataType==T_matrix){
+        curCode=paste0("for(unsigned long gpu_return_i=0;gpu_return_i<",GPUVar$gpu_return_size,";gpu_return_i++){")
+        curCode=c(curCode,paste0(GPUVar$gpu_return_variable,"[gpu_return_i]=",returnInfo$address,"[gpu_return_i+",GPUVar$gpu_global_id,"*",GPUVar$gpu_return_size,"];\n}"))
+      }else{
+        curCode=paste0(GPUVar$gpu_return_variable,"[",GPUVar$gpu_global_id,"]=",returnInfo$address,";")
+      }
+      gpu_code=c(gpu_code,curCode)
     }
   }
   return(gpu_code)

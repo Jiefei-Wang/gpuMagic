@@ -1,3 +1,5 @@
+#The function list is on the buttom
+
 profile_size<-function(varInfo,Exp){
   ExpInfo=getEmpyTable(1)
   ExpInfo$dataType=T_scale
@@ -32,28 +34,12 @@ profile_matrix<-function(varInfo,Exp){
   if(length(Exp)==1)
     stop("The matrix function is incomplete: ",deparse(ExpRecord))
   #Get the matrix data and size
+  Exp=standardise_call(Exp)
   argNames=names(Exp)
   data_ind=which(argNames=="data")
   nrow_ind=which(argNames=="nrow")
   ncol_ind=which(argNames=="ncol")
-  ind=c(data_ind,nrow_ind,ncol_ind)
-  for(i in ind){
-    Exp[[i]]=c()
-  }
-  for(i in 2:length(Exp)){
-    if(length(data_ind)==0){
-      data_ind=i
-      next
-    }
-    if(length(nrow_ind)==0){
-      nrow_ind=i
-      next
-    }
-    if(length(ncol_ind)==0){
-      ncol_ind=i
-      next
-    }
-  }
+  
   if(length(data_ind)==0)
     stop("Unrecognized code: ",deparse(ExpRecord))
   data=Exp[[data_ind]]
@@ -159,16 +145,102 @@ profile_arithmetic<-function(varInfo,Exp){
   return(ExpInfo)
 }
 
+
+getFuncArgs<-function(Exp,ArgName){
+  
+}
+
+
+
 profile_subset<-function(varInfo,Exp){
-  ExpInfo=getEmpyTable(1,type=T_scale)
   var_data=getVarInfo(varInfo,Exp[[2]])
-  ExpInfo$precisionType=var_data$precisionType
-  ExpInfo$compileData=var_data$compileData
-  if(ExpInfo$compileData=="Y"){
-    value=var_data$value
-    Exp[[2]]=parse(text=value)[[1]]
-    ExpInfo$value=deparse(Exp)
+  curType=NULL
+  sub1=list()
+  sub2=list()
+  if(length(Exp)>=3){
+    if(Exp[[3]]==""){
+      if(length(Exp)==3)
+        stop("Undefined code: ",deparse(Exp))
+      sub1$compile="Y"
+      sub1$compileSize="Y"
+      sub1$size=var_data$size1
+      sub1$type=T_matrix
+    }else{
+      if(is.numeric(Exp[[3]])){
+        sub1$compile="Y"
+        sub1$value=deparse(Exp[[3]])
+        sub1$compileSize="Y"
+        sub1$size=1
+        sub1$type=T_scale
+      }else{
+        subVar=getVarInfo(varInfo,Exp[[3]])
+        sub1$compile=subVar$compileData
+        sub1$value=subVar$value
+        sub1$compileSize=subVar$compileSize
+        sub1$size=paste0("(",subVar$size1,"*",subVar$size2,")")
+        sub1$type=subVar$dataType
+      }
+    }
   }
+  if(length(Exp)==4){
+    if(Exp[[4]]==""){
+      sub2$compile="Y"
+      sub2$compileSize="Y"
+      sub2$size=var_data$size1
+      sub2$type=T_matrix
+    }else{
+      if(is.numeric(Exp[[4]])){
+        sub2$compile="Y"
+        sub2$value=deparse(Exp[[4]])
+        sub2$compileSize="Y"
+        sub2$size=1
+        sub2$type=T_scale
+      }else{
+        subVar=getVarInfo(varInfo,Exp[[4]])
+        sub2$compile=subVar$compileData
+        sub2$value=subVar$value
+        sub2$compileSize=subVar$compileSize
+        sub2$size=paste0("(",subVar$size1,"*",subVar$size2,")")
+        sub2$type=subVar$dataType
+      }
+    }
+  }
+  
+  ExpInfo=getEmpyTable(1)
+  ExpInfo$dataType=T_matrix
+  if(length(sub2)!=0){
+    if(sub1$type==T_scale&&sub2$type==T_scale){
+      ExpInfo$dataType=T_scale
+    }
+    if(ExpInfo$dataType==T_scale&&sub1$compile=="Y"&&sub2$compile=="Y"&&var_data$compileData=="Y"){
+      ExpInfo$value=paste0("(",var_data$value,"[",sub1$value,",",sub2$value,"])")
+      ExpInfo$compileData="Y"
+    }
+    if(sub1$compileSize=="Y"&&sub2$compileSize=="Y"&&var_data$compileSize=="Y"){
+      ExpInfo$compileSize="Y"
+      ExpInfo$size1=sub1$size
+      ExpInfo$size2=sub2$size
+    }else{
+      stop("undetermined size: ",Exp)
+    }
+  }else{
+    if(sub1$type==T_scale){
+      ExpInfo$dataType=T_scale
+    }
+    if(ExpInfo$dataType==T_scale&&sub1$compile&&var_data$compileData=="Y"){
+      ExpInfo$value=paste0("(",var_data$value,"[",sub1$value,"])")
+      ExpInfo$compileData="Y"
+    }
+    if(sub1$compileSize=="Y"&&var_data$compileSize=="Y"){
+      ExpInfo$compileSize="Y"
+      ExpInfo$size1=sub1$size
+      ExpInfo$size2=1
+    }else{
+      stop("undetermined size: ",Exp)
+    }
+  }
+
+  ExpInfo$precisionType=var_data$precisionType
   return(ExpInfo)
 }
 
@@ -191,3 +263,17 @@ profile_floor<-function(varInfo,Exp){
   ExpInfo=profile_symbol(varInfo,Exp[[2]])
   return(ExpInfo)
 }
+
+
+
+.profileFuncs=list()
+.profileFuncs$nrow=profile_size
+.profileFuncs$ncol=profile_size
+.profileFuncs$length=profile_size
+.profileFuncs$matrix=profile_matrix
+.profileFuncs$"+"=profile_arithmetic
+.profileFuncs$"-"=profile_arithmetic
+.profileFuncs$"*"=profile_arithmetic
+.profileFuncs$"/"=profile_arithmetic
+.profileFuncs$"["=profile_subset
+.profileFuncs$floor=profile_floor

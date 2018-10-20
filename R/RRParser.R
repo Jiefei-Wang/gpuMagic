@@ -1,10 +1,12 @@
 #Level3 compiler
 #Functions:
 #1.Rename the variable if the variable is redefined
-RRcompilerLevel3<-function(level2Exp){
+RRcompilerLevel3<-function(level2Exp,parms=NULL,varList=NULL){
   tmpInd=level2Exp$tmpInd
   parsedExp=level2Exp$Exp
-  varList=hash()
+  renameList=hash()
+  if(is.null(varList))
+    varList=hash(parms)
   for(i in 1:length(parsedExp)){
     curExp=parsedExp[[i]]
     if(curExp=="{"){
@@ -21,6 +23,7 @@ RRcompilerLevel3<-function(level2Exp){
           tmpInd=res$tmpInd
           tmpName=res$tmpName
           parsedExp=renameVarInCode(parsedExp,i+1,var_char,tmpName)
+          renameList[[deparse(curExp[[2]])]]=tmpName
           curExp[[2]]=as.symbol(tmpName)
         }else{
           varList[[var_char]]=var_char
@@ -39,27 +42,36 @@ RRcompilerLevel3<-function(level2Exp){
       loopBody=curExp[[4]]
       loopBody=renameVarInCode(loopBody,1,var_char,tmpName)
       #Check the body code
-      res=RRcompilerLevel3(list(tmpInd=tmpInd,Exp=loopBody))
+      res=RRcompilerLevel3(list(tmpInd=tmpInd,Exp=loopBody),varList=varList)
       tmpInd=res$tmpInd
-      if(!is.null(res$varList))
-        for(j in keys(res$varList)){
-          varList[[j]]=j
+      varList=res$varList
+      if(!is.null(res$renameList))
+        for(j in keys(res$renameList)){
+          parsedExp=renameVarInCode(parsedExp,i+1,j,res$renameList[[j]])
         }
       curExp[[4]]=res$Exp
       parsedExp[[i]]=curExp
     }
     if(curExp[[1]]=="if"){
-      res=RRcompilerLevel3(list(tmpInd=tmpInd,Exp=curExp[[3]]))
+      res=RRcompilerLevel3(list(tmpInd=tmpInd,Exp=curExp[[3]]),varList=varList)
       tmpInd=res$tmpInd
-      if(!is.null(res$varList))
-        for(j in keys(res$varList)){
-          varList[[j]]=j
+      varList=res$varList
+      if(!is.null(res$renameList))
+        for(j in keys(res$renameList)){
+          parsedExp=renameVarInCode(parsedExp,i+1,j,res$renameList[[j]])
         }
       curExp[[3]]=res$Exp
       parsedExp[[i]]=curExp
     }
   }
-  return(list(tmpInd=tmpInd,Exp=parsedExp,varList=varList))
+  
+  level3Exp=level2Exp
+  level3Exp$tmpInd=tmpInd
+  level3Exp$Exp=parsedExp
+  level3Exp$varList=varList
+  level3Exp$parms=parms
+  level3Exp$renameList=renameList
+  return(level3Exp)
 }
 renameVarInCode<-function(code,start,oldName,newName){
   oldName=as.character(oldName)
@@ -101,6 +113,7 @@ RRcompilerLevel2<-function(level1Exp){
         curExp[[3]]=as.symbol(tmpName)
       }
     }
+    
     if(curExp[[1]]=="=="){
       for(i in 2:3){
         oneSideExp=curExp[[i]]
@@ -126,7 +139,10 @@ RRcompilerLevel2<-function(level1Exp){
     }
     code=c(code,curExp)
   }
-  return(list(tmpInd=tmpInd,Exp=code))
+  level2Exp=level1Exp
+  level2Exp$tmpInd=tmpInd
+  level2Exp$Exp=code
+  return(level2Exp)
 }
 
 
@@ -221,17 +237,15 @@ RRcompilerLevel1<-function(parsedExp,tmpInd=1){
       }
    stop("Unrecognized code: ",deparse(curExp))
   }
-  return(list(tmpInd=tmpInd,Exp=code))
+  
+  level1Exp=list(tmpInd=tmpInd,Exp=code)
+  return(level1Exp)
 }
 
 compressCodeChunk<-function(Exp){
   code=c()
-  if(length(Exp)>1){
-    for(i in 1:length(Exp))
-      code=c(code,deparse(Exp[[i]]))
-  }else{
-    code=deparse(Exp)
-  }
+  for(i in 1:length(Exp))
+    code=c(code,deparse(Exp[[i]]))
   code=c("{",code,"}")
   code=paste0(code,collapse = "\n")
   return(parse(text=code)[[1]])

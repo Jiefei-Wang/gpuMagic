@@ -96,16 +96,24 @@ C_floor<-function(varInfo,Exp){
   return(code)
 }
 
+C_return<-function(varInfo,Exp){
+  return_var=Exp[[2]]
+  size1=R_getVarSize1(varInfo,return_var)
+  size2=R_getVarSize1(varInfo,return_var)
+  code=paste0("for(unsigned ")
+}
+
+
 
 
 R_getVarSize1<-function(varInfo,var){
   var_ind=varInfo$varTable[[deparse(var)]]-1
-  size1=paste0(varInfo$GPUVar$gpu_matrix_size1,"[",var_ind,"]")
+  size1=paste0(GPUVar$gpu_matrix_size1,"[",var_ind,"]")
   size1
 }
 R_getVarSize2<-function(varInfo,var){
   var_ind=varInfo$varTable[[deparse(var)]]-1
-  size2=paste0(varInfo$GPUVar$gpu_matrix_size2,"[",var_ind,"]")
+  size2=paste0(GPUVar$gpu_matrix_size2,"[",var_ind,"]")
   size2
 }
 
