@@ -41,15 +41,16 @@ RRcompilerLevel3<-function(level2Exp,parms=NULL,varList=NULL){
       curExp[[2]]=as.symbol(tmpName)
       loopBody=curExp[[4]]
       loopBody=renameVarInCode(loopBody,1,var_char,tmpName)
-      #Check the body code
-      res=RRcompilerLevel3(list(tmpInd=tmpInd,Exp=loopBody),varList=varList)
-      tmpInd=res$tmpInd
-      varList=res$varList
-      if(!is.null(res$renameList))
-        for(j in keys(res$renameList)){
-          parsedExp=renameVarInCode(parsedExp,i+1,j,res$renameList[[j]])
-        }
-      curExp[[4]]=res$Exp
+      #I need to be careful in the for loop, the iteration need to be treated specially
+      # #Check the body code
+      # res=RRcompilerLevel3(list(tmpInd=tmpInd,Exp=loopBody),varList=varList)
+      # tmpInd=res$tmpInd
+      # varList=res$varList
+      # if(!is.null(res$renameList))
+      #   for(j in keys(res$renameList)){
+      #     parsedExp=renameVarInCode(parsedExp,i+1,j,res$renameList[[j]])
+      #   }
+      curExp[[4]]=loopBody
       parsedExp[[i]]=curExp
     }
     if(curExp[[1]]=="if"){

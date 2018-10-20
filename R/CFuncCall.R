@@ -76,8 +76,8 @@ C_subset<-function(varInfo,Exp){
     return(deparse(Exp))
   if(Exp[[1]]=="["){
     if(length(Exp)==3){
-      Exp[[3]]= parse(text=paste0(Exp[[3]],"-",1))[[1]]
-      return(deparse(Exp))
+      ExpChar=paste0(Exp[[2]],"[(unsigned int)",Exp[[3]],"-1]")
+      return(ExpChar)
     }
     if(length(Exp==4)){
       #var_data=getVarInfo(varInfo,Exp[[2]])
@@ -85,23 +85,17 @@ C_subset<-function(varInfo,Exp){
       size1=R_getVarSize1(varInfo,Exp[[2]])
       if(Exp[[3]]==""||Exp[[4]]=="")
         stop("Compilation error, please contact the author: ",deparse(Exp))
-      ExpChar=paste0(Exp[[2]],"[",Exp[[3]],"-1 +(",Exp[[4]],"-1)*",size1,"]")
+      ExpChar=paste0(Exp[[2]],"[(unsigned int)",Exp[[3]],"-1 +((unsigned int)",Exp[[4]],"-1)*",size1,"]")
       return(ExpChar)
     }
   }
   stop("The expression is not a subset function: ",deparse(Exp))
 }
 C_floor<-function(varInfo,Exp){
-  code=paste0("((int)",deparse(Exp),")")
+  code=paste0("((int)",deparse(Exp[[2]]),")")
   return(code)
 }
 
-C_return<-function(varInfo,Exp){
-  return_var=Exp[[2]]
-  size1=R_getVarSize1(varInfo,return_var)
-  size2=R_getVarSize1(varInfo,return_var)
-  code=paste0("for(unsigned ")
-}
 
 
 

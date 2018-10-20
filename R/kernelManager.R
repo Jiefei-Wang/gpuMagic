@@ -1,15 +1,14 @@
 
 #' @export
-.kernel<-function(file="",kernel,...,autoType=TRUE,globalThreadNum="length(FirstArg)",localThreadNum="Auto",src="",verbose=FALSE){
+.kernel<-function(file="",kernel,parms,autoType=TRUE,globalThreadNum="length(FirstArg)",localThreadNum="Auto",src="",verbose=FALSE,signature=""){
   #message(globalThreadNum)
   codePack=readCode(file,src)
   #message(codePack)
   ##Performing auto type conversion, tranfer R matrix and vector to GPUmatrix class
-  parms=list(...)
   
   res=parseProgram(codePack,kernel,parms,autoType)
   src=res$src
-  sig=res$sig
+  sig=paste0(res$sig,signature,collapse = "")
   
   for(i in seq_len(length(parms))){
     if(class(parms[[i]])!="gpuMatrix")
@@ -41,7 +40,7 @@
       }
     }
   }
-  if(localThreadNum<=32){
+  if(localThreadNum<=32&&Block>=64){
     warning(paste0("The current thread number is ",localThreadNum,". This may have negative effect on the performance. Please consider to increase the thread number"))
   }
   if(verbose){

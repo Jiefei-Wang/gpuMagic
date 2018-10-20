@@ -91,7 +91,7 @@ k=2
 A=matrix(runif(n*m),n,m)
 B=matrix(runif(n*m),m,k)
 C=matrix(0,n,k)
-
+parms=list(ind=1:(n*k),A=A,B=B)
 
 test3<-function(ind,A,B){
   ind=ind-1
@@ -108,21 +108,21 @@ test3<-function(ind,A,B){
 
 
 
-test3<-function(){
-  n=10
-  for(i in 1:n){
-    b=1
-    b=10
-  }
-  a=b
-}
+
 
 res=sapply(1:(n*k),test3,A,B)
 C_res=matrix(res,n,k)
 max(abs(C_res-A%*%B))
 
 
-parms=list(ind=1:(n*k),A=A,B=B)
+n=100
+A=runif(n)
+B=runif(n)
+parms=list(ind=1:(n*n),A=A,B=B)
+test3<-function(ind,A,B){
+  e=A[ind]+B[ind]
+  return(e)
+}
 
 parsedExp=funcToExp(test3)$code
 level1Exp=RRcompilerLevel1(parsedExp)

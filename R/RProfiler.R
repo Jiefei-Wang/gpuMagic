@@ -4,12 +4,16 @@ RProfilerLevel1<-function(level3Exp){
   tmpInd=level3Exp$tmpInd
   parsedExp=level3Exp$Exp
   
+  #The loop variable needs some special treatment, I rename it so that it would not be confused with the total looped variable
   workerData=names(level3Exp$parms)[1]
-  tmp_parms=c(level3Exp$parms,list(0))
+  tmp_parms=c(level3Exp$parms)
   names(tmp_parms)[1]=GPUVar$gpu_worker_data
-  names(tmp_parms)[length(tmp_parms)]=workerData
-  varInfo=profileVar(tmp_parms)
   
+  varInfo=profileVar(tmp_parms)
+  loopVar=getEmpyTable(1,type=T_scale)
+  loopVar$var=workerData
+  varInfo$profile=rbind(varInfo$profile,loopVar)
+  varInfo$varTable[[workerData]]=nrow(varInfo$profile)
   
   profileMeta1=level3Exp
   profileMeta1$tmpInd=tmpInd
@@ -46,6 +50,8 @@ profileVar<-function(parms){
   info$size2=paste0("(",varInfo$profileTblName,"[",i,",]","$size2)")
   if(curDim[1]==1&&curDim[2]==1){
     info$dataType=T_scale
+    info$size1=1
+    info$size2=1
     info$value=paste0("(",varInfo$profileTblName,"[",i,",]","$value)")
     info$compileData="Y"
   }else{
@@ -63,8 +69,6 @@ profileVar<-function(parms){
 
 
 #Profile the variables in the code
-#compileInfo1=RCcompilerLevel1(level3Exp,parms)
-#parsedExp=curExp[[4]]
 RProfilerLevel2<-function(profileMeta1){
   tmpInd=profileMeta1$tmpInd
   parsedExp=profileMeta1$Exp
@@ -97,23 +101,32 @@ RProfilerLevel2<-function(profileMeta1){
           varInfo$varTable[[var_char]]=nrow(varInfo$profile)
         }
       }
+      next
     }
     
+    if(curExp[[1]]=="return"){
+      ExpProfile=profile_return(varInfo,curExp)
+      varInfo$returnInfo=ExpProfile
+      next
+    }
     #For loop
     if(curExp[[1]]=="for"){
       var_char=deparse(curExp[[2]])
       ExpProfile=getEmpyTable(1,type = T_scale)
       ExpProfile$var=var_char
+      ExpProfile$initialization="N"
       varInfo$profile=rbind(varInfo$profile,ExpProfile)
       varInfo$varTable[[var_char]]=nrow(varInfo$profile)
       res=RProfilerLevel2(list(tmpInd=tmpInd,Exp=curExp[[4]],varInfo=varInfo))
       tmpInd=res$tmpInd
       varInfo=res$varInfo
+      next
     }
     if(curExp[[1]]=="if"){
       res=RProfilerLevel2(list(tmpInd=tmpInd,Exp=curExp[[3]],varInfo=varInfo))
       tmpInd=res$tmpInd
       varInfo=res$varInfo
+      next
     }
   }
   
@@ -172,7 +185,7 @@ getVarInfo<-function(varInfo,target){
 #Get an empty profile table
 getEmpyTable<-function(rowNum=0,type=""){
   tlbName=c("var","address","dataType","precisionType", "size1","size2","value","compileSize",
-            "compileData","require")
+            "compileData","require","initialization")
   tbl=as.data.frame(matrix("NA",ncol = length(tlbName), nrow = rowNum))
   names(tbl)=tlbName
   if(rowNum!=0){
@@ -180,6 +193,7 @@ getEmpyTable<-function(rowNum=0,type=""){
     tbl$compileSize="N"
     tbl$compileData="N"
     tbl$require="N"
+    tbl$initialization="Y"
     if(type==T_scale){
       tbl$dataType=T_scale
       tbl$compileSize="Y"

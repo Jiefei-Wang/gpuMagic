@@ -46,23 +46,24 @@ RRecompiler<-function(profileMeta2){
       curCode=.recompileFuncs[[rightFunc]](varInfo,curExp)
       parsedExp=insertAndReplaceCode(i,parsedExp,curCode)
     }
-    
-    #For loop
-    if(FuncName=="for"){
-      var_char=deparse(curExp[[2]])
-      ExpProfile=getEmpyTable(1,type = T_scale)
-      ExpProfile$var=var_char
-      varInfo$profile=rbind(varInfo$profile,ExpProfile)
-      varInfo$varTable[[var_char]]=nrow(varInfo$profile)
-      res=RProfilerLevel2(list(tmpInd=tmpInd,Exp=curExp[[4]],varInfo=varInfo))
-      tmpInd=res$tmpInd
-      varInfo=res$varInfo
-    }
-    if(curExp[[1]]=="if"){
-      res=RProfilerLevel2(list(tmpInd=tmpInd,Exp=curExp[[3]],varInfo=varInfo))
-      tmpInd=res$tmpInd
-      varInfo=res$varInfo
-    }
+    # 
+    # #For loop
+    # if(FuncName=="for"){
+    #   var_char=deparse(curExp[[2]])
+    #   ExpProfile=getEmpyTable(1,type = T_scale)
+    #   ExpProfile$var=var_char
+    #   ExpProfile$initialization="N"
+    #   varInfo$profile=rbind(varInfo$profile,ExpProfile)
+    #   varInfo$varTable[[var_char]]=nrow(varInfo$profile)
+    #   res=RProfilerLevel2(list(tmpInd=tmpInd,Exp=curExp[[4]],varInfo=varInfo))
+    #   tmpInd=res$tmpInd
+    #   varInfo=res$varInfo
+    # }
+    # if(curExp[[1]]=="if"){
+    #   res=RProfilerLevel2(list(tmpInd=tmpInd,Exp=curExp[[3]],varInfo=varInfo))
+    #   tmpInd=res$tmpInd
+    #   varInfo=res$varInfo
+    # }
   }
   
   

@@ -122,9 +122,9 @@ void debug() {
 }
 
 int main(void) {
-	char* src = "double add(double A, double B){ return A+B; } __kernel void vector_add__global (double *A, __global  double *B, __global  double *C)  { int i = get_global_id(0); C[i] =add(A+i,B+i); }";
+	char* src = "__kernel void gpu_kernel0(__global double* gpu_worker_data,__global double* A,__global double* B,__global float* gpuMagic_tmp,__global long* gpu_tmp_length_arg,__global long* gpu_matrix_offSize,__global long* gpu_matrix_size1,__global long* gpu_matrix_size2,__global double* gpu_return_variable,__global long* gpu_return_size){ unsigned long gpu_global_id=get_global_id(0); unsigned long gpu_tmp_length=*gpu_tmp_length_arg; unsigned long gpu_worker_offset=gpu_global_id*gpu_tmp_length; double ind ; double opencl_tmp_1 ; double opencl_tmp_2 ; double e ; ind=gpu_worker_data[gpu_global_id]; opencl_tmp_1=A[(unsigned int)ind-1]; opencl_tmp_2=B[(unsigned int)ind-1]; e=opencl_tmp_1+opencl_tmp_2; gpu_return_variable[gpu_global_id]=e; }";
 	char* sig = "a";
-	char* kernel = "vector_add";
+	char* kernel = "gpu_kernel0";
 	createKernel(&sig, &kernel, &src);
 }
 

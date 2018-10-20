@@ -227,7 +227,7 @@ profile_subset<-function(varInfo,Exp){
     if(sub1$type==T_scale){
       ExpInfo$dataType=T_scale
     }
-    if(ExpInfo$dataType==T_scale&&sub1$compile&&var_data$compileData=="Y"){
+    if(ExpInfo$dataType==T_scale&&sub1$compile=="Y"&&var_data$compileData=="Y"){
       ExpInfo$value=paste0("(",var_data$value,"[",sub1$value,"])")
       ExpInfo$compileData="Y"
     }
@@ -263,7 +263,11 @@ profile_floor<-function(varInfo,Exp){
   ExpInfo=profile_symbol(varInfo,Exp[[2]])
   return(ExpInfo)
 }
-
+profile_return<-function(varInfo,Exp){
+  ExpInfo=profile_symbol(varInfo,Exp[[2]])
+  ExpInfo$var=GPUVar$gpu_return_variable
+  return(ExpInfo)
+}
 
 
 .profileFuncs=list()

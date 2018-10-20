@@ -153,7 +153,7 @@ cl_program kernelManager::loadProgram(string signature,string code)
 	//printf(source);
 	cl_program program = clCreateProgramWithSource(context, 1, &source, 0, &error);
 	if (error != CL_SUCCESS) {
-		string errorInfo = string("Fail to read program, error info: ") + string(getErrorString(error));
+		string errorInfo = string("Fail to read program, error info: ") + to_string(error) + "-" + string(getErrorString(error));
 		errorHandle(errorInfo.c_str());
 		return NULL;
 	}
@@ -168,13 +168,13 @@ cl_program kernelManager::loadProgram(string signature,string code)
 		// Get the log
 		clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, strlen, buffer, NULL);
 		// Print the log
-		string errorInfo = string("Fail to build program, error info: \n") + string(buffer);
+		string errorInfo = string("Fail to build program, error info: \n") + to_string(error) + "-" + string(buffer);
 		errorHandle(errorInfo.c_str());
 		delete[] buffer;
 		break;
 	}
 	default: {
-		string errorInfo = string("Fail to build program, error info: ") + string(getErrorString(error));
+		string errorInfo = string("Fail to build program, error info: ")+ to_string(error)+"-" + string(getErrorString(error));
 		errorHandle(errorInfo.c_str());
 	}
 	}

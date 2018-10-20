@@ -12,3 +12,17 @@ Imports: Rcpp, hash
 SystemRequirements: C++11
 RoxygenNote: 6.1.0
 Suggests: testthat
+Collate: 
+    'CFuncCall.R'
+    'gpuResourcesManager.R'
+    'RCParser.R'
+    'RProfileFunc.R'
+    'RProfiler.R'
+    'RRParser.R'
+    'RRecompileFunc.R'
+    'RRecompiler.R'
+    'gpuApply.R'
+    'gpuMatix.R'
+    'kernelManager.R'
+    'pkgFunc.R'
+

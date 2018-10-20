@@ -95,7 +95,12 @@ setMethod("dim", signature(x="gpuMatrix"),
             dim(.data(x))
           }
 )
-
+#' @export
+setMethod("length", signature(x="gpuMatrix"),
+          function(x) {
+            length(.data(x))
+          }
+)
 #' @export
 as.matrix.gpuMatrix<-function(obj,...){
   as.matrix(.data(obj))
