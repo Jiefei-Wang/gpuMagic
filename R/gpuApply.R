@@ -1,49 +1,7 @@
 
 gpuSapply<-function(X,FUN,...,verbose=F){
-  #Check and match the parameter names
-  parms=list(...)
-  argNames=names(funcToExp(FUN)$args)
-  loopVar_ind=which(argNames=="X")
-  if(length(loopVar_ind)==0)
-    loopVar=argNames[1]
-  else
-    loopVar="X"
-  parms=c(list(loopVar=X),parms)
-  names(parms)[1]=loopVar
-  unmatchedName=setdiff(argNames,names(parms))
-  parName=names(parms)
-  for(i in 1:length(parName)){
-    if(parName[i]==""){
-      if(length(unmatchedName)>0){
-        parName[i]=unmatchedName[1]
-        unmatchedName=unmatchedName[-1]
-      }else
-        stop("The function arguments does not match")
-    }
-  }
-  if(length(unmatchedName)>0){
-    stop("The function arguments does not match")
-  }
-  names(parms)=parName
-  
-  parsedExp=funcToExp(FUN)$code
-  level1Exp=RRcompilerLevel1(parsedExp)
-  level2Exp=RRcompilerLevel2(level1Exp)
-  #parms=list(A=0)
-  level3Exp=RRcompilerLevel3(level2Exp,parms)
-  profileMeta1=RProfilerLevel1(level3Exp)
-  profileMeta2=RProfilerLevel2(profileMeta1)
-  profileMeta3=RRecompiler(profileMeta2)
-  GPUExp1=RCcompilerLevel1(profileMeta3)
-  
-  names(parms)[1]=GPUVar$gpu_worker_data
-  GPUcode=completeProfileTbl(GPUExp1,parms)
-  GPUcode1=completeGPUcode(GPUcode)
-  GPUcode2=fillGPUdata(GPUcode1,parms)
+  GPUcode2=.gpuSapply(X,FUN,...)
 
- 
-  
-  
   .kernel(kernel=GPUcode2$kernel,parms=GPUcode2$all_parms,autoType=FALSE,src=GPUcode2$gpu_code,verbose = verbose,signature = runif(1))
   res=GPUcode2$all_parms$gpu_return_variable
   res=sync(res)
@@ -54,6 +12,31 @@ gpuSapply<-function(X,FUN,...,verbose=F){
     return(matrix(res,ncol=length(X)))
   }
 }
+
+.gpuSapply<-function(X,FUN,...){
+  #Check and match the parameter names
+  parms=list(...)
+  parms=matchParms(X,parms,FUN)
+  
+  codeMetaInfo=list()
+  codeMetaInfo$Exp=funcToExp(FUN)$code
+  codeMetaInfo$parms=parms
+  codeMetaInfo1=RRParser1_new(codeMetaInfo)
+  codeMetaInfo2=RRParser2_new(codeMetaInfo1)
+  codeMetaInfo3=RRParser3_new(codeMetaInfo2)
+  profileMeta1=RProfiler1_new(codeMetaInfo3)
+  profileMeta2=RProfiler2_new(profileMeta1)
+  profileMeta3=RRecompiler(profileMeta2)
+  
+  GPUExp1=RCcompilerLevel1(profileMeta3)
+  
+  names(parms)[1]=GPUVar$gpu_worker_data
+  GPUcode=completeProfileTbl(GPUExp1,parms)
+  GPUcode1=completeGPUcode(GPUcode)
+  GPUcode2=fillGPUdata(GPUcode1,parms)
+  GPUcode2
+}
+
 
 #as.vector(res)-A-B
 #cat(GPUcode2$gpu_code)
@@ -174,4 +157,33 @@ completeProfileTbl<-function(GPUExp1,parms){
   GPUExp1$varInfo$profile=profile
   GPUExp1
   
+}
+
+
+matchParms<-function(X,parms,FUN){
+  
+  argNames=names(funcToExp(FUN)$args)
+  loopVar_ind=which(argNames=="X")
+  if(length(loopVar_ind)==0)
+    loopVar=argNames[1]
+  else
+    loopVar="X"
+  parms=c(list(loopVar=X),parms)
+  names(parms)[1]=loopVar
+  unmatchedName=setdiff(argNames,names(parms))
+  parName=names(parms)
+  for(i in 1:length(parName)){
+    if(parName[i]==""){
+      if(length(unmatchedName)>0){
+        parName[i]=unmatchedName[1]
+        unmatchedName=unmatchedName[-1]
+      }else
+        stop("The function arguments does not match")
+    }
+  }
+  if(length(unmatchedName)>0){
+    stop("The function arguments does not match")
+  }
+  names(parms)=parName
+  parms
 }

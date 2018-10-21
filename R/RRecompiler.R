@@ -5,7 +5,7 @@
 
 #Expand some codes if necessary
 RRecompiler<-function(profileMeta2){
-  tmpInd=profileMeta2$tmpInd
+  tmpMeta=profileMeta2$tmpMeta
   parsedExp=profileMeta2$Exp
   varInfo=profileMeta2$varInfo
   profile=varInfo$profile
@@ -66,12 +66,15 @@ RRecompiler<-function(profileMeta2){
     # }
   }
   
+  codeMetaInfo=list()
+  codeMetaInfo$Exp=parsedExp
+  codeMetaInfo$parms=profileMeta2$parms
+  codeMetaInfo1=RRParser1_new(codeMetaInfo,insertPreserved = F)
+  codeMetaInfo2=RRParser2_new(codeMetaInfo1)
+  codeMetaInfo3=RRParser3_new(codeMetaInfo2)
+  profileMeta1=RProfiler1_new(codeMetaInfo3)
+  profileMeta2=RProfiler2_new(profileMeta1)
   
-  level1Exp=RRcompilerLevel1(parsedExp,tmpInd=tmpInd)
-  level2Exp=RRcompilerLevel2(level1Exp)
-  level3Exp=RRcompilerLevel3(level2Exp,profileMeta2$parms)
-  profileMeta1=RProfilerLevel1(level3Exp)
-  profileMeta2=RProfilerLevel2(profileMeta1)
   
   profileMeta2
 }

@@ -34,7 +34,7 @@ C_call_assign<-function(varInfo,Exp){
       }
       
       if(rightExp[[1]]=="matrix"){
-        warning("matrix initial value will be ignored, but will be supported in future",deparse(Exp))
+        #warning("matrix initial value will be ignored, but will be supported in future",deparse(Exp))
         #curCode=paste0(C_leftExp,deparse(Exp[[1]]),C_rightExp,";")
         return("")
       }

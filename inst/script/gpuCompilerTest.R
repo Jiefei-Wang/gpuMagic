@@ -28,10 +28,15 @@ test3<-function(ind,A,B){
 }
 
 
+debugCode=.gpuSapply(1:n,test3,A,B)
+cat(debugCode$gpu_code)
+res=gpuSapply(1:n,test3,A,B)
 
-
+res-A*B
 
 library("tictoc")
+
+
 n=1000
 m=10000
 k=1000

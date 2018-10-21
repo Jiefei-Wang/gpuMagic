@@ -74,18 +74,6 @@ RRcompilerLevel3<-function(level2Exp,parms=NULL,varList=NULL){
   level3Exp$renameList=renameList
   return(level3Exp)
 }
-renameVarInCode<-function(code,start,oldName,newName){
-  oldName=as.character(oldName)
-  newName=as.symbol(newName)
-  if(start<=length(code)){
-    for(i in start:length(code)){
-      renameList=list(newName)
-      names(renameList)=oldName
-      code[[i]]=do.call('substitute', list(code[[i]], renameList))
-    }
-  }
-  return(code)
-}
 
 #Level2 compiler
 #Functions:
@@ -243,14 +231,6 @@ RRcompilerLevel1<-function(parsedExp,tmpInd=1){
   return(level1Exp)
 }
 
-compressCodeChunk<-function(Exp){
-  code=c()
-  for(i in 1:length(Exp))
-    code=c(code,deparse(Exp[[i]]))
-  code=c("{",code,"}")
-  code=paste0(code,collapse = "\n")
-  return(parse(text=code)[[1]])
-}
   
 #parsedExp=parse(text="f(g(),a)")[[1]]
 #Create a new variable to represent a function call
@@ -285,17 +265,3 @@ getTmpName<-function(tmpInd){
   return(list(tmpInd=tmpInd+1,tmpName=paste0("opencl_tmp_",tmpInd)))
 }
 
-#convert a function to an expression
-funcToExp<-function(f){
-  charExp=deparse(f)
-  parsedExp=parse(text=charExp)[[1]]
-  args=parsedExp[[2]]
-  code=parsedExp[[3]]
-  return(list(args=args,code=code))
-}
-
-printExp<-function(Exp){
-  for(i in Exp){
-    message(deparse(i))
-  }
-}

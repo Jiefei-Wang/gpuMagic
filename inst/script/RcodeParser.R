@@ -65,25 +65,6 @@ test1<-function(a,b){
   b=b+a[1]+a[2,f(b)]
   e=a
 }
-test2<-function(){
-  a[1]=b[10]
-  for(i in 1:10){
-    a=2
-    a[1]=b[i]
-    a=matrix(0,10,10)
-    if(b==10){
-      a[1]=b[i]
-      d=a+b+d
-    }
-  }
-  
-  if(b==10){
-    a=3
-    a=100
-    d=50
-    d=a+b+d
-  }
-}
 
 n=10
 m=5
@@ -106,7 +87,58 @@ test3<-function(ind,A,B){
   return(C)
 }
 
+test1<-function(){
+  a=A
+  return(a)
+}
 
+test2<-function(){
+  
+  a=1
+  a=2
+  b=a
+  for(i in 1:10){
+    b=10
+    for(j in 1:nrow(a)){
+      a=10
+      b=10
+    }
+    a=10
+    a1=a
+    
+  }
+  
+}
+
+
+
+test3<-function(ind,A,B){
+  ind=ind-1
+  j=floor(ind/nrow(A))
+  i=ind-j*nrow(A)
+  j=j+1
+  i=i+1
+  C=0
+  for(k in 1:ncol(A)){
+    C=C+A[i,k]*B[k,j]
+  }
+  return(C)
+}
+n=10
+A=runif(n)
+B=runif(n)
+parms=list(ind=1:(n*n),A=A,B=B)
+codeMetaInfo=list()
+codeMetaInfo$Exp=funcToExp(test3)$code
+codeMetaInfo$parms=parms
+codeMetaInfo1=RRParser1_new(codeMetaInfo)
+codeMetaInfo2=RRParser2_new(codeMetaInfo1)
+codeMetaInfo3=RRParser3_new(codeMetaInfo2)
+profileMeta1=RProfiler1_new(codeMetaInfo3)
+profileMeta2=RProfiler2_new(profileMeta1)
+profileMeta3=RRecompiler(profileMeta2)
+
+GPUExp1=RCcompilerLevel1(profileMeta3)
 
 
 
@@ -115,7 +147,7 @@ C_res=matrix(res,n,k)
 max(abs(C_res-A%*%B))
 
 
-n=100
+n=1
 A=runif(n)
 B=runif(n)
 parms=list(ind=1:(n*n),A=A,B=B)
@@ -124,7 +156,7 @@ test3<-function(ind,A,B){
   return(e)
 }
 
-parsedExp=funcToExp(test3)$code
+parsedExp=funcToExp(test2)$code
 level1Exp=RRcompilerLevel1(parsedExp)
 level2Exp=RRcompilerLevel2(level1Exp)
 #parms=list(A=0)
