@@ -89,7 +89,7 @@ That is all you need to do to run the GPU code! We can try a larger sample size 
 ```{r}
 n=1000
 m=5000
-k=10000
+k=1000
 A=matrix(runif(n*m),n,m)
 B=matrix(runif(n*m),m,k)
 system.time(
@@ -99,7 +99,7 @@ system.time(
   A%*%B
 )
 ```
-In my compute the GPU(GTX 1070) code takes about 4 secs to finish and CPU(AMD razen 1600) takes 28 secs to finish, you get 7 times speed up in this matrix operation! The current package does not take any advantage of the GPU structure, but you are still able to outperform than the highly optimized CPU code with no effort.
+In my compute the GPU(GTX 1070) code takes about 0.4 secs to finish and CPU(AMD razen 1600) takes 2.79 secs to finish, you get 7 times speed up in this matrix operation! The current package does not take any advantage of the GPU structure, but you are still able to outperform than the highly optimized CPU code with no effort.
 
 As you can see, the package partially supports the matrix operation, so the parallel computing can be ran in a more coarse level, which makes the code a littile bit easier to read, but will have negative effect on the performance(Due to no optimization)
 
@@ -118,7 +118,7 @@ matMul_coarse<-function(j,A,B){
   return(C)
 }
 
-#Same matrix, but 2.5X slower
+#Same matrix, but much slower
 system.time(
 gpuSapply(1:k,matMul_coarse,A,B)
 )
