@@ -2,8 +2,8 @@
 
 #parsedExp=parse(text="f(g(),a)")[[1]]
 #Create a new variable to represent a function call
-createNewVarLevel1_test<-function(tmpMeta,parsedExp){
-  tmpMeta=getTmpName_test(tmpMeta)
+createNewVar<-function(tmpMeta,parsedExp){
+  tmpMeta=getTmpVar(tmpMeta)
   curName=tmpMeta$varName
   curCode=c()
   if(length(parsedExp)>1){
@@ -11,7 +11,7 @@ createNewVarLevel1_test<-function(tmpMeta,parsedExp){
       #If the argument is also a function call
       curArg=parsedExp[[i]]
       if(is.call(curArg)){
-        res=createNewVarLevel1_test(tmpMeta,curArg)
+        res=createNewVar(tmpMeta,curArg)
         tmpMeta=res$tmpMeta
         #change the argument to a parameter
         parsedExp[[i]]=as.symbol(tmpMeta$varName)
@@ -28,7 +28,7 @@ createNewVarLevel1_test<-function(tmpMeta,parsedExp){
 }
 
 
-getTmpName_test<-function(tmpMeta){
+getTmpVar<-function(tmpMeta){
   count=tmpMeta$count
   return(list(count=count+1,varName=paste0("opencl_tmp_",count)))
 }

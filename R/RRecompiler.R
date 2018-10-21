@@ -69,11 +69,11 @@ RRecompiler<-function(profileMeta2){
   codeMetaInfo=list()
   codeMetaInfo$Exp=parsedExp
   codeMetaInfo$parms=profileMeta2$parms
-  codeMetaInfo1=RRParser1_new(codeMetaInfo,insertPreserved = F)
-  codeMetaInfo2=RRParser2_new(codeMetaInfo1)
-  codeMetaInfo3=RRParser3_new(codeMetaInfo2)
-  profileMeta1=RProfiler1_new(codeMetaInfo3)
-  profileMeta2=RProfiler2_new(profileMeta1)
+  codeMetaInfo1=RParser1(codeMetaInfo,insertPreserved = F)
+  codeMetaInfo2=RParser2(codeMetaInfo1)
+  codeMetaInfo3=RParser3(codeMetaInfo2)
+  profileMeta1=RProfiler1(codeMetaInfo3)
+  profileMeta2=RProfiler2(profileMeta1)
   
   
   profileMeta2

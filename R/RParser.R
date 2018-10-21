@@ -3,7 +3,7 @@
 #1.simplify the R code, each line should only have one function call,
 #If not, a temporary variable will be created to replace it.
 #2.If the code only has a symbol, it will be remove from the function
-RRParser1_new<-function(codeMetaInfo,insertPreserved=T){
+RParser1<-function(codeMetaInfo,insertPreserved=T){
   #define the looped variable
   loopVar=names(codeMetaInfo$parms)[[1]]
   #insert the preserved data reading code
@@ -13,13 +13,13 @@ RRParser1_new<-function(codeMetaInfo,insertPreserved=T){
   }
   
   codeMetaInfo$tmpMeta=list(count=1)
-  codeMetaInfo1=parserFrame(RRLevel1_parserFunc,RRLevel1_checkFunc,
-                            RRLevel1_updateFunc,codeMetaInfo)
+  codeMetaInfo1=parserFrame(RLevel1_parserFunc,RLevel1_checkFunc,
+                            RLevel1_updateFunc,codeMetaInfo)
   codeMetaInfo1
 }
 
 
-RRLevel1_parserFunc<-function(level,codeMetaInfo,curExp){
+RLevel1_parserFunc<-function(level,codeMetaInfo,curExp){
   result=list()
   tmpMeta=codeMetaInfo$tmpMeta
   
@@ -30,7 +30,7 @@ RRLevel1_parserFunc<-function(level,codeMetaInfo,curExp){
       if(length(oneSideExp)>=2){
         for(i in seq(2,length(oneSideExp))){
           if(is.call(oneSideExp[[i]])){
-            res=createNewVarLevel1_test(tmpMeta,oneSideExp[[i]])
+            res=createNewVar(tmpMeta,oneSideExp[[i]])
             tmpMeta=res$tmpMeta
             result$extCode=c(result$extCode,res$code)
             curExp[[j]][[i]]=as.symbol(tmpMeta$varName)
@@ -45,7 +45,7 @@ RRLevel1_parserFunc<-function(level,codeMetaInfo,curExp){
   #General strategy for all functions that do not appear above
   for(i in 2:length(curExp)){
     if(is.call(curExp[[i]])){
-      res=createNewVarLevel1_test(tmpMeta,curExp[[i]])
+      res=createNewVar(tmpMeta,curExp[[i]])
       tmpMeta=res$tmpMeta
       result$extCode=c(result$extCode,res$code)
       curExp[[i]]=as.symbol(tmpMeta$varName)
@@ -56,11 +56,11 @@ RRLevel1_parserFunc<-function(level,codeMetaInfo,curExp){
   return(result)
 }
 
-RRLevel1_checkFunc<-function(curExp){
+RLevel1_checkFunc<-function(curExp){
   return(TRUE)
 }
 
-RRLevel1_updateFunc<-function(type,level,codeMetaInfo,parsedExp,code,i,res){
+RLevel1_updateFunc<-function(type,level,codeMetaInfo,parsedExp,code,i,res){
   result=general_updateFunc(codeMetaInfo,parsedExp,code)
   result$codeMetaInfo$tmpMeta=res$tmpMeta
   result
@@ -74,15 +74,15 @@ RRLevel1_updateFunc<-function(type,level,codeMetaInfo,parsedExp,code,i,res){
 #1.For "=" sign: If the left side symbol is subsetted, 
 #the right side symbol should be a symbol,
 #if not, create a temporary function to replace it
-RRParser2_new<-function(codeMetaInfo1){
-  codeMetaInfo2=parserFrame(RRLevel2_parserFunc,RRLevel2_checkFunc,
-                            RRLevel2_updateFunc,codeMetaInfo1)
+RParser2<-function(codeMetaInfo1){
+  codeMetaInfo2=parserFrame(RLevel2_parserFunc,RLevel2_checkFunc,
+                            RLevel2_updateFunc,codeMetaInfo1)
   codeMetaInfo2
 }
 
 
 
-RRLevel2_parserFunc<-function(level,codeMetaInfo,curExp){
+RLevel2_parserFunc<-function(level,codeMetaInfo,curExp){
   result=list()
   tmpMeta=codeMetaInfo$tmpMeta
   
@@ -91,7 +91,7 @@ RRLevel2_parserFunc<-function(level,codeMetaInfo,curExp){
     rightExp=curExp[[3]]
     if(is.call(leftExp)&&is.call(rightExp))
     {
-      res=createNewVarLevel1_test(tmpMeta,rightExp)
+      res=createNewVar(tmpMeta,rightExp)
       tmpMeta=res$tmpMeta
       result$extCode=c(result$extCode,res$code)
       curExp[[3]]=as.symbol(tmpMeta$varName)
@@ -107,7 +107,7 @@ RRLevel2_parserFunc<-function(level,codeMetaInfo,curExp){
       oneSideExp=curExp[[i]]
       if(is.call(oneSideExp))
       {
-        res=createNewVarLevel1_test(tmpMeta,oneSideExp)
+        res=createNewVar(tmpMeta,oneSideExp)
         tmpMeta=res$tmpMeta
         result$extCode=c(result$extCode,res$code)
         curExp[[i]]=as.symbol(tmpMeta$varName)
@@ -123,11 +123,11 @@ RRLevel2_parserFunc<-function(level,codeMetaInfo,curExp){
   return(result)
 }
 
-RRLevel2_checkFunc<-function(curExp){
+RLevel2_checkFunc<-function(curExp){
   return(TRUE)
 }
 
-RRLevel2_updateFunc<-function(type,level,codeMetaInfo,parsedExp,code,i,res){
+RLevel2_updateFunc<-function(type,level,codeMetaInfo,parsedExp,code,i,res){
   result=general_updateFunc(codeMetaInfo,parsedExp,code)
   result$codeMetaInfo$tmpMeta=res$tmpMeta
   result
@@ -140,7 +140,7 @@ RRLevel2_updateFunc<-function(type,level,codeMetaInfo,parsedExp,code,i,res){
 #1.Rename the variable if the variable is redefined
 #2.Rename the loop index
 #
-RRParser3_new<-function(codeMetaInfo2){
+RParser3<-function(codeMetaInfo2){
   
   parms=codeMetaInfo2$parms
   parmsList=as.list(names(parms))
@@ -154,8 +154,8 @@ RRParser3_new<-function(codeMetaInfo2){
   
   codeMetaInfo2$varList=hash(parmsList)
   
-  codeMetaInfo3=parserFrame(RRLevel3_parserFunc,RRLevel3_checkFunc,
-              RRLevel3_updateFunc,codeMetaInfo2)
+  codeMetaInfo3=parserFrame(RLevel3_parserFunc,RLevel3_checkFunc,
+              RLevel3_updateFunc,codeMetaInfo2)
   
   #Rename the loop var
   parsedExp=codeMetaInfo2$Exp
@@ -168,7 +168,7 @@ RRParser3_new<-function(codeMetaInfo2){
   codeMetaInfo3
 }
 
-RRLevel3_parserFunc<-function(level,codeMetaInfo,curExp){
+RLevel3_parserFunc<-function(level,codeMetaInfo,curExp){
   result=list()
   tmpMeta=codeMetaInfo$tmpMeta
   renameList=c()
@@ -187,7 +187,7 @@ RRLevel3_parserFunc<-function(level,codeMetaInfo,curExp){
     var_char=deparse(leftExp)
     if(!is.call(leftExp)){
       if(has.key(var_char,varList)){
-        tmpMeta=getTmpName_test(tmpMeta)
+        tmpMeta=getTmpVar(tmpMeta)
         tmpName=tmpMeta$varName
         #parsedExp=renameVarInCode(parsedExp,i+1,var_char,tmpName)
         renameList=rbind(renameList,c(length(level)+1,var_char,tmpName))
@@ -206,12 +206,12 @@ RRLevel3_parserFunc<-function(level,codeMetaInfo,curExp){
 }
   
 
-RRLevel3_checkFunc<-function(curExp){
+RLevel3_checkFunc<-function(curExp){
   #if(curExp[[1]]=="=")return(TRUE)
   return(TRUE)
 }
 
-RRLevel3_updateFunc<-function(type,level,codeMetaInfo,parsedExp,code,i,res){
+RLevel3_updateFunc<-function(type,level,codeMetaInfo,parsedExp,code,i,res){
   result=general_updateFunc(codeMetaInfo,parsedExp,code)
   result$codeMetaInfo$tmpMeta=res$tmpMeta
   varList=result$codeMetaInfo$varList

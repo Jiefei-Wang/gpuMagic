@@ -13,15 +13,15 @@ SystemRequirements: C++11
 RoxygenNote: 6.1.0
 Suggests: testthat
 Collate: 
-    'CFuncCall.R'
+    'ParserFramework.R'
     'gpuResourcesManager.R'
     'RCParser.R'
-    'RParserFramework.R'
-    'RProfileFunc.R'
+    'RCParserFunc.R'
+    'RParser.R'
+    'RParserSupportFunc.R'
     'RProfiler.R'
-    'RProfiler_new.R'
-    'RRParser.R'
-    'RRParser_new.R'
+    'RProfilerFunc.R'
+    'RProfilerSupportFunc.R'
     'RRecompileFunc.R'
     'RRecompiler.R'
     'gpuApply.R'

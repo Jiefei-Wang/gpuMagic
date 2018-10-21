@@ -1,5 +1,5 @@
 #Profile the function arguments only
-RProfiler1_new<-function(codeMetaInfo3){
+RProfiler1<-function(codeMetaInfo3){
   profileMeta1=codeMetaInfo3
   
   #The looped variable needs some special treatment, I rename it so that it would not be confused with the individual looped variable
@@ -27,7 +27,7 @@ RProfiler1_new<-function(codeMetaInfo3){
 
 
 
-RProfiler2_new<-function(profileMeta1){
+RProfiler2<-function(profileMeta1){
   #Profile the loop variable
   varInfo=profileMeta1$varInfo
   parsedExp=profileMeta1$Exp

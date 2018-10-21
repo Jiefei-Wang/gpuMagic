@@ -21,11 +21,11 @@ gpuSapply<-function(X,FUN,...,verbose=F){
   codeMetaInfo=list()
   codeMetaInfo$Exp=funcToExp(FUN)$code
   codeMetaInfo$parms=parms
-  codeMetaInfo1=RRParser1_new(codeMetaInfo)
-  codeMetaInfo2=RRParser2_new(codeMetaInfo1)
-  codeMetaInfo3=RRParser3_new(codeMetaInfo2)
-  profileMeta1=RProfiler1_new(codeMetaInfo3)
-  profileMeta2=RProfiler2_new(profileMeta1)
+  codeMetaInfo1=RParser1(codeMetaInfo)
+  codeMetaInfo2=RParser2(codeMetaInfo1)
+  codeMetaInfo3=RParser3(codeMetaInfo2)
+  profileMeta1=RProfiler1(codeMetaInfo3)
+  profileMeta2=RProfiler2(profileMeta1)
   profileMeta3=RRecompiler(profileMeta2)
   
   GPUExp1=RCcompilerLevel1(profileMeta3)
