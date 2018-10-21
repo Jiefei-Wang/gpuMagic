@@ -118,7 +118,7 @@ matMul_coarse<-function(j,A,B){
   return(C)
 }
 
-#Same matrix, but much slower
+#Same matrix, but much slower(But still much faster than sapply)
 system.time(
 gpuSapply(1:k,matMul_coarse,A,B)
 )
