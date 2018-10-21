@@ -10,9 +10,11 @@ License: What license is it under?
 LinkingTo: Rcpp
 Imports: Rcpp, hash
 SystemRequirements: C++11
-RoxygenNote: 6.1.0
-Suggests: testthat
-Collate: 
+RoxygenNote: 6.1.0.9000
+Suggests: testthat,
+    knitr,
+    rmarkdown
+Collate:
     'ParserFramework.R'
     'gpuResourcesManager.R'
     'RCParser.R'
@@ -28,3 +30,4 @@ Collate:
     'gpuMatix.R'
     'kernelManager.R'
     'pkgFunc.R'
+VignetteBuilder: knitr

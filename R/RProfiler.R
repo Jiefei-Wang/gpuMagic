@@ -1,4 +1,5 @@
-#' @importFrom pryr standardise_call
+
+
 #Profile the function arguments only
 RProfiler1<-function(codeMetaInfo3){
   profileMeta1=codeMetaInfo3

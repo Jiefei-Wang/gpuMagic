@@ -1,4 +1,4 @@
-
+#' @export
 gpuSapply<-function(X,FUN,...,verbose=F){
   GPUcode2=.gpuSapply(X,FUN,...)
 

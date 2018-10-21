@@ -1,0 +1,143 @@
+---
+title: "gpuMagic quick start guide"
+author: "Jiefei Wang"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+devtools::load_all() 
+```
+# Introduction
+The gpuMagic package is designed for ultilizing the computing power of modern GPU. The package has the ability to compile the R code and implement the code on a GPU kernel. Therefore, it is easy for the user to design their own algorithm in pure R language and run the code in GPU. The package uses openCL as its parallel language so CPU parallel is also supported.
+
+### Program setting
+To getting started, it is always a good practice to check your GPU avalability.
+
+```{r}
+getDeviceList()
+```
+The devices listed above shows you the current avalable device in your computer, if you cannot see the device in your computer, you need to install the openCL driver obtained from the corresponding vender. The default device is the device 0, if you have multiple devices, you can query and choose your device by
+```{r}
+getDeviceInfo(0)
+setDevice(0)
+```
+The package also have a GPU resources manager. You can check your memory usage by
+```{r}
+.gpuResourcesManager$getGPUusage()
+```
+Please note that the maximum GPU memory is not your hardware memory, it is a limitation imposed by the package to prevent you from memory Overflow, you can change this setting by
+```{r}
+oldLimit=.gpuResourcesManager$setMaxMemLimit(4*10^9)
+.gpuResourcesManager$getGPUusage()
+```
+The unit is byte and the old setting will be return. Now I have roughly 4GB memory availble in my program. After the proper device has been selected, you are ready to write your GPU code. 
+
+###Warning
+If you are using the Nvidia graphic card, it is a good practice to change your Timeout Detection and Recovery(TDR) setting as the driver will reset the graphic card if the function takes too long to run the code. The default setting is 2 seconds, which is too short for most operations. If you are using the other device such as Intel graphic card, you are safe to continue.
+
+The setting can be found in NVIDIA Nsight. Change it to a larger number such as 20 second will be OK for most program.
+
+### GPU code
+The GPU code should be written as an R function and should be compatible with **sapply** function. Here is an example of matrix multiplication
+```{r}
+#C=A%*%B
+#Each time the function will compute an entry of C
+matMul<-function(id,A,B){
+  #find the index of the entry of C matrix
+  id=id-1
+  j=floor(id/nrow(A))
+  i=id-j*nrow(A)
+  j=j+1
+  i=i+1
+  #initialize C[i,j]
+  C=0
+  for(k in 1:ncol(A)){
+    C=C+A[i,k]*B[k,j]
+  }
+  return(C)
+}
+```
+You can test your function by using **sapply**
+```{r}
+n=100
+m=50
+k=200
+A=matrix(runif(n*m),n,m)
+B=matrix(runif(n*m),m,k)
+C_sapply=sapply(1:(n*k),matMul,A,B)
+#The internal matrix operation function in R
+C_internel=A%*%B
+#Compute error
+max(abs(C_sapply-C_internel))
+```
+As you see here, the result from sapply is consistent with the result from the R internal matrix multiplication function. To run the above function in GPU, it can be simply achieved by changing **sapply** to **gpuSapply**
+```{r}
+C_gpu=gpuSapply(1:(n*k),matMul,A,B)
+#Compute error
+max(abs(C_gpu-C_internel))
+```
+That is all you need to do to run the GPU code! We can try a larger sample size to see the speed differences between GPU and R code.
+```{r}
+n=1000
+m=5000
+k=10000
+A=matrix(runif(n*m),n,m)
+B=matrix(runif(n*m),m,k)
+system.time(
+  gpuSapply(1:(n*k),matMul,A,B)
+)
+system.time(
+  A%*%B
+)
+```
+In my compute the GPU(GTX 1070) code takes about 4 secs to finish and CPU(AMD razen 1600) takes 28 secs to finish, you get 7 times speed up in this matrix operation! The current package does not take any advantage of the GPU structure, but you are still able to outperform than the highly optimized CPU code with no effort.
+
+As you can see, the package partially supports the matrix operation, so the parallel computing can be ran in a more coarse level, which makes the code a littile bit easier to read, but will have negative effect on the performance(Due to no optimization)
+
+```{r}
+#C=A%*%B
+#Each time the function will compute a column of C
+matMul_coarse<-function(j,A,B){
+  C=matrix(0,nrow(A),1)
+  for(i in 1:nrow(A)){
+    tmp=0
+    for(k in 1:ncol(A)){
+      tmp=tmp+A[i,k]*B[k,j]
+    }
+    C[i]=tmp
+  }
+  return(C)
+}
+
+#Same matrix, but 2.5X slower
+system.time(
+gpuSapply(1:k,matMul_coarse,A,B)
+)
+system.time(
+  A%*%B
+)
+#compute error
+max(abs(gpuSapply(1:k,matMul_coarse,A,B)-A%*%B))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+

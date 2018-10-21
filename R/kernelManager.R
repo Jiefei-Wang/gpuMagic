@@ -17,7 +17,8 @@
   }
   
   if(!hasKernel(sig,kernel)){
-    message("The given kernel does not exist and will be created")
+    if(verbose)
+      message("The given kernel does not exist and will be created")
     src=gsub("([^a-zA-Z0-9_])(AUTO)([0-9]+[^a-zA-Z0-9_])","\\1double\\3",src)
     #message(src)
     .C("createKernel",sig,kernel,src)
@@ -41,7 +42,7 @@
       }
     }
   }
-  if(localThreadNum<=32&&Block>=minBlock){
+  if(localThreadNum<=32&&Block>=minBlock&&verbose){
     warning(paste0("The current thread number is ",localThreadNum,". This may have negative effect on the performance. Please consider to increase the thread number"))
   }
   if(verbose){

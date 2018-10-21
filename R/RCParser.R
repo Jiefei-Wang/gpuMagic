@@ -1,4 +1,5 @@
 #' @include gpuResourcesManager.R
+
 T_scale="scale"
 T_matrix="matrix"
 GPUVar=list()

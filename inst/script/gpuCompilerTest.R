@@ -34,9 +34,8 @@ res=gpuSapply(1:n,test3,A,B)
 
 res-A*B
 
+
 library("tictoc")
-
-
 n=5000
 m=10000
 k=1000
