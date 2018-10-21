@@ -1,4 +1,4 @@
-recompile_matrix<-function(varInfo,Exp){
+recompile_matrix<-function(varInfo,curExp){
   leftExp=curExp[[2]]
   leftExp_char=deparse(leftExp)
   rightExp=curExp[[3]]

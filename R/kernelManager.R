@@ -28,11 +28,12 @@
   if(globalThreadNum=="length(FirstArg)"){
     globalThreadNum=length(.data(parms[[1]]))
   }
+  minBlock=16
   if(localThreadNum=="Auto"){
     Block=globalThreadNum
     localThreadNum=1
     repeat{
-      if(Block%%2==0&&localThreadNum<64&&Block>=64){
+      if(Block%%2==0&&localThreadNum<64&&Block>=minBlock*2){
         localThreadNum=localThreadNum*2
         Block=Block/2
       }else{
@@ -40,7 +41,7 @@
       }
     }
   }
-  if(localThreadNum<=32&&Block>=64){
+  if(localThreadNum<=32&&Block>=minBlock){
     warning(paste0("The current thread number is ",localThreadNum,". This may have negative effect on the performance. Please consider to increase the thread number"))
   }
   if(verbose){

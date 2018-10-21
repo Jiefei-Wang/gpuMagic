@@ -1,3 +1,4 @@
+#' @importFrom pryr standardise_call
 #Profile the function arguments only
 RProfiler1<-function(codeMetaInfo3){
   profileMeta1=codeMetaInfo3
@@ -32,26 +33,11 @@ RProfiler2<-function(profileMeta1){
   varInfo=profileMeta1$varInfo
   parsedExp=profileMeta1$Exp
   res=profileLoopVar(varInfo,parsedExp)
-  profileMeta1$varInfo=res$varInfo
-  profileMeta1$Exp=res$parsedExp
+  profileMeta1$varInfo=res
   
   profileMeta2=parserFrame(RProfiler2_parserFunc,RProfiler2_checkFunc,
                            RProfiler2_updateFunc,profileMeta1)
   profileMeta2
-}
-profileLoopVar<-function(varInfo,parsedExp){
-  for(i in 1:length(parsedExp)){
-    curExp=parsedExp[[i]]
-    if(curExp[[1]]=="for"){
-      var_char=deparse(curExp[[2]])
-      ExpProfile=getEmpyTable(1,type = T_scale)
-      ExpProfile$var=var_char
-      ExpProfile$initialization="N"
-      varInfo$profile=rbind(varInfo$profile,ExpProfile)
-      varInfo$varTable[[var_char]]=nrow(varInfo$profile)
-    }
-  }
-  return(list(varInfo=varInfo,parsedExp=parsedExp))
 }
 
 RProfiler2_parserFunc<-function(level,codeMetaInfo,curExp){

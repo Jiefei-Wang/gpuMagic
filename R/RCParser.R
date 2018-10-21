@@ -82,8 +82,8 @@ RCcompilerLevel1<-function(profileMeta3){
       CXXtype=getTypeCXXStr(dataType)
       size1=curVar$size1
       size2=curVar$size2
-      curCode=paste0(CXXtype,"* ",curVar$var,"=",
-                     "(",CXXtype,"*)(",
+      curCode=paste0("__global ",CXXtype,"* ",curVar$var,"=",
+                     "(__global ",CXXtype,"*)(",
                      gpu_tmp_var,"+",
                      gpu_worker_offset,"+",
                      gpu_tmp_matrix_offSize,"[",gpu_matrix_num,"]",");")

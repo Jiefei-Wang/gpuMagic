@@ -43,6 +43,23 @@ profileVar<-function(parms){
 
 #==================================Profiler 2==========================
 
+profileLoopVar<-function(varInfo,parsedExp){
+  for(i in 1:length(parsedExp)){
+    curExp=parsedExp[[i]]
+    if(is.call(curExp)&&curExp[[1]]=="for"){
+      var_char=deparse(curExp[[2]])
+      ExpProfile=getEmpyTable(1,type = T_scale)
+      ExpProfile$var=var_char
+      ExpProfile$initialization="N"
+      varInfo$profile=rbind(varInfo$profile,ExpProfile)
+      varInfo$varTable[[var_char]]=nrow(varInfo$profile)
+      loopBody=curExp[[4]]
+      varInfo=profileLoopVar(varInfo,loopBody)
+    }
+  }
+  return(varInfo)
+}
+
 #Get the right expression profile
 getExpInfo<-function(varInfo,Exp){
   ExpInfo=NULL
