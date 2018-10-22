@@ -23,13 +23,13 @@ void kernelManager::getAllDeviceName() {
 	cl_device_id* device_id;
 	int device_count = 0;
 	for (int i = 0; i < platform_num; i++) {
-		clGetDeviceIDs(platform_id[i], CL_DEVICE_TYPE_ALL, NULL, NULL, &device_num);
+		clGetDeviceIDs(platform_id[i], CL_DEVICE_TYPE_ALL, 0, NULL, &device_num);
 		device_id = new cl_device_id[device_num];
 		clGetDeviceIDs(platform_id[i], CL_DEVICE_TYPE_ALL, device_num, device_id, NULL);
 		size_t name_size;
 		char* device_name;
 		for (int j = 0; j < device_num; j++) {
-			clGetDeviceInfo(device_id[j], CL_DEVICE_NAME, NULL, NULL, &name_size);
+			clGetDeviceInfo(device_id[j], CL_DEVICE_NAME, 0, NULL, &name_size);
 			device_name = new char[name_size];
 			clGetDeviceInfo(device_id[j], CL_DEVICE_NAME, name_size, device_name, NULL);
 			string info = string("Device ") + std::to_string(device_count) + ": " + device_name;
@@ -58,7 +58,7 @@ void kernelManager::getDeviceInfo(int device_index)
 	printf("Opencl version: %s\n", buffer);
 	cl_ulong global_mem_size;
 	(clGetDeviceInfo(device, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(global_mem_size), &global_mem_size, NULL));
-	printf("Device memory size: %lu MB\n", global_mem_size / 1048576);
+	printf("Device memory size: %llu MB\n", global_mem_size / 1048576);
 	delete[] buffer;
 }
 
@@ -223,7 +223,7 @@ cl_device_id kernelManager::getDeviceID(int k)
 	cl_device_id* device_id;
 	int device_count = 0;
 	for (int i = 0; i < platform_num; i++) {
-		clGetDeviceIDs(platform_id[i], CL_DEVICE_TYPE_ALL, NULL, NULL, &device_num);
+		clGetDeviceIDs(platform_id[i], CL_DEVICE_TYPE_ALL, 0, NULL, &device_num);
 		device_id = new cl_device_id[device_num];
 		clGetDeviceIDs(platform_id[i], CL_DEVICE_TYPE_ALL, device_num, device_id, NULL);
 		if (k - device_count >= device_num)
@@ -266,13 +266,13 @@ void kernelManager::getDeviceFullInfo(int device_index)
 	printf("CL_DEVICE_GLOBAL_MEM_CACHELINE_SIZE: %u B\n", global_mem_cacheline_size);
 	cl_ulong global_mem_cache_size;
 	(clGetDeviceInfo(device, CL_DEVICE_GLOBAL_MEM_CACHE_SIZE, sizeof(global_mem_cache_size), &global_mem_cache_size, NULL));
-	printf("CL_DEVICE_GLOBAL_MEM_CACHE_SIZE: %lu B = %lu KB\n", global_mem_cache_size, global_mem_cache_size / 1024);
+	printf("CL_DEVICE_GLOBAL_MEM_CACHE_SIZE: %llu B = %llu KB\n", global_mem_cache_size, global_mem_cache_size / 1024);
 	cl_ulong global_mem_size;
 	(clGetDeviceInfo(device, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(global_mem_size), &global_mem_size, NULL));
-	printf("CL_DEVICE_GLOBAL_MEM_SIZE: %lu B = %lu MB\n", global_mem_size, global_mem_size / 1048576);
+	printf("CL_DEVICE_GLOBAL_MEM_SIZE: %llu B = %llu MB\n", global_mem_size, global_mem_size / 1048576);
 	cl_ulong max_constant_buffer_size;
 	(clGetDeviceInfo(device, CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE, sizeof(max_constant_buffer_size), &max_constant_buffer_size, NULL));
-	printf("CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE: %lu B = %lu KB\n", max_constant_buffer_size, max_constant_buffer_size / 1024);
+	printf("CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE: %llu B = %llu KB\n", max_constant_buffer_size, max_constant_buffer_size / 1024);
 	cl_uint max_constant_args;
 	(clGetDeviceInfo(device, CL_DEVICE_MAX_CONSTANT_ARGS, sizeof(max_constant_args), &max_constant_args, NULL));
 	printf("CL_DEVICE_MAX_CONSTANT_ARGS: %u\n", max_constant_args);
@@ -283,7 +283,7 @@ void kernelManager::getDeviceFullInfo(int device_index)
 	if (local_mem_type == CL_GLOBAL) printf("CL_DEVICE_LOCAL_MEM_TYPE: %s\n", "CL_GLOBAL");
 	cl_ulong local_mem_size;
 	(clGetDeviceInfo(device, CL_DEVICE_LOCAL_MEM_SIZE, sizeof(local_mem_size), &local_mem_size, NULL));
-	printf("CL_DEVICE_LOCAL_MEM_SIZE: %lu B = %lu KB\n", local_mem_size, local_mem_size / 1024);
+	printf("CL_DEVICE_LOCAL_MEM_SIZE: %llu B = %llu KB\n", local_mem_size, local_mem_size / 1024);
 	cl_bool host_unified_memory;
 	(clGetDeviceInfo(device, CL_DEVICE_HOST_UNIFIED_MEMORY, sizeof(host_unified_memory), &host_unified_memory, NULL));
 	printf("CL_DEVICE_HOST_UNIFIED_MEMORY: %u\n", host_unified_memory);
@@ -292,7 +292,7 @@ void kernelManager::getDeviceFullInfo(int device_index)
 	printf("CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS: %u\n", max_work_item_dimensions);
 	size_t* max_work_item_sizes = (size_t*)malloc(sizeof(size_t) * max_work_item_dimensions);
 	(clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(size_t) * max_work_item_dimensions, max_work_item_sizes, NULL));
-	printf("CL_DEVICE_MAX_WORK_ITEM_SIZES: "); for (size_t i = 0; i < max_work_item_dimensions; ++i) printf("%lu\t", max_work_item_sizes[i]); printf("\n");
+	printf("CL_DEVICE_MAX_WORK_ITEM_SIZES: "); for (size_t i = 0; i < max_work_item_dimensions; ++i) printf("%zu\t", max_work_item_sizes[i]); printf("\n");
 	free(max_work_item_sizes);
 	size_t max_work_group_size;
 	(clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(max_work_group_size), &max_work_group_size, NULL));

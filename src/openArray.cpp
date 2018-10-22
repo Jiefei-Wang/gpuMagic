@@ -39,7 +39,7 @@ openArray* openArray::constant(double number, LARGEINDEX size1, dtype type)
 	openArray* oa=new openArray(size1, type);
 	cl_command_queue queue = kernelManager::getQueue();
 	void* tmp_data = transferData(number, type);
-	cl_int error=clEnqueueFillBuffer(queue, *(*oa).getDeviceData(), tmp_data, typesize(type), 0, size1*typesize(type), NULL, NULL, NULL);
+	cl_int error=clEnqueueFillBuffer(queue, *(*oa).getDeviceData(), tmp_data, typesize(type), 0, size1*typesize(type), 0, NULL, NULL);
 	if (error != CL_SUCCESS) errorHandle("An error has occured in memory assignment!");
 	free(tmp_data);
 	return oa;
@@ -50,7 +50,7 @@ openArray* openArray::constant(double number, LARGEINDEX size1, LARGEINDEX size2
 	openArray* oa = new openArray(size1, size2, type);
 	cl_command_queue queue = kernelManager::getQueue();
 	void* tmp_data = transferData(number, type);
-	cl_int error = clEnqueueFillBuffer(queue, *(*oa).getDeviceData(), tmp_data, typesize(type), 0, size1*size2*typesize(type), NULL, NULL, NULL);
+	cl_int error = clEnqueueFillBuffer(queue, *(*oa).getDeviceData(), tmp_data, typesize(type), 0, size1*size2*typesize(type), 0, NULL, NULL);
 	if (error != CL_SUCCESS) errorHandle("An error has occured in memory assignment!");
 	free(tmp_data);
 	return oa;
@@ -66,7 +66,7 @@ void openArray::getHostData(void *source)
 	if (data == nullptr) return;
 	LARGEINDEX size = dimension[0] * dimension[1] * typesize(dataType);
 	cl_command_queue queue = kernelManager::getQueue();
-	cl_int error=clEnqueueReadBuffer(queue, data, CL_TRUE, 0, size, source, NULL, NULL, NULL);
+	cl_int error=clEnqueueReadBuffer(queue, data, CL_TRUE, 0, size, source, 0, NULL, NULL);
 	if (error != CL_SUCCESS)errorHandle(string("Error in read GPU memory, error info:")+ kernelManager::getErrorString(error));
 }
 

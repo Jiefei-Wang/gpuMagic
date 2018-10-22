@@ -15,7 +15,7 @@ void cpyData(T1* target, T2* src, size_t n) {
 
 
 template<class T>
-void print_partial_matrix(char* title, T *M, int nrows, int ncols, int max_row=-1,
+void print_partial_matrix(const char* title, T *M, int nrows, int ncols, int max_row=-1,
 	int max_col=-1)
 {
 	std::cout << title << std::endl;
