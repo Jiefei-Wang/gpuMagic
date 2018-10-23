@@ -9,7 +9,7 @@ RProfile1<-function(codeMetaInfo2){
   names(func_args)[1]=GPUVar$gpu_worker_data
   
   #profile the function arguments and the preserved variable
-  varInfo=profileVar(func_args)
+  varInfo=profileVar(func_args,profileMeta1$staticParms)
   gpuIndex=getEmpyTable(1,type=T_scale)
   gpuIndex$var=GPUVar$gpu_global_id
   gpuIndex$precisionType=T_I64

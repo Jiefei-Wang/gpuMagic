@@ -1,11 +1,19 @@
 #' @export
-gpuSapply<-function(X,FUN,...,staticParms=NULL,verbose=F){
-  GPUcode1=compileGPUCode(X,FUN,...,staticParms=NULL)
+gpuSapply<-function(X,FUN,...,staticParms=c(),verbose=F,optimization="all"){
+  GPUcode1=compileGPUCode(X,FUN,...,staticParms=NULL,optimization="all")
   
   GPUcode2=fillGPUdata(GPUcode1)
   
+  kernelArg=formals(.kernel)
+  globalThreadNum=kernelArg$globalThreadNum
+  if(optimization=="all"||"worker number" %in% optimization){
+    workerNum=length(GPUcode2$all_parms[[1]])
+    globalThreadNum=ceiling(workerNum/64)*64
+  }
   
-  .kernel(kernel=GPUcode2$kernel,parms=GPUcode2$all_parms,autoType=FALSE,src=GPUcode2$gpu_code,verbose = verbose,signature = runif(1))
+  .kernel(kernel=GPUcode2$kernel,src=GPUcode2$gpu_code,parms=GPUcode2$all_parms,
+          autoType=FALSE,globalThreadNum=globalThreadNum,
+          verbose = verbose,signature = runif(1))
   res=GPUcode2$all_parms$gpu_return_variable
   res=sync(res)
   res=as.vector(res)
@@ -16,10 +24,11 @@ gpuSapply<-function(X,FUN,...,staticParms=NULL,verbose=F){
   }
 }
 
-compileGPUCode<-function(X,FUN,...,staticParms=NULL){
+compileGPUCode<-function(X,FUN,...,staticParms=c(),optimization="all"){
   #Check and match the parameter names
   parms=list(...)
   parms=matchParms(X,parms,FUN)
+  
   
   codeMetaInfo=list()
   codeMetaInfo$Exp=funcToExp(FUN)$code
@@ -39,6 +48,11 @@ compileGPUCode<-function(X,FUN,...,staticParms=NULL){
   GPUcode1=completeGPUcode(GPUcode)
   GPUcode1$parms=parms
   
+  
+  if(optimization=="all"||"worker number" %in% optimization){
+    workerNum=length(parms[[1]])
+    GPUcode1$gpu_code=opt_workerNumber(GPUcode1$gpu_code,workerNum)
+  }
   
   GPUcode1
 }
@@ -126,10 +140,22 @@ completeGPUcode<-function(GPUcode){
     if(i!=length(tmp_var_list))
       code=paste0(code,",")
   }
-  #code=paste0(code,)
+  
+  #determine the size of private matrix
+  ind=which(profile$location=="private")
+  for(i in ind){
+    varInfo=profile[i,]
+    target=paste0(GPUVar$private_mem,varInfo$var)
+    size=eval(parse(text=paste0(varInfo$size1,"*",varInfo$size2)))
+    GPUcode$gpu_code=sub(target,size,GPUcode$gpu_code,fixed = T)
+  }
+  
+  
+  #add the kernel function definition
   code=paste0(code,"){\n",paste0(GPUcode$gpu_code,collapse = "\n"),"}")
   GPUcode$gpu_code=code
   GPUcode$kernel=paste0(GPUVar$functionName,GPUVar$functionCount)
+  
   GPUcode
 }
 

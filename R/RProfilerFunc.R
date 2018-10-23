@@ -295,6 +295,8 @@ profile_gMatrix<-function(varInfo,Exp){
   ExpInfo$size1=args$nrow
   ExpInfo$size2=args$ncol
   ExpInfo$compileSize="Y"
+  ExpInfo$location=gsub("\"","",args$location,fixed=T)
+
   return(ExpInfo)
 }
 

@@ -24,6 +24,9 @@ RCcompilerLevel1<-function(profileMeta3){
   
   for(i in 1:nrow(profile)){
     curVar=profile[i,]
+    if(curVar$all_static=="Y"){
+      next
+    }
     if(curVar$require=="Y"){
       curVar$address=curVar$var
       curVar$dataType=T_matrix
@@ -47,11 +50,18 @@ RCcompilerLevel1<-function(profileMeta3){
       CXXtype=getTypeCXXStr(dataType)
       size1=curVar$size1
       size2=curVar$size2
-      curCode=paste0("__global ",CXXtype,"* ",curVar$var,"=",
-                     "(__global ",CXXtype,"*)(",
-                     gpu_tmp_var,"+",
-                     gpu_worker_offset,"+",
-                     gpu_tmp_matrix_offSize,"[",gpu_matrix_num,"]",");")
+      ##########This need to be optimized
+      curCode=switch(curVar$location,
+             global=paste0("__global ",CXXtype,"* ",curVar$var,"=",
+                           "(__global ",CXXtype,"*)(",
+                           gpu_tmp_var,"+",
+                           gpu_worker_offset,"+",
+                           gpu_tmp_matrix_offSize,"[",gpu_matrix_num,"]",");"),
+             private={
+               preserved_code=paste0(GPUVar$private_mem,curVar$var)
+               paste0("__private ",CXXtype," ",curVar$var,"[",preserved_code,"];")}
+               )
+      
       gpu_code=c(gpu_code,curCode)
       profile[i,]$address=curVar$var
       gpu_matrix_num=gpu_matrix_num+1

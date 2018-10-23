@@ -58,6 +58,7 @@ cat(code$gpu_code)
 
 
 
+
 res=gpuSapply(1:(n*k),matMul,A,B)
 res1=sapply(1:(n*k),matMul,A,B)
 
@@ -79,9 +80,9 @@ getDeviceList()
 setDevice(2)
 
 
-n=1024
+n=1000
 m=10000
-k=1024
+k=1000
 A=matrix(runif(n*m),n,m)
 B=matrix(runif(n*m),m,k)
 
@@ -89,12 +90,17 @@ matMul2<-function(ind,A,B){
   j=ind
   C=matrix(0,nrow(A),1)
   for(i in 1:nrow(A)){
+    tmp=0
     for(k in 1:ncol(A)){
-      C[i]=C[i]+A[i,k]*B[k,j]
+      tmp=tmp+A[i,k]*B[k,j]
     }
+    C[i]=tmp
   }
   return(C)
 }
+
+
+
 
 res=gpuSapply(1:k,matMul2,A,B)
 res2=A%*%B
@@ -103,11 +109,41 @@ max(abs(res-res2))
 microbenchmark(
   res=gpuSapply(1:k,matMul2,A,B),
   res2=A%*%B,
-  times = 10
+  times = 2
 )
 
 
-res1=sapply(1:k,matMul2,A,B)
 
 
-.gpuResourcesManager$getGPUusage()
+n=1000
+m=1000
+k=10000
+A=matrix(runif(n*m),n,m)
+B=matrix(runif(n*m),m,k)
+matMul3<-function(ind,A,B){
+  tmp=gMatrix(nrow=nrow(B),location="private")
+  j=ind
+  C=matrix(0,nrow(A),1)
+  for(i in 1:nrow(B)){
+    tmp[i]=B[i,j]
+  }
+  
+  for(i in 1:nrow(A)){
+    for(k in 1:ncol(A)){
+      C[i]=C[i]+A[i,k]*B[k,j]
+    }
+  }
+  return(C)
+}
+
+code=compileGPUCode(1:k,matMul3,A,B)
+cat(code$gpu_code)
+microbenchmark(
+res=gpuSapply(1:k,matMul3,A,B),
+res2=A%*%B,
+times=2
+)
+max(abs(res-res2))
+
+
+

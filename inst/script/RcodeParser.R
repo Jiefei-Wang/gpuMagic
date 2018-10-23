@@ -130,7 +130,7 @@ A=runif(n)
 B=runif(n)
 parms=list(ind=1:(n*n),A=A,B=B)
 codeMetaInfo=list()
-codeMetaInfo$Exp=funcToExp(test3)$code
+codeMetaInfo$Exp=funcToExp(matMul3)$code
 codeMetaInfo$parms=parms
 codeMetaInfo$staticParms=NULL
 codeMetaInfo0=codePreprocessing(codeMetaInfo)

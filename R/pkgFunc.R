@@ -85,6 +85,7 @@ GPUVar<-local({
   GPUVar_env$default_index_type="unsigned int"
   
   GPUVar_env$gpu_loop_ind="gpu_loop_ind"
+  GPUVar_env$private_mem="private_mem_preserved"
   return(GPUVar_env)
 })
 

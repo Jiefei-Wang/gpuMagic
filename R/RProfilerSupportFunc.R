@@ -1,7 +1,7 @@
 
 #===========================profiler 1========================
 #Profile a parameter and give the profile table back
-profileVar<-function(parms){
+profileVar<-function(parms,staticParms){
   varInfo=list()
   varInfo$profile=getEmpyTable(0)
   varInfo$requiredVar=c()
@@ -21,19 +21,32 @@ profileVar<-function(parms){
     info$var=varName[i]
     
     info$precisionType=curPrecision
-    info$size1=paste0("(",varInfo$profileTblName,"[",i,",]","$size1)")
-    info$size2=paste0("(",varInfo$profileTblName,"[",i,",]","$size2)")
-    if(curDim[1]==1&&curDim[2]==1){
-      info$dataType=T_scale
-      info$size1=1
-      info$size2=1
-      info$value=paste0("(",varInfo$profileTblName,"[",i,",]","$value)")
+    
+    if(varName[i] %in% names(staticParms)){
+      info$all_static="Y"
+      info$size1=nrow(as.matrix(parms[[i]]))
+      info$size2=ncol(as.matrix(parms[[i]]))
+      info$value=paste0("c(",paste0(parms[[i]],collapse = ","),")")
+      info$compileSize="Y"
       info$compileData="Y"
+      info$require="N"
+      info$initialization="N"
     }else{
-      info$dataType=T_matrix
+      info$size1=paste0("(",varInfo$profileTblName,"[",i,",]","$size1)")
+      info$size2=paste0("(",varInfo$profileTblName,"[",i,",]","$size2)")
+      
+      if(curDim[1]==1&&curDim[2]==1){
+        info$dataType=T_scale
+        info$size1=1
+        info$size2=1
+        info$value=paste0("(",varInfo$profileTblName,"[",i,",]","$value)")
+        info$compileData="Y"
+      }else{
+        info$dataType=T_matrix
+      }
+      info$compileSize="Y"
+      info$require="Y"
     }
-    info$compileSize="Y"
-    info$require="Y"
     varInfo$profile=rbind(varInfo$profile,info)
     varInfo$requiredVar=c(varInfo$requiredVar,info$var)
     varInfo$varTable[[info$var]]=nrow(varInfo$profile)
@@ -129,6 +142,8 @@ addVarInfo<-function(varInfo,newInfo){
 
 
 checkVarType<-function(leftInfo,rightInfo){
+  if(leftInfo$all_static=="Y")
+    stop("The static variable cannot be changed:\n",leftInfo$var)
   needReassign=FALSE
   needResize=FALSE
   needRetype=FALSE
@@ -152,7 +167,7 @@ checkVarType<-function(leftInfo,rightInfo){
 #Get an empty profile table
 getEmpyTable<-function(rowNum=0,type=""){
   tlbName=c("var","address","dataType","precisionType", "size1","size2","value","compileSize",
-            "compileData","require","initialization","p_static","t_static","location")
+            "compileData","require","initialization","p_static","t_static","all_static","location")
   tbl=as.data.frame(matrix("NA",ncol = length(tlbName), nrow = rowNum))
   names(tbl)=tlbName
   if(rowNum!=0){
@@ -163,6 +178,7 @@ getEmpyTable<-function(rowNum=0,type=""){
     tbl$initialization="Y"
     tbl$p_static="N"
     tbl$t_static="N"
+    tbl$all_static="N"
     tbl$location="global"
     if(type==T_scale){
       tbl$dataType=T_scale
