@@ -1,7 +1,10 @@
 #' @export
-gpuSapply<-function(X,FUN,...,verbose=F){
-  GPUcode2=.gpuSapply(X,FUN,...)
-
+gpuSapply<-function(X,FUN,...,staticParms=NULL,verbose=F){
+  GPUcode1=compileGPUCode(X,FUN,...,staticParms=NULL)
+  
+  GPUcode2=fillGPUdata(GPUcode1)
+  
+  
   .kernel(kernel=GPUcode2$kernel,parms=GPUcode2$all_parms,autoType=FALSE,src=GPUcode2$gpu_code,verbose = verbose,signature = runif(1))
   res=GPUcode2$all_parms$gpu_return_variable
   res=sync(res)
@@ -13,7 +16,7 @@ gpuSapply<-function(X,FUN,...,verbose=F){
   }
 }
 
-.gpuSapply<-function(X,FUN,...){
+compileGPUCode<-function(X,FUN,...,staticParms=NULL){
   #Check and match the parameter names
   parms=list(...)
   parms=matchParms(X,parms,FUN)
@@ -21,27 +24,32 @@ gpuSapply<-function(X,FUN,...,verbose=F){
   codeMetaInfo=list()
   codeMetaInfo$Exp=funcToExp(FUN)$code
   codeMetaInfo$parms=parms
-  codeMetaInfo1=RParser1(codeMetaInfo)
+  codeMetaInfo$staticParms=staticParms
+  codeMetaInfo0=codePreprocessing(codeMetaInfo)
+  codeMetaInfo1=RParser1(codeMetaInfo0)
   codeMetaInfo2=RParser2(codeMetaInfo1)
-  codeMetaInfo3=RParser3(codeMetaInfo2)
-  profileMeta1=RProfiler1(codeMetaInfo3)
-  profileMeta2=RProfiler2(profileMeta1)
+  profileMeta1=RProfile1(codeMetaInfo2)
+  profileMeta2=RProfile2(profileMeta1)
   profileMeta3=RRecompiler(profileMeta2)
-  
   GPUExp1=RCcompilerLevel1(profileMeta3)
+  
   
   names(parms)[1]=GPUVar$gpu_worker_data
   GPUcode=completeProfileTbl(GPUExp1,parms)
   GPUcode1=completeGPUcode(GPUcode)
-  GPUcode2=fillGPUdata(GPUcode1,parms)
-  GPUcode2
+  GPUcode1$parms=parms
+  
+  
+  GPUcode1
 }
 
 
 #as.vector(res)-A-B
 #cat(GPUcode2$gpu_code)
 
-fillGPUdata<-function(GPUcode,parms){
+fillGPUdata<-function(GPUcode){
+  parms=GPUcode$parms
+  GPUcode$parms=NULL
   temp_parms=list()
   profile=GPUcode$varInfo$profile
   returnInfo=GPUcode$varInfo$returnInfo

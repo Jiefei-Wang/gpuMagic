@@ -269,15 +269,76 @@ profile_return<-function(varInfo,Exp){
   return(ExpInfo)
 }
 
+profile_gMatrix<-function(varInfo,Exp){
+  args=matchFunArg(gMatrix,Exp)
+  args$nrow=parse(text=args$nrow)[[1]]
+  args$ncol=parse(text=args$ncol)[[1]]
+  if(!is.numeric(args$nrow)){
+    varData=getVarInfo(varInfo,args$nrow)
+    if(varData$compileData=="N")
+      stop("Unable to determine the size of the matrix:\n",deparse(Exp))
+    if(varData$size1!=1||varData$size2!=1)
+      stop("Illigel row argument:\n",deparse(Exp))
+    args$nrow=Simplify(paste0(varData$value,"[1]"))
+  }
+  if(!is.numeric(args$ncol)){
+    varData=getVarInfo(varInfo,args$ncol)
+    if(varData$compileData=="N")
+      stop("Unable to determine the size of the matrix:\n",deparse(Exp))
+    if(varData$size1!=1||varData$size2!=1)
+      stop("Illigel column argument:\n",deparse(Exp))
+    args$ncol=Simplify(paste0(varData$value,"[1]"))
+  }
+  ExpInfo=getEmpyTable(1)
+  ExpInfo$dataType=T_matrix
+  ExpInfo$precisionType=eval(parse(text=args$precision))
+  ExpInfo$size1=args$nrow
+  ExpInfo$size2=args$ncol
+  ExpInfo$compileSize="Y"
+  return(ExpInfo)
+}
 
-.profileFuncs=list()
-.profileFuncs$nrow=profile_size
-.profileFuncs$ncol=profile_size
-.profileFuncs$length=profile_size
-.profileFuncs$matrix=profile_matrix
-.profileFuncs$"+"=profile_arithmetic
-.profileFuncs$"-"=profile_arithmetic
-.profileFuncs$"*"=profile_arithmetic
-.profileFuncs$"/"=profile_arithmetic
-.profileFuncs$"["=profile_subset
-.profileFuncs$floor=profile_floor
+
+profile_gNumber<-function(varInfo,Exp){
+  args=matchFunArg(gNumber,Exp)
+  ExpInfo=getEmpyTable(1,type=T_scale)
+  return(ExpInfo)
+}
+
+profile_resize<-function(varInfo,Exp){
+  args=matchFunArg(resize,Exp)
+  if(args$data==""||args$nrow==""||args$ncol=="")
+    stop("The arguments are incomplete:\n",deparse(Exp))
+  args$nrow=parse(text=args$nrow)[[1]]
+  args$ncol=parse(text=args$ncol)[[1]]
+  if(!is.numeric(args$nrow)){
+    varData=getVarInfo(varInfo,args$nrow)
+    if(varData$compileData=="N")
+      stop("Unable to determine the size of the matrix:\n",deparse(Exp))
+    if(varData$size1!=1||varData$size2!=1)
+      stop("Illigel row argument:\n",deparse(Exp))
+    args$nrow=Simplify(paste0(varData$value,"[1]"))
+  }
+  if(!is.numeric(args$ncol)){
+    varData=getVarInfo(varInfo,args$ncol)
+    if(varData$compileData=="N")
+      stop("Unable to determine the size of the matrix:\n",deparse(Exp))
+    if(varData$size1!=1||varData$size2!=1)
+      stop("Illigel column argument:\n",deparse(Exp))
+    args$ncol=Simplify(paste0(varData$value,"[1]"))
+  }
+  
+  ExpInfo=getVarInfo(varInfo,Exp[[1]])
+  ExpInfo$size1=args$nrow
+  ExpInfo$size2=args$ncol
+  ExpInfo$compileSize="Y"
+  return(ExpInfo)
+}
+
+
+
+
+
+
+
+

@@ -1,15 +1,14 @@
-
-
-#Profile the function arguments only
-RProfiler1<-function(codeMetaInfo3){
-  profileMeta1=codeMetaInfo3
+#' @include pkgFunc.R
+RProfile1<-function(codeMetaInfo2){
+  profileMeta1=codeMetaInfo2
   
-  #The looped variable needs some special treatment, I rename it so that it would not be confused with the individual looped variable
-  loopData=names(codeMetaInfo3$parms)[1]
-  func_args=c(profileMeta1$parms)
+  #The looped variable needs some special treatment, because inside each function it has a unique looped variable
+  #The overall looped variable is redefined to distinguish the overall and individual looped variables.
+  loopData=names(profileMeta1$parms)[1]
+  func_args=profileMeta1$parms
   names(func_args)[1]=GPUVar$gpu_worker_data
   
-  
+  #profile the function arguments and the preserved variable
   varInfo=profileVar(func_args)
   gpuIndex=getEmpyTable(1,type=T_scale)
   gpuIndex$var=GPUVar$gpu_global_id
@@ -17,84 +16,108 @@ RProfiler1<-function(codeMetaInfo3){
   gpuIndex$initialization="N"
   varInfo$profile=rbind(varInfo$profile,gpuIndex)
   varInfo$varTable[[gpuIndex$var]]=nrow(varInfo$profile)
-  
   profileMeta1$varInfo=varInfo
-  ###############This need to be removed later################################
-  #profileMeta1$workerData=loopData
   
-  return(profileMeta1)
+  #Rename the loop var
+  parsedExp=profileMeta1$Exp
+  res=renameLoopVar(parsedExp)
+  parsedExp=res$parsedExp
+  #Profile the loop variable
+  newVarInfo=profileLoopVar(varInfo,parsedExp)
+  profileMeta1$varInfo=newVarInfo
+  profileMeta1$Exp=parsedExp
+  
+  profileMeta1
 }
 
 
 
-
-
-RProfiler2<-function(profileMeta1){
-  #Profile the loop variable
-  varInfo=profileMeta1$varInfo
-  parsedExp=profileMeta1$Exp
-  res=profileLoopVar(varInfo,parsedExp)
-  profileMeta1$varInfo=res
+#Function:
+#1. Profile the variable type
+#2. rename the variable if the type does not match
+RProfile2<-function(profileMeta1){
+  if(DEBUG)
+    profileMeta1$varInfo$varTable=copy(profileMeta1$varInfo$varTable)
   
-  profileMeta2=parserFrame(RProfiler2_parserFunc,RProfiler2_checkFunc,
-                           RProfiler2_updateFunc,profileMeta1)
+  profileMeta2=parserFrame(RProfile2_parserFunc,RProfile2_checkFunc,
+                           RProfile2_updateFunc,profileMeta1)
+  
   profileMeta2
 }
 
-RProfiler2_parserFunc<-function(level,codeMetaInfo,curExp){
-  result=list()
-  result$Exp=curExp
+RProfile2_parserFunc<-function(level,codeMetaInfo,curExp){
+  result=list(Exp=curExp)
+  tmpMeta=codeMetaInfo$tmpMeta
   varInfo=codeMetaInfo$varInfo
+  renameList=c()
   
-  if(curExp[[1]]=="="){
+  
+  if(curExp[[1]]=="="){ 
     leftExp=curExp[[2]]
     rightExp=curExp[[3]]
-    #Extract the variable in the left expression
-    if(is.call(leftExp)){
-      if(leftExp[[1]]!="[")
-        stop("Unrecognized code",deparse(curExp))
-    }else{
-      var_char=deparse(leftExp)
-      #Check if the variable is in the variable table, if not, profile the variable
-      if(!has.key(var_char,varInfo$varTable)){
-        ExpProfile=getExpInfo(varInfo,rightExp)
-        ExpProfile$var=var_char
-        varInfo$profile=rbind(varInfo$profile,ExpProfile)
-        varInfo$varTable[[var_char]]=nrow(varInfo$profile)
+    leftVar_char=deparse(leftExp)
+    if(!is.call(leftExp)){
+      if(has.key(leftVar_char,varInfo$varTable)){
+        leftInfo=getVarInfo(varInfo,leftVar_char)
+        rightInfo=getExpInfo(varInfo,rightExp)
+        checkInfo=checkVarType(leftInfo,rightInfo)
+        if(checkInfo$needReassign){
+          if("for" %in% level || "if" %in% level)
+            stop("Type conversion inside the for or if body is not allowed, please assign the variable before it:\n:",
+                 paste0("TraceBack:",paste0(level,collapse = "->"),"\n"),
+                 deparse(curExp))
+          if(leftInfo$t_static=="Y")
+            stop("The left expression has a static type, changing the type of the left expression is not allowed:\n:",deparse(curExp))
+          tmpMeta=getTmpVar(tmpMeta)
+          newName=tmpMeta$varName
+          curExp[[2]]=as.symbol(newName)
+          renameList=rbind(renameList,c(leftVar_char,newName))
+          leftInfo=rightInfo
+          leftInfo$var=newName
+          varInfo=addVarInfo(varInfo,leftInfo)
+        }else{
+          if(checkInfo$needResize){
+            resizeCode=paste0(leftVar_char,"=resize(",leftVar_char,",",checkInfo$size1,",",checkInfo$size2,")")
+            result$extCode=c(result$extCode,resizeCode)
+          }
+          if(checkInfo$needReassign||leftInfo$p_static!="Y"){
+            leftInfo$precisionType=rightInfo$precisionType
+          }
+          leftInfo$value=rightInfo$value
+          leftInfo$compileData=rightInfo$compileData
+          setVarInfo(varInfo,leftInfo)
+        }
+      }else{
+        rightInfo=getExpInfo(varInfo,rightExp)
+        rightInfo$var=leftVar_char
+        varInfo=addVarInfo(varInfo,rightInfo)
       }
     }
-    result$varInfo=varInfo
-    return(result)
   }
-  
   if(curExp[[1]]=="return"){
-    if(length(level)!=1)
-      stop("Unsupported code, the return command is only allowed in the end of the code:\n",deparse(curExp))
-    ExpProfile=profile_return(varInfo,curExp)
-    varInfo$returnInfo=ExpProfile
-    result$varInfo=varInfo
-    return(result)
+    returnInfo=getVarInfo(varInfo,curExp[[2]])
+    varInfo$returnInfo=returnInfo
   }
-  
+  result$Exp=curExp
+  result$tmpMeta=tmpMeta
+  result$renameList=renameList
   result$varInfo=varInfo
   return(result)
 }
 
 
-RProfiler2_checkFunc<-function(curExp){
+#Exp="b*a[1,10]+c(4,43)[1]+10-1"
+#Simplify(Exp)
+
+
+RProfile2_checkFunc<-function(curExp){
   #if(curExp[[1]]=="=")return(TRUE)
   return(TRUE)
 }
 
-RProfiler2_updateFunc<-function(type,level,codeMetaInfo,parsedExp,code,i,res){
+RProfile2_updateFunc<-function(type,level,codeMetaInfo,parsedExp,code,i,res){
   result=general_updateFunc(codeMetaInfo,parsedExp,code)
+  result$codeMetaInfo$tmpMeta=res$tmpMeta
   result$codeMetaInfo$varInfo=res$varInfo
   result
 }
-
-
-
-
-
-
-

@@ -1,17 +1,17 @@
+codePreprocessing<-function(codeMetaInfo){
+  loopVar=names(codeMetaInfo$parms)[[1]]
+  #insert the preserved data reading code
+  readDataExp=parse(text=paste0(loopVar,"=",GPUVar$gpu_worker_data,"[",GPUVar$gpu_global_id,"+1]"))
+  codeMetaInfo$Exp=c(readDataExp,codeMetaInfo$Exp)
+  
+  codeMetaInfo
+}
 #Level 1 compiler
 #Functions:
 #1.simplify the R code, each line should only have one function call,
 #If not, a temporary variable will be created to replace it.
 #2.If the code only has a symbol, it will be remove from the function
-RParser1<-function(codeMetaInfo,insertPreserved=T){
-  #define the looped variable
-  loopVar=names(codeMetaInfo$parms)[[1]]
-  #insert the preserved data reading code
-  if(insertPreserved){
-    readDataExp=parse(text=paste0(loopVar,"=",GPUVar$gpu_worker_data,"[",GPUVar$gpu_global_id,"+1]"))
-    codeMetaInfo$Exp=c(readDataExp,codeMetaInfo$Exp)
-  }
-  
+RParser1<-function(codeMetaInfo){
   codeMetaInfo$tmpMeta=list(count=1)
   codeMetaInfo1=parserFrame(RLevel1_parserFunc,RLevel1_checkFunc,
                             RLevel1_updateFunc,codeMetaInfo)
@@ -22,7 +22,6 @@ RParser1<-function(codeMetaInfo,insertPreserved=T){
 RLevel1_parserFunc<-function(level,codeMetaInfo,curExp){
   result=list()
   tmpMeta=codeMetaInfo$tmpMeta
-  
   
   if(curExp[[1]]=="="||curExp[[1]]=="=="){
     for(j in 2:3){

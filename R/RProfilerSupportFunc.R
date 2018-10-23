@@ -1,3 +1,4 @@
+
 #===========================profiler 1========================
 #Profile a parameter and give the profile table back
 profileVar<-function(parms){
@@ -59,7 +60,18 @@ profileLoopVar<-function(varInfo,parsedExp){
   }
   return(varInfo)
 }
-
+#Find the function parameters
+matchFunArg<-function(fun,Exp){
+  funArg=lapply(formals(fun),as.character)
+  ExpArg=standardise_call(Exp)
+  if(length(ExpArg)>1){
+    argName=names(ExpArg)
+    for(i in 2:length(ExpArg)){
+      funArg[[argName[i]]]=deparse(ExpArg[[i]])
+    }
+  }
+  return(funArg)
+}
 #Get the right expression profile
 getExpInfo<-function(varInfo,Exp){
   ExpInfo=NULL
@@ -100,10 +112,47 @@ getVarInfo<-function(varInfo,target){
   var_data=varInfo$profile[var_ind,,drop=F]
   var_data
 }
+setVarInfo<-function(varInfo,newInfo){
+  var_char=newInfo$var
+  #Check if the symbol does not exist in the table
+  if(!has.key(var_char,varInfo$varTable))
+    stop(paste0("The given variable is not found: ",var_char))
+  var_ind=varInfo$varTable[[var_char]]
+  varInfo$profile[var_ind,]=newInfo
+}
+addVarInfo<-function(varInfo,newInfo){
+  var_char=newInfo$var
+  varInfo$profile=rbind(varInfo$profile,newInfo)
+  varInfo$varTable[[var_char]]=nrow(varInfo$profile)
+  varInfo
+}
+
+
+checkVarType<-function(leftInfo,rightInfo){
+  needReassign=FALSE
+  needResize=FALSE
+  needRetype=FALSE
+  if(typeInherit(leftInfo$precisionType,rightInfo$precisionType)!=leftInfo$precisionType)
+    needRetype=TRUE
+  if(leftInfo$dataType!=rightInfo$dataType)
+    return(list(needRetype=needRetype,needReassign=TRUE))
+  if(leftInfo$size1!=rightInfo$size1||rightInfo$size2!=rightInfo$size2){
+    len1=paste0(leftInfo$size1,"*",leftInfo$size2)
+    len2=paste0(rightInfo$size1,"*",rightInfo$size2)
+    if(Simplify(len1)!=Simplify(len2)){
+      return(list(needRetype=needRetype,needReassign=TRUE))
+    }else{
+      if(is.numeric(Simplify(len1)))
+        return(list(needRetype=needRetype,needReassign=FALSE,needResize=TRUE,size1=rightInfo$size1,size2=rightInfo$size2))
+    }
+  }
+  return(list(needRetype=needRetype,needReassign=FALSE,needResize=FALSE))
+}
+
 #Get an empty profile table
 getEmpyTable<-function(rowNum=0,type=""){
   tlbName=c("var","address","dataType","precisionType", "size1","size2","value","compileSize",
-            "compileData","require","initialization")
+            "compileData","require","initialization","p_static","t_static","location")
   tbl=as.data.frame(matrix("NA",ncol = length(tlbName), nrow = rowNum))
   names(tbl)=tlbName
   if(rowNum!=0){
@@ -112,6 +161,9 @@ getEmpyTable<-function(rowNum=0,type=""){
     tbl$compileData="N"
     tbl$require="N"
     tbl$initialization="Y"
+    tbl$p_static="N"
+    tbl$t_static="N"
+    tbl$location="global"
     if(type==T_scale){
       tbl$dataType=T_scale
       tbl$compileSize="Y"

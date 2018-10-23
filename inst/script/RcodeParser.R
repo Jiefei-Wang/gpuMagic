@@ -88,15 +88,16 @@ test3<-function(ind,A,B){
 }
 
 test1<-function(){
-  a=A
-  return(a)
+  a=matrix(0,10,2)
 }
 
 test2<-function(){
   
   a=1
   a=2
-  b=a
+  ca=matrix(0,1,10)
+  ca=1
+  #b=a
   for(i in 1:10){
     b=10
     for(j in 1:nrow(a)){
@@ -129,58 +130,20 @@ A=runif(n)
 B=runif(n)
 parms=list(ind=1:(n*n),A=A,B=B)
 codeMetaInfo=list()
-codeMetaInfo$Exp=funcToExp(test4)$code
+codeMetaInfo$Exp=funcToExp(test3)$code
 codeMetaInfo$parms=parms
-codeMetaInfo1=RParser1(codeMetaInfo)
+codeMetaInfo$staticParms=NULL
+codeMetaInfo0=codePreprocessing(codeMetaInfo)
+codeMetaInfo1=RParser1(codeMetaInfo0)
 codeMetaInfo2=RParser2(codeMetaInfo1)
-codeMetaInfo3=RParser3(codeMetaInfo2)
-profileMeta1=RProfiler1(codeMetaInfo3)
-profileMeta2=RProfiler2(profileMeta1)
+profileMeta1=RProfile1(codeMetaInfo2)
+profileMeta2=RProfile2(profileMeta1)
 profileMeta3=RRecompiler(profileMeta2)
-
 GPUExp1=RCcompilerLevel1(profileMeta3)
 
 
 
-res=sapply(1:(n*k),test3,A,B)
-C_res=matrix(res,n,k)
-max(abs(C_res-A%*%B))
 
 
-n=1
-A=runif(n)
-B=runif(n)
-parms=list(ind=1:(n*n),A=A,B=B)
-test3<-function(ind,A,B){
-  e=A[ind]+B[ind]
-  return(e)
-}
-
-parsedExp=funcToExp(test2)$code
-level1Exp=RRcompilerLevel1(parsedExp)
-level2Exp=RRcompilerLevel2(level1Exp)
-#parms=list(A=0)
-level3Exp=RRcompilerLevel3(level2Exp,parms)
-profileMeta1=RProfilerLevel1(level3Exp)
-profileMeta2=RProfilerLevel2(profileMeta1)
-profileMeta3=RRecompiler(profileMeta2)
-
-GPUExp1=RCcompilerLevel1(profileMeta3)
 
 
-printExp(parsedExp)
-printExp(level1Exp$Exp)
-printExp(level2Exp$Exp)
-printExp(level3Exp$Exp)
-printExp(GPUExp1$gpu_code)
-cat(paste(compileInfo3$gpu_code, collapse = '\n'))
-
-
-level1Exp$code
-b
-
-for(i in 1:length(b))
-  print(b[[i]])
-
-compileInfo1$varInfo
-compileInfo2$varInfo

@@ -18,36 +18,23 @@ printf(\"%f,\",ind);
   "
 
 
-n=100
-A=runif(n)
-B=runif(n)
-parms=list(ind=1:n,A=A,B=B)
-test3<-function(ind,A,B){
-  e=A[ind]*B[ind]
-  return(e)
-}
+library("microbenchmark")
 
 
-debugCode=.gpuSapply(1:n,test3,A,B)
-cat(debugCode$gpu_code)
-res=gpuSapply(1:n,test3,A,B)
-
-res-A*B
 
 
-library("tictoc")
-n=5000
-m=10000
-k=1000
-A=matrix(runif(n*m),n,m)
-B=matrix(runif(n*m),m,k)
 
-test3<-function(ind,A,B){
-  ind=ind-1
-  j=floor(ind/nrow(A))
-  i=ind-j*nrow(A)
+
+
+
+matMul<-function(id,A,B){
+  #find the index of the entry of C matrix
+  id=id-1
+  j=floor(id/nrow(A))
+  i=id-j*nrow(A)
   j=j+1
   i=i+1
+  #initialize C[i,j]
   C=0
   for(k in 1:ncol(A)){
     C=C+A[i,k]*B[k,j]
@@ -56,22 +43,41 @@ test3<-function(ind,A,B){
 }
 
   
+n=10000
+m=5000
+k=1000
+A=matrix(runif(n*m),n,m)
+B=matrix(runif(n*m),m,k)
 
 
-.gpuResourcesManager$setMaxMemLimit(4*10^9)
-.gpuResourcesManager$getGPUusage()
+getDeviceList()
+setDevice(2)
 
-tic()
-res=gpuSapply(1:(n*k),test3,A,B)
-toc()
-tic()
+code=compileGPUCode(1:(n*k),matMul,A,B)
+cat(code$gpu_code)
+
+
+
+res=gpuSapply(1:(n*k),matMul,A,B)
+res1=sapply(1:(n*k),matMul,A,B)
+
 res2=A%*%B
-toc()
+
 max(abs(res-res2))
-#This will take your lifetime to finish.
+
+
+microbenchmark(
+  res=gpuSapply(1:(n*k),matMul,A,B),
+  res2=A%*%B,
+  times = 10
+)
+
+
+
 getCurDevice()
 getDeviceList()
 setDevice(2)
+
 
 n=1024
 m=10000
@@ -79,7 +85,7 @@ k=1024
 A=matrix(runif(n*m),n,m)
 B=matrix(runif(n*m),m,k)
 
-test4<-function(ind,A,B){
+matMul2<-function(ind,A,B){
   j=ind
   C=matrix(0,nrow(A),1)
   for(i in 1:nrow(A)){
@@ -90,19 +96,18 @@ test4<-function(ind,A,B){
   return(C)
 }
 
-tic()
-res=gpuSapply(1:k,test4,A,B)
-toc()
-
-tic()
+res=gpuSapply(1:k,matMul2,A,B)
 res2=A%*%B
-toc()
-tic()
-res1=sapply(1:k,test4,A,B)
-toc()
 max(abs(res-res2))
 
+microbenchmark(
+  res=gpuSapply(1:k,matMul2,A,B),
+  res2=A%*%B,
+  times = 10
+)
 
+
+res1=sapply(1:k,matMul2,A,B)
 
 
 .gpuResourcesManager$getGPUusage()

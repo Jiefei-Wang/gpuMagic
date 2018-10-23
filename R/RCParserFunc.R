@@ -1,60 +1,46 @@
+
+
+
 C_call_assign<-function(varInfo,Exp){
   leftExp=Exp[[2]]
   rightExp=Exp[[3]]
   if(is.call(leftExp)){
-    if(length(leftExp)==1){
-      stop("Unsupported left expression: ",deparse(Exp))
+    func_char=deparse(leftExp[[1]])
+    func=.cFuncs[[func_char]]
+    if(!is.null(func)){
+      C_leftExp=func(varInfo,leftExp)
     }else{
-      if(leftExp[[1]]=="["){
-        C_leftExp=C_subset(varInfo,leftExp)
-        stopInfo=F
-      }
-      if(stopInfo)
-        stop("Unsupported left expression: ",deparse(Exp))
+      stop("Unsupported left expression: ",deparse(Exp))
     }
   }else{
     C_leftExp=deparse(leftExp)
   }
   
   if(is.call(rightExp)){
-    if(length(rightExp)==1){
-      stop("Unsupported right expression: ",deparse(Exp))
+    func_char=deparse(rightExp[[1]])
+    func=.cFuncs[[func_char]]
+    if(!is.null(func)){
+      C_rightExp=func(varInfo,rightExp)
     }else{
-      if(rightExp[[1]]=="["){
-        C_rightExp=C_subset(varInfo,rightExp)
-        curCode=paste0(C_leftExp,deparse(Exp[[1]]),C_rightExp,";")
-        return(curCode)
-      }
-      if(
-        switch(deparse(rightExp[[1]]),"+"=T,"-"=T,"*"=T,"/"=T,F)
-        ){
-        C_rightExp=C_arithmaticOP(varInfo,rightExp)
-        curCode=paste0(C_leftExp,deparse(Exp[[1]]),C_rightExp,";")
-        return(curCode)
-      }
-      
-      if(rightExp[[1]]=="matrix"){
-        #warning("matrix initial value will be ignored, but will be supported in future",deparse(Exp))
-        #curCode=paste0(C_leftExp,deparse(Exp[[1]]),C_rightExp,";")
-        return("")
-      }
-      if(rightExp[[1]]=="nrow"||rightExp[[1]]=="ncol"||rightExp[[1]]=="length"){
-        C_rightExp=C_length(varInfo,rightExp)
-        curCode=paste0(C_leftExp,deparse(Exp[[1]]),C_rightExp,";")
-        return(curCode)
-      }
-        
-      if(rightExp[[1]]=="floor"){
-        C_rightExp=C_floor(varInfo,rightExp)
-        curCode=paste0(C_leftExp,deparse(Exp[[1]]),C_rightExp,";")
-        return(curCode)
-      }
       stop("Unsupported right expression: ",deparse(Exp))
     }
+    
   }else{
     C_rightExp=deparse(rightExp)
-    curCode=paste0(C_leftExp,deparse(Exp[[1]]),C_rightExp,";")
   }
+  
+  if(C_rightExp==""){
+    if(deparse(Exp[[1]])=="==")
+      stop("Unexpected expression: ",deparse(Exp))
+    return("")
+  }
+  if(C_leftExp==""){
+    stop("Unexpected expression: ",deparse(Exp))
+  }
+  
+  
+  curCode=paste0(C_leftExp,deparse(Exp[[1]]),C_rightExp,";")
+  return(curCode)
   
 }
 
@@ -66,11 +52,14 @@ C_arithmaticOP<-function(varInfo,Exp){
 }
 
 C_length<-function(varInfo,Exp){
-  if(Exp[[1]]=="nrow") return(R_getVarSize1(varInfo,Exp[[2]]))
-  if(Exp[[1]]=="ncol") return(R_getVarSize2(varInfo,Exp[[2]]))
-  if(Exp[[1]]=="length") return(paste0(R_getVarSize1(varInfo,Exp[[2]]),"*",R_getVarSize2(varInfo,Exp[[2]])))
+  return(paste0(R_getVarSize1(varInfo,Exp[[2]]),"*",R_getVarSize2(varInfo,Exp[[2]])))
 }
-
+C_nrow<-function(varInfo,Exp){
+  return(R_getVarSize1(varInfo,Exp[[2]]))
+}
+C_ncol<-function(varInfo,Exp){
+  return(R_getVarSize2(varInfo,Exp[[2]]))
+}
 C_subset<-function(varInfo,Exp){
   if(length(Exp)==1)
     return(deparse(Exp))
@@ -94,6 +83,10 @@ C_subset<-function(varInfo,Exp){
 C_floor<-function(varInfo,Exp){
   code=paste0("((int)",deparse(Exp[[2]]),")")
   return(code)
+}
+
+C_NULL<-function(varInfo,Exp){
+  return("")
 }
 
 
