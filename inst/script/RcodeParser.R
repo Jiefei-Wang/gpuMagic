@@ -128,9 +128,9 @@ test3<-function(ind,A,B){
 n=10
 A=runif(n)
 B=runif(n)
-parms=list(ind=1:(n*n),A=A,B=B)
+parms=list(colInd=1:(n*n),A=A,k=10)
 codeMetaInfo=list()
-codeMetaInfo$Exp=funcToExp(matMul3)$code
+codeMetaInfo$Exp=funcToExp(findMaxInd)$code
 codeMetaInfo$parms=parms
 codeMetaInfo$staticParms=NULL
 codeMetaInfo0=codePreprocessing(codeMetaInfo)

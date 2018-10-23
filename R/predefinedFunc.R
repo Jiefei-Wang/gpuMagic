@@ -3,7 +3,7 @@ gNumber<-function(precision=T_DEFAULT_float,p_static="N",t_static="N"){
   return(0)
 }
 gMatrix<-function(nrow=1,ncol=1,precision=T_DEFAULT_float,p_static="N",t_static="N",location="global"){
-  return(matrix(NA,1,1))
+  return(matrix(NA,nrow,ncol))
 }
 resize<-function(data,nrow,ncol){
   return(matrix(data,nrow,ncol))

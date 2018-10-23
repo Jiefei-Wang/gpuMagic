@@ -1,16 +1,21 @@
 #' @export
-gpuSapply<-function(X,FUN,...,staticParms=c(),verbose=F,optimization="all"){
+gpuSapply<-function(X,FUN,...,staticParms=c(),verbose=F,optimization="all",debugCode="",threadNum=NULL){
   GPUcode1=compileGPUCode(X,FUN,...,staticParms=NULL,optimization="all")
-  
+  if(debugCode!="")
+    GPUcode1$gpu_code=debugCode
   GPUcode2=fillGPUdata(GPUcode1)
   
   kernelArg=formals(.kernel)
   globalThreadNum=kernelArg$globalThreadNum
+  if(is.null(threadNum)){
+    
   if(optimization=="all"||"worker number" %in% optimization){
     workerNum=length(GPUcode2$all_parms[[1]])
     globalThreadNum=ceiling(workerNum/64)*64
   }
-  
+    }else{
+    globalThreadNum=threadNum
+  }
   .kernel(kernel=GPUcode2$kernel,src=GPUcode2$gpu_code,parms=GPUcode2$all_parms,
           autoType=FALSE,globalThreadNum=globalThreadNum,
           verbose = verbose,signature = runif(1))
@@ -69,7 +74,7 @@ fillGPUdata<-function(GPUcode){
   returnInfo=GPUcode$varInfo$returnInfo
   profile_matrix=profile[profile$dataType==T_matrix,]
   
-  
+  #transfer all the parameters to the gpuMatrix objects
   for(ind in names(parms)){
     i=which(profile$var==ind)
     curType=as.numeric(profile[i,]$precisionType)

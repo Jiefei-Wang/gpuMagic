@@ -56,15 +56,17 @@ parserFrame<-function(parserFunc,checkFunc,updateFunc,codeMetaInfo,level=c("top"
           conditionExp=res$Exp
         }
         for(k in 3:4){
+          if(k>length(curExp))
+            next
           conditionBodyExp=curExp[[k]]
-        res=ProcessCodeChunk(parserFunc,checkFunc,updateFunc,
-                             curCodeMetaInfo,curLevel,parsedExp,code,i,conditionBodyExp)
-        curCodeMetaInfo=res$codeMetaInfo
-        parsedExp=res$parsedExp
-        code=res$code
-        conditionBodyExp=res$ExpChunk
+          res=ProcessCodeChunk(parserFunc,checkFunc,updateFunc,
+                               curCodeMetaInfo,curLevel,parsedExp,code,i,conditionBodyExp)
+          curCodeMetaInfo=res$codeMetaInfo
+          parsedExp=res$parsedExp
+          code=res$code
+          conditionBodyExp=res$ExpChunk
           
-        curExp[[k]]=conditionBodyExp
+          curExp[[k]]=conditionBodyExp
         }
         
         curExp[[2]]=conditionExp

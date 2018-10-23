@@ -1,5 +1,6 @@
 
 #===========================profiler 1========================
+
 #Profile a parameter and give the profile table back
 profileVar<-function(parms,staticParms){
   varInfo=list()
@@ -56,11 +57,48 @@ profileVar<-function(parms,staticParms){
 
 
 #==================================Profiler 2==========================
+renameLoopVar<-function(parsedExp,ind=0){
+  for(i in 1:length(parsedExp)){
+    curExp=parsedExp[[i]]
+    if(!is.call(curExp))
+      next
+    if(curExp[[1]]=="for"){
+      #Force substitution of the index variable
+      new_index=paste0(GPUVar$gpu_loop_ind,"_",ind)
+      ind=ind+1
+      old_Index=deparse(curExp[[2]])
+      loopBody=renameVarInCode(curExp[[4]],1,old_Index,new_index)
+      res=renameLoopVar(loopBody,ind)
+      loopBody=res$parsedExp
+      ind=res$ind
+      curExp[[2]]=as.symbol(new_index)
+      curExp[[4]]=loopBody
+      parsedExp[[i]]=curExp
+    }
+    if(curExp[[1]]=="if"){
+      res=renameLoopVar(curExp[[3]],ind)
+      codeBody=res$parsedExp
+      ind=res$ind
+      curExp[[3]]=codeBody
+      parsedExp[[i]]=curExp
+      if(length(curExp)==4){
+        res=renameLoopVar(curExp[[4]],ind)
+        codeBody=res$parsedExp
+        ind=res$ind
+        curExp[[4]]=codeBody
+        parsedExp[[i]]=curExp
+      }
+    }
+  }
+  return(list(parsedExp=parsedExp,ind=ind))
+}
 
 profileLoopVar<-function(varInfo,parsedExp){
   for(i in 1:length(parsedExp)){
     curExp=parsedExp[[i]]
-    if(is.call(curExp)&&curExp[[1]]=="for"){
+    if(!is.call(curExp))
+      next
+    if(curExp[[1]]=="for"){
       var_char=deparse(curExp[[2]])
       ExpProfile=getEmpyTable(1,type = T_scale)
       ExpProfile$var=var_char
@@ -69,6 +107,12 @@ profileLoopVar<-function(varInfo,parsedExp){
       varInfo$varTable[[var_char]]=nrow(varInfo$profile)
       loopBody=curExp[[4]]
       varInfo=profileLoopVar(varInfo,loopBody)
+    }
+    if(curExp[[1]]=="if"){
+      varInfo=profileLoopVar(varInfo,curExp[[3]])
+      if(length(curExp)==4){
+        varInfo=profileLoopVar(varInfo,curExp[[4]])
+      }
     }
   }
   return(varInfo)

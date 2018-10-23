@@ -147,3 +147,35 @@ max(abs(res-res2))
 
 
 
+findMaxInd<-function(k,A){
+  maxInd=gMatrix(nrow=2,ncol=1,location="private")
+  maxNum=gMatrix(nrow=2,ncol=1,location="private")
+  for(i in 1:2){
+    maxNum[i]=0
+  }
+  for(i in 1:nrow(A)){
+    a=A[i,k]
+    if(a>maxNum[1]){
+      maxNum[2]=maxNum[1]
+      maxInd[2]=maxInd[1]
+      maxNum[1]=a
+      maxInd[1]=i
+    }else{
+      if(a>maxNum[2]){
+        maxNum[2]=a
+        maxInd[2]=i
+      }
+    }
+  }
+  return(maxInd)
+}
+
+
+n=1000
+m=10000
+A=matrix(runif(n*m),n,m)
+
+code=compileGPUCode(1:ncol(A),findMaxInd,A)
+
+
+

@@ -58,25 +58,6 @@ printExp<-function(Exp){
 }
 
 #================parser 3=================
-renameLoopVar<-function(parsedExp,ind=0){
-  for(i in 1:length(parsedExp)){
-    curExp=parsedExp[[i]]
-    if(is.call(curExp)&&curExp[[1]]=="for"){
-      #Force substitution of the index variable
-      new_index=paste0(GPUVar$gpu_loop_ind,"_",ind)
-      ind=ind+1
-      old_Index=deparse(curExp[[2]])
-      loopBody=renameVarInCode(curExp[[4]],1,old_Index,new_index)
-      res=renameLoopVar(loopBody,ind)
-      loopBody=res$parsedExp
-      ind=res$ind
-      curExp[[2]]=as.symbol(new_index)
-      curExp[[4]]=loopBody
-      parsedExp[[i]]=curExp
-    }
-  }
-  return(list(parsedExp=parsedExp,ind=ind))
-}
 
 
 renameVarInCode<-function(code,start,oldName,newName){

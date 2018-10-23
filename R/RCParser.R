@@ -20,10 +20,12 @@ RCcompilerLevel1<-function(profileMeta3){
     paste0("unsigned long ", gpu_tmp_length,"=*",gpu_tmp_length_arg,";"),
     paste0("unsigned long ", gpu_worker_offset,"=",gpu_global_id,"*",gpu_tmp_length,";")
   )
-  gpu_matrix_num=0
+  gpu_matrix_num=-1
   
   for(i in 1:nrow(profile)){
     curVar=profile[i,]
+    if(curVar$dataType==T_matrix)
+      gpu_matrix_num=gpu_matrix_num+1
     if(curVar$all_static=="Y"){
       next
     }
@@ -64,7 +66,7 @@ RCcompilerLevel1<-function(profileMeta3){
       
       gpu_code=c(gpu_code,curCode)
       profile[i,]$address=curVar$var
-      gpu_matrix_num=gpu_matrix_num+1
+      #gpu_matrix_num=gpu_matrix_num+1
       next
     }
   }
@@ -126,8 +128,14 @@ RCTranslation<-function(varInfo,parsedExp){
     }
     if(curExp[[1]]=="if"){
       curCode=RCTranslation(varInfo,curExp[[3]])
-      ifFunc=paste0("if(",deparse(curExp[[2]]),"){")
-      gpu_code=c(gpu_code,ifFunc,curCode,"}")
+      ifFunc=paste0("if(",deparse(curExp[[2]]),"){\n",paste0(curCode,collapse = "\n"),"}")
+      elseFunc=""
+      if(length(curExp)==4){
+      curCode=RCTranslation(varInfo,curExp[[4]])
+      elseFunc=paste0("else{",paste0(curCode,collapse = "\n"),"}")
+      }
+      ifstate=paste0(ifFunc,elseFunc)
+      gpu_code=c(gpu_code,ifstate)
       next
     }
   }
