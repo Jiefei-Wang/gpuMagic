@@ -1,12 +1,14 @@
+#' @importFrom pryr standardise_call
+#' @importFrom Deriv Simplify
+#' @importFrom Rcpp sourceCpp
+#' @import hash
+#' @useDynLib gpuMagic
 
 .onUnload<-function(libpath){
   library.dynam.unload("gpuMagic",libpath)
   .gpuResourcesManager$deleteEnv()
 }
 
-#' @importFrom pryr standardise_call
-#' @importFrom Deriv Simplify
-#' @import hash
 
 
 DEBUG=TRUE

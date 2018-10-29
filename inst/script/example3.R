@@ -14,8 +14,9 @@ matMul<-function(id,A,B){
   return(C)
 }
 
+
 getDeviceList()
-setDevice(1)
+setDevice(0)
 getCurDevice()
 
 n=1000
@@ -47,6 +48,7 @@ matMul2<-function(ind,A,B){
   return(C)
 }
 
+getDeviceList()
 
 microbenchmark(
   res=gpuSapply(1:k,matMul2,A,B),

@@ -3,13 +3,13 @@
   Class="gpuMatrix",
   slots = c(data="matrix",type="character",isReady="logical",gpuAddress="ANY")
 )
-
-gpuMatrix<-function(data,type=T_auto){
+#' @export
+gpuMatrix<-function(data,type="auto"){
   data=as.matrix(data)
-  if(is.numeric(type))
-    type=getTypeStr(as.integer(type))
    if(type=="auto")
      type=getDataType(data)
+   
+  checkTypeSupport(type)
   ad=gpuRefAddress(data,type)
   obj=.gpuMatrix(data=data,type=type,isReady=TRUE,gpuAddress=ad)
   
@@ -31,6 +31,7 @@ gpuMatrix<-function(data,type=T_auto){
 
 .type<-function(obj) obj@type
 ".type<-"<-function(obj,value){
+  checkTypeSupport(value)
   obj@type<-value
   obj
 }
@@ -64,7 +65,7 @@ setMethod(
   signature = "gpuMatrix",
   definition = function(obj){
     obj@data=obj@gpuAddress$download()
-    
+    .readyStatus(obj)=TRUE
     obj
   }
 )
@@ -89,6 +90,20 @@ setMethod(
 )
 
 #======================General functions overload================
+
+
+#' @export
+setMethod("nrow", signature(x="gpuMatrix"),
+          function(x) {
+            nrow(.data(x))
+          }
+)
+#' @export
+setMethod("ncol", signature(x="gpuMatrix"),
+          function(x) {
+            ncol(.data(x))
+          }
+)
 #' @export
 setMethod("dim", signature(x="gpuMatrix"),
           function(x) {

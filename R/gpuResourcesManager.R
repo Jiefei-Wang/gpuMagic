@@ -1,122 +1,31 @@
-#' @import hash hash
-#' @importFrom Rcpp sourceCpp
-#' @useDynLib gpuMagic
+#' @include pkgFunc.R
 
 
 #======================Type definition====================
-T_auto=1L
-T_F32=2L
-T_F64=3L
-T_I32=4L
-T_I64=5L
-T_DEFAULT=T_F64
-T_DEFAULT_INT=T_I32
-T_DEFAULT_float=T_F64
-getTypeNum<-function(type){
-  switch(
-    type,
-    auto=T_auto,
-    float=T_F32,
-    double=T_F64,
-    integer=T_I32,
-    long=T_I64)
-}
-getTypeStr<-function(type){
-  switch(
-    type,"auto","float","double","integer","long"
-  )
-}
-getTypeCXXStr<-function(type){
-  if(is.character(type))
-    type=getTypeNum(type)
-  switch(
-    type,stop("Auto type is not supported"),
-    "float","double",
-    "int","long"
-  )
-}
+# T_auto=1L
+# T_F32=2L
+# T_F64=3L
+# T_I32=4L
+# T_I64=5L
+# T_DEFAULT=T_F64
+# T_DEFAULT_INT=T_I32
+# T_DEFAULT_float=T_F64
 
-getTypeSize<-function(type){
-  if(is.numeric(type)) type=getTypeStr(type)
-  switch(
-    type,
-    auto=stop("Auto type is not allowed."),
-    float=4,
-    double=8,
-    integer=4,
-    long=8
-    )
-}
-getDataType<-function(data){
-  if(typeof(data)=="double"||typeof(data)=="numeric")
-    return(getTypeStr(T_F64))
-  if(typeof(data)=="integer")
-    return(getTypeStr(T_I32))
-  
-  stop("The given type is not defined")
-}
-convertDataType<-function(data,type){
-  switch(
-    type,
-    stop("Auto type is not allowed."),
-    float=as.double(data),
-    double=as.double(data),
-    integer=as.integer(data),
-    long=as.double(data)
-  )
-}
 
-#======================GPU address S5 class====================
+# getTypeStr<-function(type){
+#   switch(
+#     type,"auto","float","double","integer","long"
+#   )
+# }
 
-gpuRefAddress=setRefClass("gpuRefAddress", fields = c("address","dim","type","isReady"))
-gpuRefAddress$methods(
-  initialize = function(data,type) {
-    data=as.matrix(data)
-    .self$dim=dim(data)
-    .self$type=type
-    .self$address=.gpuResourcesManager$upload(data,type)
-    .self$isReady=TRUE
-  }
-  )
-gpuRefAddress$methods(
-  getAddress = function() {
-    .gpuResourcesManager$getAddress(.self$address)
-  }
-)
-gpuRefAddress$methods(
-  finalize = function() {
-    #message("I did something")
-    .gpuResourcesManager$releaseAddress(.self$address)
-  }
-)
-gpuRefAddress$methods(
-  upload = function(data,type) {
-    .gpuResourcesManager$releaseAddress(.self$address)
-    .self$initialize(data,type)
-    .self$isReady=TRUE
-  }
-)
-gpuRefAddress$methods(
-  download = function() {
-    .gpuResourcesManager$download(.self$address,.self$dim,.self$type)
-  }
-)
-gpuRefAddress$methods(
-  getReadyStatus = function() {
-    .self$isReady
-  }
-)
-gpuRefAddress$methods(
-  setReadyStatus = function(status) {
-    .self$isReady=status
-  }
-)
+
 
 
 #======================GPU resources manager====================
 #The gpu manager is not supposed to be called by the user
 #It manage the all resources on a device
 #The data will be automatically released when the it is not in use
+#' @export
 .gpuResourcesManager<-local({
   e=new.env()
   e$unload=FALSE
@@ -240,41 +149,6 @@ gpuRefAddress$methods(
 })
 
 
-#===========================Obtain device infomation==============
-#' The function is used to obtain all the opencl-enable devices
-#' @export
-getDeviceList=function(){
-  .C("getDeviceList")
-  invisible()
-}
-#' Get the ith device information, call 'getDeviceList()' first to figure out the index before use this function
-#' @param i numeric The device index
-#' @export
-getDeviceInfo=function(i){
-  .C("getDeviceInfo",as.integer(i))
-  invisible()
-}
-#' Get the device detailed information, call 'getDeviceList()' first to figure out the index before use this function
-#' @param i The device index
-#' @export
-getDeviceDetail=function(i){
-  .C("getDeviceDetail",as.integer(i))
-  invisible()
-}
-#' Get the current used device
-#' @export
-getCurDevice=function(){
-  .C("getCurDevice")
-  invisible()
-}
-#' Set which device will be used in the opencl, call 'getDeviceList()' first to figure out the index before use this function
-#' @param i numeric The device index
-#' @export
-setDevice=function(i){
-  .gpuResourcesManager$releaseAll()
-  .C("setDevice",as.integer(i))
-  invisible()
-}
 
 
 

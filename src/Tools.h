@@ -5,6 +5,24 @@
 #include <CL/cl.h>
 #endif
 #include <iostream>
+
+
+enum dtype {
+	c = 1, f16 = 2, f32 = 3, f64 = 4, i32 = 5, i64 = 6,
+	ui32 = 7, ui64 = 8
+};
+
+//Convert the data type between gpu and R data
+void gpuToR(void* Rdata, void* gpuData, dtype type,size_t length);
+void RTogpu(void* gpuData, void* Rdata, dtype type, size_t length);
+
+void errorHandle(std::string errorInfo);
+void message(std::string msg);
+const char * getErrorString(cl_int error);
+
+
+
+
 //#include <Rcpp.h>
 template<class T1, class T2>
 void cpyData(T1* target, T2* src, size_t n) {
@@ -15,8 +33,7 @@ void cpyData(T1* target, T2* src, size_t n) {
 
 
 template<class T>
-void print_partial_matrix(const char* title, T *M, int nrows, int ncols, int max_row=-1,
-	int max_col=-1)
+void print_partial_matrix(std::string title, T *M, int nrows, int ncols, int max_row=-1,int max_col=-1)
 {
 	std::cout << title << std::endl;
 	int row, col;
@@ -32,9 +49,5 @@ void print_partial_matrix(const char* title, T *M, int nrows, int ncols, int max
 	}
 	printf("...\n");
 }
-
-void errorHandle(std::string errorInfo);
-void message(std::string msg);
-
 
 

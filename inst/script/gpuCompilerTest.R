@@ -56,7 +56,8 @@ setDevice(2)
 code=compileGPUCode(1:(n*k),matMul,A,B)
 cat(code$gpu_code)
 
-
+code="__kernel void gpu_kernel0(__global double* gpu_worker_data,__global double* A,__global double* B,__global float* gpuMagic_tmp,__global long* gpu_tmp_length_arg,__global long* gpu_matrix_offSize,__global long* gpu_matrix_size1,__global long* gpu_matrix_size2,__global double* gpu_return_variable,__global long* gpu_return_size){\nunsigned long gpu_global_id=get_global_id(0);\nunsigned long gpu_tmp_length=*gpu_tmp_length_arg;\nunsigned long gpu_worker_offset=gpu_global_id*gpu_tmp_length;\ndouble opencl_tmp_1;\ndouble ind;\ndouble j;\nint opencl_tmp_2;\n__global double* C=(__global double*)(gpuMagic_tmp+gpu_worker_offset+gpu_matrix_offSize[0]);\nint opencl_tmp_3;\nint opencl_tmp_4;\ndouble opencl_tmp_5;\ndouble opencl_tmp_7;\ndouble opencl_tmp_8;\ndouble opencl_tmp_6;\ndouble opencl_tmp_9;\nopencl_tmp_1=gpu_global_id+1;\nind=gpu_worker_data[(unsigned int)opencl_tmp_1-1];\nj=ind;\nopencl_tmp_2=gpu_matrix_size1[1];\n\nfor(unsigned int gpu_loop_ind_0=1;gpu_loop_ind_0<=opencl_tmp_2;gpu_loop_ind_0++){\nfor(unsigned int gpu_loop_ind_1=1gpu_loop_ind_1<=1;gpu_loop_ind_1++){\nC[(unsigned int)gpu_loop_ind_0-1 +((unsigned int)gpu_loop_ind_1-1)*gpu_matrix_size1[12]]=0;\n}\n}\nopencl_tmp_3=gpu_matrix_size1[1];\nfor(unsigned int gpu_loop_ind_2=1;gpu_loop_ind_2<=opencl_tmp_3;gpu_loop_ind_2++){\nopencl_tmp_4=gpu_matrix_size2[1];\nfor(unsigned int gpu_loop_ind_3=1;gpu_loop_ind_3<=opencl_tmp_4;gpu_loop_ind_3++){\nopencl_tmp_5=C[(unsigned int)gpu_loop_ind_2-1];\nopencl_tmp_7=A[(unsigned int)gpu_loop_ind_2-1 +((unsigned int)gpu_loop_ind_3-1)*gpu_matrix_size1[1]];\nopencl_tmp_8=B[(unsigned int)gpu_loop_ind_3-1 +((unsigned int)j-1)*gpu_matrix_size1[2]];\nopencl_tmp_6=opencl_tmp_7*opencl_tmp_8;\nopencl_tmp_9=opencl_tmp_5+opencl_tmp_6;\nC[(unsigned int)gpu_loop_ind_2-1]=opencl_tmp_9;\n}\n}\nfor(unsigned long gpu_return_i=0;gpu_return_i<*gpu_return_size;gpu_return_i++){\n\ngpu_return_variable[gpu_return_i+gpu_global_id*(*gpu_return_size)]=C[gpu_return_i];\n}\n}"
+gpuSapply(1:(n*k),matMul,A,B,debugCode = code)
 
 
 res=gpuSapply(1:(n*k),matMul,A,B)
@@ -147,23 +148,30 @@ max(abs(res-res2))
 
 
 
-findMaxInd<-function(k,A){
-  maxInd=gMatrix(nrow=2,ncol=1,location="private")
-  maxNum=gMatrix(nrow=2,ncol=1,location="private")
-  for(i in 1:2){
+
+findMaxInd<-function(colInd,A,k1){
+  k=k1[1]
+  maxInd=gMatrix(nrow=k,ncol=1,location="private")
+  maxNum=gMatrix(nrow=k,ncol=1,location="private")
+  for(i in 1:k){
     maxNum[i]=0
   }
   for(i in 1:nrow(A)){
-    a=A[i,k]
-    if(a>maxNum[1]){
-      maxNum[2]=maxNum[1]
-      maxInd[2]=maxInd[1]
-      maxNum[1]=a
-      maxInd[1]=i
-    }else{
-      if(a>maxNum[2]){
-        maxNum[2]=a
-        maxInd[2]=i
+    
+    a=A[i,colInd]
+    for(j in 1:k){
+      if(a>maxNum[j]){
+        if(j!=k){
+          j1=j+1
+          for(t in j1:k){
+            ind=k+j-t
+            maxNum[ind+1]=maxNum[ind]
+            maxInd[ind+1]=maxInd[ind]
+          }
+        }
+        maxNum[j]=a
+        maxInd[j]=i
+        a=0
       }
     }
   }
@@ -171,11 +179,36 @@ findMaxInd<-function(k,A){
 }
 
 
-n=1000
-m=10000
+n=10
+m=10
+topNum=2
 A=matrix(runif(n*m),n,m)
 
-code=compileGPUCode(1:ncol(A),findMaxInd,A)
 
+microbenchmark(
+  GPU=gpuSapply(1:ncol(A),findMaxInd,A,topNum),
+  #CPU1=sapply(1:ncol(A),findMaxInd,A,topNum),
+  CPU2=apply(A,2,function(x){
+    which(rank(x)==length(x)-1)
+  }),
+  times=1
+)
+
+a=(GPU-CPU2)
+
+A[9,1]
+A[10,1]
+
+res=gpuSapply(1:ncol(A),findMaxInd,A,topNum)
+res1=sapply(1:ncol(A),findMaxInd,A,topNum)
+which(abs(res-res1)!=0,arr.ind=T)
+res2=apply(A,2,function(x){
+  which(rank(x)==length(x)-1)
+})
+
+
+getCurDevice()
+getDeviceList()
+setDevice(2)
 
 

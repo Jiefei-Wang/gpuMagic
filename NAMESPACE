@@ -2,11 +2,13 @@
 
 S3method(as.matrix,gpuMatrix)
 S3method(as.vector,gpuMatrix)
+export(.gpuResourcesManager)
 export(.kernel)
 export(getCurDevice)
 export(getDeviceDetail)
 export(getDeviceInfo)
 export(getDeviceList)
+export(gpuMatrix)
 export(gpuSapply)
 export(setDevice)
 exportMethods("[")

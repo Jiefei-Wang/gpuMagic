@@ -31,5 +31,6 @@ Collate:
     'gpuApplyOPT.R'
     'gpuMatix.R'
     'kernelManager.R'
+    'pkgSetting.R'
     'predefinedFunc.R'
 VignetteBuilder: knitr

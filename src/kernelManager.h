@@ -8,6 +8,7 @@
 
 #include <fstream>
 #include<vector>
+using namespace std;
 
 class kernelManager {
 public:
@@ -15,8 +16,12 @@ public:
 	static cl_context context;
 	static cl_device_id device_id;
 	static cl_command_queue command_queue;
-	static std::map<std::string, cl_program> programTable;
-	static std::map<std::string, cl_kernel> kernelTable;
+
+	static  map< int, cl_context> contextTable;
+	static  map< int, cl_device_id> deviceTable;
+	static  map< int, cl_command_queue> queueTable;
+	static  map< string, cl_program> programTable;
+	static  map< string, cl_kernel> kernelTable;
 public:
 	//Print out all device name
 	static void getAllDeviceName();
@@ -24,21 +29,23 @@ public:
 	static void getDeviceInfo(int device_index);
 	static void getDeviceFullInfo(int device);
 	static void getCurDevice();
-	static const char* getErrorString(cl_int error);
 
 	//kernel setting functions
-	static void setDevice(int device);
-	static void destroyContext();
-	static bool hasKernel(std::string signature, std::string kernel);
-	static cl_kernel getKernel(std::string signature, std::string kernel);
-	static cl_kernel createKernel(std::string signature, std::string kernel, std::string code);
+	static void selectDevice(int device);
+	static void destroyDevice(int device);
+	static int getDeviceIndex();
+	static bool hasKernel( string signature,  string kernel);
+	static cl_kernel getKernel( string signature,  string kernel);
+	static cl_kernel createKernel( string signature,  string kernel,  string code);
 
 	//Resources access
-	static cl_context getContext();
-	static cl_device_id getDevice();
-	static cl_command_queue getQueue();
+	static cl_context getContext(int device);
+	static cl_device_id getDevice(int device);
+	static cl_command_queue getQueue(int device);
+	static void checkAndInitializeManager();
 private:
-	static cl_program loadProgram(std::string signature, std::string code);
-	static void initializeManager();
+	static cl_program loadProgram( string signature,  string code);
+	static void initializeDevice(int device=0);
 	static cl_device_id getDeviceID(int k);
+	static string getSignature(string sig, string kernel);
 };

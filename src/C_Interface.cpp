@@ -1,0 +1,119 @@
+#include "C_Interface.h"
+#include "Tools.h"
+#include "kernelManager.h"
+#include "openArray.h"
+#include <string> 
+using namespace std;
+
+
+
+extern "C" LibExport
+void getCurDeviceIndex(int * id)
+{
+	*id = kernelManager::getDeviceIndex();
+}
+void upload(void* data, double * dim, int* type, void** address) {
+	openArray* matrix = nullptr;
+	switch (*type) {
+	case dtype::c:
+		matrix = new openArray(dim[0], dim[1], data, dtype::c);
+		break;
+	case dtype::i32:
+		matrix = new openArray(dim[0], dim[1], data, dtype::i32);
+		break;
+	default:
+		matrix = new openArray(dim[0], dim[1], data, (dtype)*type);
+		break;
+	};
+	*address = (void*)matrix;
+}
+extern "C" LibExport
+void download(void* data, void** address) {
+	openArray* matrix = *(openArray**)address;
+	dtype type = matrix->getDataType();
+	//These two type can be directly send to R
+	if (type == dtype::f64 || type == dtype::i32) {
+		matrix->getHostData(data);
+		return;
+	}
+	//These two type should be transfer to an R-compatible type
+	void* host_data = matrix->getHostData();
+	gpuToR(data, host_data, type, matrix->dims(0)*matrix->dims(1));
+	matrix->releaseHostData();
+}
+
+
+void clear(void** address) {
+	delete *(openArray**)address;
+}
+
+void hasKernel(char** signature, char** kernel, bool* res) {
+	*res = kernelManager::hasKernel(std::string(*signature), std::string(*kernel));
+}
+
+
+
+void createKernel(char** signature,char** kernel,  char** code) {
+	//message(std::string(*code));
+	kernelManager::createKernel(std::string(*signature), std::string(*kernel), std::string(*code));
+}
+
+
+void loadParameter(char** signature, char** kernel, void** data_address, int *parm_index) {
+	cl_kernel dev_kernel = kernelManager::getKernel(std::string(*signature), std::string(*kernel));
+	openArray* matrix = *(openArray**)data_address;
+	cl_int error = clSetKernelArg(dev_kernel, *parm_index, sizeof(cl_mem), matrix->getDeviceData());
+	if (error != CL_SUCCESS)
+		errorHandle(string("kernel parameter uploading failure, error info:") + string(getErrorString(error)));
+}
+
+void loadSharedParameter(char** signature, char** kernel, int* size, int *parm_index) {
+	cl_kernel dev_kernel = kernelManager::getKernel(std::string(*signature), std::string(*kernel));
+	cl_int error = clSetKernelArg(dev_kernel, *parm_index, *size, NULL);
+	if (error != CL_SUCCESS)
+		errorHandle(string("kernel shared memory creating failure, error info:") + string(getErrorString(error)));
+}
+
+
+void launchKernel(char** signature, char** kernel, int* blockSize, int* threadSize) {
+	cl_kernel dev_kernel = kernelManager::getKernel(std::string(*signature), std::string(*kernel));
+	cl_command_queue queue = kernelManager::getQueue(kernelManager::deviceIndex);
+	size_t global_item_size = *blockSize; // Process the entire lists
+	size_t local_item_size = *threadSize;
+	cl_int error = clEnqueueNDRangeKernel(queue, dev_kernel, 1, NULL,
+		&global_item_size, &local_item_size, 0, NULL, NULL);
+	if (error != CL_SUCCESS)
+		errorHandle(string("kernel parameter uploading failure, error info:") + string(getErrorString(error)));
+}
+
+
+
+
+
+void getDeviceList() {
+	kernelManager::getAllDeviceName();
+}
+
+void getDeviceInfo(int * i) {
+	kernelManager::getDeviceInfo(*i);
+}
+
+void getDeviceDetail(int * i) {
+	kernelManager::getDeviceFullInfo(*i);
+}
+
+void selectDevice(int * i) {
+	kernelManager::selectDevice(*i);
+}
+
+
+void getCurDevice() {
+	kernelManager::getCurDevice();
+}
+
+
+void debug(bool* test, int* length) {
+	for (int i = 0; i < *length; i++) {
+		cout << test[i] << endl;
+	}
+}
