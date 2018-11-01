@@ -38,24 +38,27 @@
   e$addressSizeList=hash()
   e$empPtr=0
   list(
-    upload=function(data,type){
+    upload=function(obj,data,type){
+      
       ##Check if the data is larger than the available memory size
       size=getTypeSize(type)*dim(data)[1]*dim(data)[2]
       if(e$memoryUsage+size>e$totalMemory){
-        message("The data is larger than the available GPU memory, a garbage collection is triggered")
+        if(debug)
+          message("The data is larger than the available GPU memory, a garbage collection is triggered")
         gc()
         if(e$memoryUsage+size>e$totalMemory)
-          stop("Garbage collection failed, no memory can be released")
+          stop("The data is larger than the available GPU memory! Garbage collection can not free more space")
         }
       e$memoryUsage=e$memoryUsage+size
       
       
       ##Check if there is at least one avaible memory index
       if(length(e$addressList)>=e$maxAddressNum){
-        message("The GPU address index is full, a garbage collection is triggered")
+        if(debug)
+          message("The GPU address index is full, a garbage collection is triggered")
         gc()
         if(length(e$addressList)>=e$maxAddressNum){
-          stop("Garbage collection failed, no address can be released")
+          stop("The GPU address index is full! Garbage collection can not free more index")
         }
       }
       
@@ -85,15 +88,22 @@
         stop("The GPU resources does not exist!")
       ad=e$addressList[[as.character(ind)]]
       len=dim[1]*dim[2]
-      empData=convertDataType(rep(0,len),type)
-      res=.C("download",empData,getTypeNum(type),ad)
+      if(type=="char"){
+        empData=paste0(rep(" ",len),collapse = "")
+        res=.C("download",empData,ad)
+        return(matrix(as.numeric(charToRaw(res[[1]])),dim[1],dim[2]))
+      }else{
+        empData=convertDataType(rep(0,len),type)
+        res=.C("download",empData,ad)
+        
+        return(matrix(res[[1]],dim[1],dim[2]))
+      }
       
-      matrix(res[[1]],dim[1],dim[2])
     },
     getAddress=function(ind){
       return(e$addressList[[as.character(ind)]])
     },
-    releaseAddress=function(ind){
+    releaseAddress=function(obj,ind){
       if(e$unload)
         return()
       #message(ind)
@@ -102,9 +112,11 @@
         return()
       }
       .C("clear",e$addressList[[as.character(ind)]])
+      
       e$memoryUsage=e$memoryUsage-e$addressSizeList[[as.character(ind)]]
       del(as.character(ind),e$addressList)
       del(as.character(ind),e$addressSizeList)
+      
     },
     releaseAll=function(){
       if(length(e$addressList)!=0)
@@ -112,6 +124,7 @@
       
       for(i in keys(e$addressList)){
         .C("clear",e$addressList[[i]])
+        #message(i)
       }
       clear(e$addressList)
       clear(e$addressSizeList)

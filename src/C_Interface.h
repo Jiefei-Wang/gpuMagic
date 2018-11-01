@@ -19,7 +19,7 @@ extern "C" LibExport
 void createKernel(char** signature,char** kernel,  char** code);
 extern "C" LibExport
 void loadParameter(char** signature, char** kernel, void** data_address, int *parm_index);
-
+extern "C" LibExport
 void loadSharedParameter(char** signature, char** kernel, int* size, int *parm_index);
 extern "C" LibExport
 void launchKernel(char** signature, char** kernel, int* blockSize, int* threadSize);
@@ -33,9 +33,12 @@ void getDeviceInfo(int * i);
 extern "C" LibExport
 void getDeviceDetail(int * i);
 extern "C" LibExport
-void selectDevice(int * i);
+void setDevice(int * i);
 extern "C" LibExport
 void getCurDevice();
+
+extern "C" LibExport
+void getDeviceSharedMem(int* id, double* mem);
 
 extern "C" LibExport
 void debug(bool* test, int* length);

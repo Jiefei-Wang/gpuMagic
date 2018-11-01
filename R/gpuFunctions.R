@@ -6,17 +6,18 @@ checkTypeSupport<-function(type){
 getTypeNum<-function(type){
   switch(
     type,
-    char=1,
-    half=2,
-    float=3,
-    double=4,
-    int=5,
-    long=6,
-    uint=7,
-    ulong=8,
+    char=1L,
+    half=2L,
+    float=3L,
+    double=4L,
+    int=5L,
+    long=6L,
+    uint=7L,
+    ulong=8L,
     stop("invalid type: ",type)
   )
 }
+
 
 getTypeCXXStr<-function(type){
   switch(
@@ -36,14 +37,14 @@ getTypeCXXStr<-function(type){
 getTypeSize<-function(type){
   switch(
     type,
-    char=1,
-    half=2,
-    float=4,
-    double=8,
-    int=4,
-    long=8,
-    uint=4,
-    ulong=8,
+    char=1L,
+    half=2L,
+    float=4L,
+    double=8L,
+    int=4L,
+    long=8L,
+    uint=4L,
+    ulong=8L,
     stop("invalid type: ",type)
   )
 }
@@ -59,10 +60,12 @@ convertDataType<-function(data,type){
   switch(
     type,
     char=rawToChar(as.raw(data)),
-    integer=as.integer(data),
+    int=as.integer(data),
     as.double(data)
   )
 }
+
+
 
 #===========================Obtain device infomation==============
 #' The function is used to obtain all the opencl-enable devices
@@ -102,7 +105,14 @@ setDevice=function(i){
 
 getCurDeviceIndex<-function(){
   id=-1L
-  .C("getCurDeviceIndex",id)
+  res=.C("getCurDeviceIndex",id)
+  id=res[[1]]
+  if(id==-1) 
+    setDevice(0)
+  else 
+    return(id)
+  res=.C("getCurDeviceIndex",id)
+  id=res[[1]]
   if(id==-1) stop("An error has occured during the device initialization.")
   id
 }

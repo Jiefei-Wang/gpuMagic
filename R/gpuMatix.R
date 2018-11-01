@@ -6,10 +6,13 @@
 #' @export
 gpuMatrix<-function(data,type="auto"){
   data=as.matrix(data)
-   if(type=="auto")
-     type=getDataType(data)
+  
+  if(type=="auto"){
+    type=gpuMagic.option$getDefaultType()
+  }
    
   checkTypeSupport(type)
+  #data=convertDataType(data,type)
   ad=gpuRefAddress(data,type)
   obj=.gpuMatrix(data=data,type=type,isReady=TRUE,gpuAddress=ad)
   
@@ -52,6 +55,7 @@ setMethod(
   definition = function(obj){
     obj@gpuAddress$upload(.data(obj),.type(obj))
     .readyStatus(obj)=TRUE
+    obj@gpuAddress$setReadyStatus(TRUE)
     obj
   }
 )
@@ -66,6 +70,7 @@ setMethod(
   definition = function(obj){
     obj@data=obj@gpuAddress$download()
     .readyStatus(obj)=TRUE
+    obj@gpuAddress$setReadyStatus(TRUE)
     obj
   }
 )
@@ -83,9 +88,9 @@ setMethod(
     }
     if(!obj@gpuAddress$getReadyStatus()){
       obj=download(obj)
-      obj@gpuAddress$setReadyStatus(TRUE)
       return(obj)
     }
+    return(obj)
   }
 )
 
@@ -128,7 +133,7 @@ as.vector.gpuMatrix<-function(obj,...){
 setMethod("[",
           signature(x = "gpuMatrix", i = "ANY", j = "ANY", drop="missing"),
           function(x, i, j, drop) {
-            message(list(sys = sys.call(), match = match.call()))
+            #message(list(sys = sys.call(), match = match.call()))
             if(missing(i)&&missing(j))
               return(.data(x))
             if(missing(i))
@@ -141,7 +146,7 @@ setMethod("[",
 setMethod("[<-",
           signature(x = "gpuMatrix", i = "ANY", j = "ANY", value = "numeric"),
           function(x, i, j, value) {
-            message(list(sys = sys.call(), match = match.call()))
+            #message(list(sys = sys.call(), match = match.call()))
             if(missing(i)&&missing(j))
               .data(x)=value
             else{

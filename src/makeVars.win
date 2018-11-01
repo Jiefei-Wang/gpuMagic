@@ -8,6 +8,5 @@ PKG_LIBS=  -L${CUDA_LIB} -lOpenCL
 PKG_CPPFLAGS =  -I${R_HOME}/include -I${CUDA_INC}
 
 ### Define objects
-OBJECTS =  kernelManager.o Source.o openArray.o Tools.o
 
 #$(warning $(CXX))

@@ -1,13 +1,15 @@
-AUTO3 add_element(AUTO1 *A, AUTO2 *B){
+double add_element(global double *A,global double *B){
   return *A+*B;
 }
 
-void vector_add(AUTO1 *A,  AUTO2 *B,  AUTO3 *C) {
+kernel void vector_add(global  double *A,  global  double *B,  global  double *C) {
 // Get the index of the current element to be processed
 int i = get_global_id(0);
 
+
 // Do the operation
-C[i] =add_element(A+i,B+i);
+//C[i] =add_element(A+i,B+i);
+C[i]=A[i]+B[i];
 }
 
 

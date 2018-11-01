@@ -172,7 +172,6 @@ cl_program kernelManager::loadProgram(string signature, string code)
 		return NULL;
 	}
 	error = clBuildProgram(program, 1, &device_id, 0, 0, 0);
-
 	switch (error) {
 	case CL_SUCCESS:
 		break;
@@ -180,14 +179,13 @@ cl_program kernelManager::loadProgram(string signature, string code)
 		size_t strlen = 0;
 		// Get the log
 		clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, 0, NULL, &strlen);
-		char *buffer = (char*)malloc(sizeof(char));
+		char *buffer = (char*)malloc(strlen*sizeof(char));
 		clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, strlen, buffer, NULL);
-
 		// Print the log
 		string errorInfo = string("Fail to build program: ") + to_string(error) + "\n" + string(buffer);
 		errorHandle(errorInfo);
 		free(buffer);
-		break;
+		
 	}
 	default: {
 		string errorInfo = string("Fail to build program: ") + to_string(error) + "-" + string(getErrorString(error));

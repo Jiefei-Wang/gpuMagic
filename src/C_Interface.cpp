@@ -7,7 +7,6 @@ using namespace std;
 
 
 
-extern "C" LibExport
 void getCurDeviceIndex(int * id)
 {
 	*id = kernelManager::getDeviceIndex();
@@ -27,17 +26,17 @@ void upload(void* data, double * dim, int* type, void** address) {
 	};
 	*address = (void*)matrix;
 }
-extern "C" LibExport
 void download(void* data, void** address) {
 	openArray* matrix = *(openArray**)address;
 	dtype type = matrix->getDataType();
 	//These two type can be directly send to R
-	if (type == dtype::f64 || type == dtype::i32) {
+	/*if (type == dtype::f64 || type == dtype::i32) {
 		matrix->getHostData(data);
 		return;
-	}
+	}*/
 	//These two type should be transfer to an R-compatible type
 	void* host_data = matrix->getHostData();
+	//print_partial_matrix("test:", (cl_int*)host_data, matrix->dims(0), matrix->dims(1));
 	gpuToR(data, host_data, type, matrix->dims(0)*matrix->dims(1));
 	matrix->releaseHostData();
 }
@@ -70,6 +69,7 @@ void loadParameter(char** signature, char** kernel, void** data_address, int *pa
 void loadSharedParameter(char** signature, char** kernel, int* size, int *parm_index) {
 	cl_kernel dev_kernel = kernelManager::getKernel(std::string(*signature), std::string(*kernel));
 	cl_int error = clSetKernelArg(dev_kernel, *parm_index, *size, NULL);
+	//message(to_string(*size));
 	if (error != CL_SUCCESS)
 		errorHandle(string("kernel shared memory creating failure, error info:") + string(getErrorString(error)));
 }
@@ -102,13 +102,20 @@ void getDeviceDetail(int * i) {
 	kernelManager::getDeviceFullInfo(*i);
 }
 
-void selectDevice(int * i) {
+void setDevice(int * i) {
 	kernelManager::selectDevice(*i);
 }
 
 
 void getCurDevice() {
 	kernelManager::getCurDevice();
+}
+
+void getDeviceSharedMem(int * id, double * mem)
+{
+	cl_ulong size;
+	clGetDeviceInfo(kernelManager::getDevice(*id), CL_DEVICE_LOCAL_MEM_SIZE, sizeof(cl_ulong), &size, 0);
+	*mem = size;
 }
 
 

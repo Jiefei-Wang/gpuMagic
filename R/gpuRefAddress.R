@@ -1,7 +1,7 @@
 #' @include pkgFunc.R
 #======================GPU address S5 class====================
 
-gpuRefAddress=setRefClass("gpuRefAddress", fields = c("address","dim","type","device","isReady","isReleased"))
+gpuRefAddress=setRefClass("gpuRefAddress", fields = c("address","dim","type","device","isReady"))
 gpuRefAddress$methods(
   initialize = function(data,type) {
     data=as.matrix(data)
@@ -9,8 +9,7 @@ gpuRefAddress$methods(
     .self$type=type
     .self$device=getCurDeviceIndex()
     .self$isReady=TRUE
-    .self$isReleased=FALSE
-    .self$address=.gpuResourcesManager$upload(self,data,type)
+    .self$address=.gpuResourcesManager$upload(.self,data,type)
   }
 )
 gpuRefAddress$methods(
@@ -25,27 +24,7 @@ gpuRefAddress$methods(
 )
 gpuRefAddress$methods(
   getAddress = function() {
-    if(isReleased) stop("The data has been released!")
     .gpuResourcesManager$getAddress(.self$address)
-  }
-)
-gpuRefAddress$methods(
-  finalize = function() {
-    if(!isReleased){
-      .gpuResourcesManager$releaseAddress(.self$address)
-      isReleased=TRUE
-    }
-  }
-)
-gpuRefAddress$methods(
-  upload = function(data,type) {
-    .gpuResourcesManager$releaseAddress(.self$address)
-    .self$initialize(data,type)
-  }
-)
-gpuRefAddress$methods(
-  download = function() {
-    .gpuResourcesManager$download(.self$address,.self$dim,.self$type)
   }
 )
 gpuRefAddress$methods(
@@ -58,11 +37,24 @@ gpuRefAddress$methods(
     .self$isReady=status
   }
 )
+
 gpuRefAddress$methods(
-  getReleaseStatus = function() {
-    .self$isReleased
+  finalize = function() {
+      .gpuResourcesManager$releaseAddress(.self,.self$address)
   }
 )
+gpuRefAddress$methods(
+  upload = function(data,type) {
+    .gpuResourcesManager$releaseAddress(.self,.self$address)
+    .self$initialize(data,type)
+  }
+)
+gpuRefAddress$methods(
+  download = function() {
+    .gpuResourcesManager$download(.self$address,.self$dim,.self$type)
+  }
+)
+
 gpuRefAddress$methods(
   switchDevice = function() {
     data=.gpuResourcesManager$download(.self$address,.self$dim,.self$type)

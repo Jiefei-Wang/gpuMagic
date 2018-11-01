@@ -59,7 +59,6 @@ DEBUG=TRUE
 
 T_scale="scale"
 T_matrix="matrix"
-GPUVar=list()
 GPUVar<-local({
   GPUVar_env=new.env()
   GPUVar_env$gpu_tmp_var="gpuMagic_tmp"
@@ -83,7 +82,6 @@ GPUVar<-local({
   #parameters
   GPUVar_env$functionCount=0
   GPUVar_env$functionName="gpu_kernel"
-  GPUVar_env$default_tmp_type=T_F32
   GPUVar_env$default_index_type="unsigned int"
   
   GPUVar_env$gpu_loop_ind="gpu_loop_ind"

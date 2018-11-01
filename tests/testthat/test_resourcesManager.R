@@ -1,10 +1,6 @@
-test_that("type conversion",{
-  for(i in 1:5){
-    expect_equal(getTypeNum(getTypeStr(i)),i)
-  }
-})
 
 test_that("Kernel run",{
+  skip("Kernel run")
   for(i in 1:5){
     mydata1=1:10
     dev_data1=gpuMatrix(mydata1,i)
