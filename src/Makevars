@@ -7,4 +7,4 @@ CUDA_LIB = "${CUDA_PATH}/lib/x64"
 PKG_LIBS=  -L${CUDA_LIB} -lOpenCL
 PKG_CPPFLAGS =  -I${R_HOME}/include -I${CUDA_INC}
 
-OBJECTS =  kernelManager.o Source.o openArray.o Tools.o
+#OBJECTS =  kernelManager.o Source.o openArray.o Tools.o

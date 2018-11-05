@@ -1,3 +1,18 @@
+/* File description: The NMF GPU implementation, it decompose
+ * the matrix V into W and H, the formula for the decomposition is
+ * H=H*(t(W)%*%V)/(t(W)%*%W%*%H)
+ * W=W*(V%*%t(H))/(W%*%H%*%t(H))
+ * 
+ * Author: Jiefei Wang
+ * Date: 11/01/18
+ * Functions:
+ * MatMul1: Iteration for H matrix
+ * MatMul2: Iteration for W matrix
+ * 
+ */
+
+
+
 #define AUTO float
 #define gATUO global float
 #define lATUO local float
@@ -53,7 +68,8 @@ lATUO * tmp_r, global int* size,gATUO* debug){
         //printf("%d,",tmp_col);
         tmp_element=0;
         for(int j=0;j<length;j++){
-          tmp_element=tmp_element+w_local[j]*V[ind(j+startW,tmp_col,n)];
+          //tmp_element=tmp_element+w_local[j]*V[ind(j+startW,tmp_col,n)];
+          tmp_element=mad(w_local[j],V[ind(j+startW,tmp_col,n)],tmp_element);
         }
         tmp_m1[tmp_col]=tmp_m1[tmp_col]+tmp_element;
       }
@@ -62,7 +78,8 @@ lATUO * tmp_r, global int* size,gATUO* debug){
         //printf("%d,",tmp_col);
         tmp_element=0;
         for(int j=0;j<length;j++){
-          tmp_element=tmp_element+w_local[j]*W[ind(j+startW,tmp_col,n)];
+          //tmp_element=tmp_element+w_local[j]*W[ind(j+startW,tmp_col,n)];
+          tmp_element=mad(w_local[j],W[ind(j+startW,tmp_col,n)],tmp_element);
         }
         tmp_r[tmp_col]=tmp_r[tmp_col]+tmp_element;
       }
@@ -123,8 +140,8 @@ kernel void MatMul2(gATUO* W,gATUO *V, gATUO* H,
     //printf("%d,",tmp_col);
     tmp_element=0;
     for(int j=0;j<m;j++){
-      tmp_element=tmp_element+H[ind(tmp_row,j,r)]*h_local[j];
-      //tmp_element=mad(H[ind(tmp_row,j,r)],h_local[j],tmp_element);
+      //tmp_element=tmp_element+H[ind(tmp_row,j,r)]*h_local[j];
+      tmp_element=mad(H[ind(tmp_row,j,r)],h_local[j],tmp_element);
     }
     tmp_r[tmp_row]=tmp_element;
   }
@@ -137,15 +154,15 @@ kernel void MatMul2(gATUO* W,gATUO *V, gATUO* H,
     tmp_element = 0;
     //Compute tmp_m1=V%*%t(H)
     for (int j = 0; j<m; j++) {
-      tmp_element = tmp_element + V[ind(tmp_row, j, n)] * h_local[j];
-      //tmp_element=mad(V[ind(tmp_row, j, n)],h_local[j],tmp_element);
+      //tmp_element = tmp_element + V[ind(tmp_row, j, n)] * h_local[j];
+      tmp_element=mad(V[ind(tmp_row, j, n)],h_local[j],tmp_element);
     }
     tmp_m1 = tmp_element;
     tmp_element = 0;
     //Compute tmp_m1=tmp_m1/(W%*%tmp_r)
     for (int j = 0; j<r; j++) {
-      tmp_element = tmp_element + W[ind(tmp_row, j, n)] * tmp_r[j];
-      //tmp_element=mad(W[ind(tmp_row, j, n)],tmp_r[j],tmp_element);
+      //tmp_element = tmp_element + W[ind(tmp_row, j, n)] * tmp_r[j];
+      tmp_element=mad(W[ind(tmp_row, j, n)],tmp_r[j],tmp_element);
     }
     //Compute tmp_m1=W%*%tmp_m1
     tmp_m1 = tmp_m1 / tmp_element*W[ind(tmp_row, colId, n)];

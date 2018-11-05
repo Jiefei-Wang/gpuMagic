@@ -1,8 +1,9 @@
 
 library(NMF)
+library(tictoc)
 
 
-gpuNMF<-function(V,W,H,iterNum=2000){
+gpuNMF<-function(V,W,H,iterNum=2000,threadNum=64){
 n=nrow(V)
 m=ncol(V)
 r=ncol(W)
@@ -27,9 +28,9 @@ size_dev=gpuMatrix(shared_n,"int")
 debug_dev=gpuMatrix(debug,dtype)
 
 opt=kernel.getOption()
-threadNum=128
 groupNum=r
 opt$localThreadNum=threadNum
+opt$flag="-cl-fast-relaxed-math"
 globalThreadNum=groupNum*threadNum
 
 file <- 'inst/script/nmfKernel.cpp'
@@ -40,9 +41,9 @@ parms_H=list(W_dev,V_dev,H_dev,dim_dev,w_local,tmp_m1,
 parms_W=list(W_dev,V_dev,H_dev,dim_dev,h_local,
              tmp_r,debug_dev)
 
-for(i in 1:iterNum)
+for(i in 1:iterNum){
   gpuNMF_iter(parms_H,parms_W,code,kernel,globalThreadNum,opt)
-
+}
 
 H_dev=download(H_dev)
 res_H=as.matrix(H_dev)
@@ -68,12 +69,14 @@ fit_nmf<-function(data,rank,seed="nndsvd",iter=1){
   fittedRes=fit(res)
   W=fittedRes@W
   H=fittedRes@H
-  return(list(W=W,H=H,V=data))
+  return(list(res=res,W=W,H=H,V=data))
 }
 
-n=20000
-r=50
-m=200
+
+
+n=23863
+r=20
+m=183
 
 
 W=matrix(runif(r*n),n,r)*10
@@ -82,7 +85,7 @@ V=W%*%H+matrix(runif(n*m),n,m)
 
 seed=fit_nmf(V,r)
 tic()
-res=gpuNMF(V,seed$W,seed$H,2000)
+res=gpuNMF(V,seed$W,seed$H,2000,threadNum = 128)
 toc()
 
 range(V-seed$W%*%seed$H)
@@ -95,5 +98,8 @@ res2=fit_nmf(V,r,iter=2000)
 toc()
 
 range(V-res2$W%*%res2$H)
+
+
+res3=nmf(V,r)
 
 

@@ -1,4 +1,8 @@
 #' @include pkgFunc.R
+#Functions:
+#1.rename the loop variable
+#2.Profile the function argument and loop variable
+
 RProfile1<-function(codeMetaInfo2){
   profileMeta1=codeMetaInfo2
   

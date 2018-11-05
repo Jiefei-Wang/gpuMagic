@@ -52,7 +52,8 @@ void hasKernel(char** signature, char** kernel, bool* res) {
 
 
 
-void createKernel(char** signature,char** kernel,  char** code) {
+void createKernel(char** signature,char** kernel,  char** code,char** flag) {
+	kernelManager::compiler_flag = string(*flag);
 	//message(std::string(*code));
 	kernelManager::createKernel(std::string(*signature), std::string(*kernel), std::string(*code));
 }

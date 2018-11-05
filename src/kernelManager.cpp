@@ -5,6 +5,7 @@ int kernelManager::deviceIndex = -1;
 cl_context kernelManager::context = nullptr;
 cl_device_id kernelManager::device_id = nullptr;
 cl_command_queue kernelManager::command_queue = nullptr;
+string kernelManager::compiler_flag;
 
 map< int, cl_context> kernelManager::contextTable;
 map< int, cl_device_id> kernelManager::deviceTable;
@@ -171,7 +172,7 @@ cl_program kernelManager::loadProgram(string signature, string code)
 		errorHandle(errorInfo.c_str());
 		return NULL;
 	}
-	error = clBuildProgram(program, 1, &device_id, 0, 0, 0);
+	error = clBuildProgram(program, 1, &device_id, compiler_flag.c_str(), 0, 0);
 	switch (error) {
 	case CL_SUCCESS:
 		break;

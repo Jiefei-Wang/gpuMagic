@@ -82,7 +82,7 @@ GPUVar<-local({
   #parameters
   GPUVar_env$functionCount=0
   GPUVar_env$functionName="gpu_kernel"
-  GPUVar_env$default_index_type="unsigned int"
+  GPUVar_env$default_index_type="uint"
   
   GPUVar_env$gpu_loop_ind="gpu_loop_ind"
   GPUVar_env$private_mem="private_mem_preserved"

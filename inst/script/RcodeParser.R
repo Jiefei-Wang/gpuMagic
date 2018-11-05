@@ -122,15 +122,18 @@ test3<-function(ind,A,B){
   C=0
   for(k in 1:ncol(A)){
     C=C+A[i,k]*B[k,j]
+    break
   }
+  A
+  
   return(C)
 }
 n=10
 A=runif(n)
 B=runif(n)
-parms=list(colInd=1:(n*n),A=A,k=10)
+parms=list(ind=1:(n*n),A=A,B=10)
 codeMetaInfo=list()
-codeMetaInfo$Exp=funcToExp(findMaxInd)$code
+codeMetaInfo$Exp=funcToExp(test3)$code
 codeMetaInfo$parms=parms
 codeMetaInfo$staticParms=NULL
 codeMetaInfo0=codePreprocessing(codeMetaInfo)

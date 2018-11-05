@@ -16,7 +16,7 @@ extern "C" LibExport
 void hasKernel(char** signature, char** kernel, bool* res);
 
 extern "C" LibExport
-void createKernel(char** signature,char** kernel,  char** code);
+void createKernel(char** signature,char** kernel,  char** code, char** flag);
 extern "C" LibExport
 void loadParameter(char** signature, char** kernel, void** data_address, int *parm_index);
 extern "C" LibExport

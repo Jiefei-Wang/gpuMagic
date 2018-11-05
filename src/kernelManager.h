@@ -12,6 +12,8 @@ using namespace std;
 
 class kernelManager {
 public:
+	static string compiler_flag;
+
 	static int deviceIndex;
 	static cl_context context;
 	static cl_device_id device_id;

@@ -86,7 +86,7 @@ parserFrame<-function(parserFunc,checkFunc,updateFunc,codeMetaInfo,level=c("top"
   curCodeMetaInfo$Exp=code
   return(curCodeMetaInfo)
 }
-
+#inside the for and if loop
 ProcessCodeChunk<-function(parserFunc,checkFunc,updateFunc,codeMetaInfo,curLevel,parsedExp,code,i,ExpChunk){
   curMetaInfo=codeMetaInfo
   curMetaInfo$Exp=ExpChunk
@@ -107,6 +107,19 @@ ProcessCodeChunk<-function(parserFunc,checkFunc,updateFunc,codeMetaInfo,curLevel
   
   list(codeMetaInfo=codeMetaInfo,parsedExp=parsedExp,code=code,ExpChunk=ExpChunk)
 }
+#For a single line code
+#######parserFunc########
+#parserFunc should at least return a list with Exp as the element, the Exp is the current expression
+#Optional return value:
+#extCode: The expression that next to the Exp
+#renameList: renaming a variable, the framework is responsible to rename the variable in all the expressions 
+#next to the current one, the current one shoul be manually renamed.
+#######updateFunc########
+#updateFunc can be used to update anything in the codeMetaInfo, parsedExp or code
+#Optional return value:
+#codeMetaInfo: The description object to describe the property of code
+#parsedExp: The expression that is parsing, usually not change
+#code: The parsed expression
 ProcessCodeSingle<-function(parserFunc,updateFunc,codeMetaInfo,curLevel,parsedExp,code,i,Exp){
   res=parserFunc(curLevel,codeMetaInfo,Exp)
   if("renameList" %in% names(res)){
@@ -116,8 +129,6 @@ ProcessCodeSingle<-function(parserFunc,updateFunc,codeMetaInfo,curLevel,parsedEx
   Exp=res$Exp
   code=c(code,res$extCode)
   res1=updateFunc(type="normal",curLevel,codeMetaInfo,parsedExp,code,i,res)
-  codeMetaInfo=res1$codeMetaInfo
-  parsedExp=res1$parsedExp
   if("codeMetaInfo" %in% names(res1))
     codeMetaInfo=res1$codeMetaInfo
   if("parsedExp" %in% names(res1))
@@ -128,7 +139,6 @@ ProcessCodeSingle<-function(parserFunc,updateFunc,codeMetaInfo,curLevel,parsedEx
   list(codeMetaInfo=codeMetaInfo,parsedExp=parsedExp,code=code,Exp=Exp)
 }
 renamevariable<-function(parsedExp,renameList,i){
-
  for(i in 1:nrow(renameList))
   parsedExp=renameVarInCode(parsedExp,i,renameList[i,1],renameList[i,2])
   parsedExp

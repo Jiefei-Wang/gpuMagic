@@ -7,7 +7,7 @@
   localThreadNum=.options$localThreadNum
   signature=.options$signature
   verbose=.options$verbose
-  
+  flag=.options$flag
   #message(globalThreadNum)
   codePack=readCode(file,src)
   src=codePack$src
@@ -18,7 +18,7 @@
   #res=parseProgram(codePack,kernel,parms,autoType)
   #src=res$src
   #sig=paste0(res$sig,signature,collapse = "")
-  sig=paste0(codePack$timeSig,signature)
+  sig=paste0(flag,codePack$timeSig,signature)
   
   device=getCurDeviceIndex()
   for(i in seq_len(length(parms))){
@@ -36,7 +36,7 @@
       message("The given kernel does not exist and will be created")
     #src=gsub("([^a-zA-Z0-9_])(AUTO)([0-9]+[^a-zA-Z0-9_])","\\1double\\3",src)
     #message(src)
-    .C("createKernel",sig,kernel,src)
+    .C("createKernel",sig,kernel,src,flag)
   }
   share_memory=0
   for(i in seq_len(length(parms))){
@@ -83,7 +83,7 @@
 
 kernel.getOption<-function(){
   list(autoType=TRUE,localThreadNum="Auto",
-       signature="",verbose=FALSE)
+       signature="",verbose=FALSE,flag="")
 }
 
 kernel.getSharedMem<-function(length,type){
