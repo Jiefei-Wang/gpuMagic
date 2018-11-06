@@ -111,7 +111,7 @@ ProcessCodeChunk<-function(parserFunc,checkFunc,updateFunc,codeMetaInfo,curLevel
 #######parserFunc########
 #parserFunc should at least return a list with Exp as the element, the Exp is the current expression
 #Optional return value:
-#extCode: The expression that next to the Exp
+#extCode: The expressions that will be added before the current expression
 #renameList: renaming a variable, the framework is responsible to rename the variable in all the expressions 
 #next to the current one, the current one shoul be manually renamed.
 #######updateFunc########

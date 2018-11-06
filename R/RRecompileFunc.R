@@ -16,7 +16,9 @@ recompile_matrix<-function(varInfo,curExp){
   else
     colNum=deparse(rightExp[[ncol_ind]])
   data_value=deparse(rightExp[[data_ind]])
-  curCode=paste0(leftExp_char,"=gMatrix(nrow=",rowNum,",ncol=",colNum,",precision=T_DEFAULT_float,p_static=\"N\",t_static=\"N\",loc=\"global\")")
+  curCode=paste0(leftExp_char,"=gMatrix(nrow=",rowNum,",ncol=",colNum,
+                 ",precision=\"",gpuMagic.option$getDefaultFloat()
+                 ,"\",loc=\"global\")")
   curCode=c(curCode,paste0("for(i in 1:",rowNum,"){"))
   curCode=c(curCode,paste0("for(j in 1:",colNum,"){"))
   curCode=c(curCode,paste0(leftExp_char,"[i,j]=",data_value))

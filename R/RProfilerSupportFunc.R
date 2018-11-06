@@ -7,6 +7,7 @@ profileVar<-function(parms,staticParms){
   varInfo$profile=getEmpyTable(0)
   varInfo$requiredVar=c()
   varInfo$varTable=hash()
+  varInfo$varVersion=hash()
   varInfo$profileTblName="profile"
   if(length(parms)==0) return(varInfo)
   varName=names(parms)
@@ -48,15 +49,11 @@ profileVar<-function(parms,staticParms){
       info$compileSize=TRUE
       info$require=TRUE
     }
-    varInfo$profile=rbind(varInfo$profile,info)
+    varInfo=addVarInfo(varInfo,info)
     varInfo$requiredVar=c(varInfo$requiredVar,info$var)
-    varInfo$varTable[[info$var]]=nrow(varInfo$profile)
   }
   varInfo
 }
-
-
-#==================================Profiler 2==========================
 renameLoopVar<-function(parsedExp,ind=0){
   for(i in 1:length(parsedExp)){
     curExp=parsedExp[[i]]
@@ -103,8 +100,7 @@ profileLoopVar<-function(varInfo,parsedExp){
       ExpProfile=getEmpyTable(1,type = T_scale)
       ExpProfile$var=var_char
       ExpProfile$initialization=FALSE
-      varInfo$profile=rbind(varInfo$profile,ExpProfile)
-      varInfo$varTable[[var_char]]=nrow(varInfo$profile)
+      varInfo=addVarInfo(varInfo,ExpProfile)
       loopBody=curExp[[4]]
       varInfo=profileLoopVar(varInfo,loopBody)
     }
@@ -117,6 +113,9 @@ profileLoopVar<-function(varInfo,parsedExp){
   }
   return(varInfo)
 }
+
+#==================================Profiler 2==========================
+
 #Find the function parameters
 matchFunArg<-function(fun,Exp){
   funArg=lapply(formals(fun),as.character)
@@ -157,30 +156,41 @@ getExpInfo<-function(varInfo,Exp){
   return(ExpInfo)
 }
 #Get the variable profile
-getVarInfo<-function(varInfo,target){
-  if(is.character(target))
-    var_char=target
+getVarInfo<-function(varInfo,varName,version="auto"){
+  if(is.character(varName))
+    var_char=varName
   else
-    var_char=deparse(target)
+    var_char=deparse(varName)
+  
   #Check if the symbol does not exist in the table
-  if(!has.key(var_char,varInfo$varTable))
+  if(!has.key(var_char,varInfo$varVersion))
     stop(paste0("The given variable is not found: ",var_char))
+  if(version=="auto")
+    version=as.numeric(varInfo$varVersion[[var_char]])
+  var_char=paste0(var_char,"+",version)
   var_ind=varInfo$varTable[[var_char]]
   var_data=varInfo$profile[var_ind,,drop=F]
   var_data
 }
 setVarInfo<-function(varInfo,newInfo){
-  var_char=newInfo$var
+  var_char=paste0(newInfo$var,"+",newInfo$version)
   #Check if the symbol does not exist in the table
   if(!has.key(var_char,varInfo$varTable))
     stop(paste0("The given variable is not found: ",var_char))
   var_ind=varInfo$varTable[[var_char]]
   varInfo$profile[var_ind,]=newInfo
+  varInfo
 }
 addVarInfo<-function(varInfo,newInfo){
-  var_char=newInfo$var
+  version=as.numeric(newInfo$version)
+  var_char=paste0(newInfo$var,"+",version)
+  if(has.key(var_char,varInfo$varTable)){
+    version=version+1
+    var_char=paste0(newInfo$var,"+",version)
+  }
   varInfo$profile=rbind(varInfo$profile,newInfo)
   varInfo$varTable[[var_char]]=nrow(varInfo$profile)
+  varInfo$varVersion[[newInfo$var]]=version
   varInfo
 }
 
@@ -211,7 +221,7 @@ checkVarType<-function(leftInfo,rightInfo){
 #Get an empty profile table
 getEmpyTable<-function(rowNum=0,type=""){
   tlbName=c("var","address","dataType","precisionType", "size1","size2","value","compileSize",
-            "compileData","require","initialization","global_share","constant","location")
+            "compileData","require","initialization","global_share","constant","location","version")
   boolVar=c("compileSize","compileData","require","initialization","global_share","constant")
   tbl=as.data.frame(matrix("NA",ncol = length(tlbName), nrow = rowNum))
   names(tbl)=tlbName
@@ -223,12 +233,14 @@ getEmpyTable<-function(rowNum=0,type=""){
     tbl$initialization=TRUE
     tbl$global_share=FALSE
     tbl$constant=FALSE
+    tbl$version="1"
     tbl$location="global"
     if(type==T_scale){
       tbl$dataType=T_scale
       tbl$compileSize=TRUE
       tbl$size1=1
       tbl$size2=1
+      tbl$location="private"
     }
     if(type==T_matrix){
       tbl$dataType=T_matrix
@@ -268,3 +280,7 @@ typeInherit<-function(type1,type2){
   }
 }
 
+is.preservedFunc<-function(func){
+  func=as.character(func)
+  length(grep(GPUVar$preservedFuncPrefix,func,fixed = T))!=0
+}

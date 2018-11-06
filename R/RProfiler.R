@@ -16,10 +16,9 @@ RProfile1<-function(codeMetaInfo2){
   varInfo=profileVar(func_args,profileMeta1$staticParms)
   gpuIndex=getEmpyTable(1,type=T_scale)
   gpuIndex$var=GPUVar$gpu_global_id
-  gpuIndex$precisionType=T_I64
-  gpuIndex$initialization="N"
-  varInfo$profile=rbind(varInfo$profile,gpuIndex)
-  varInfo$varTable[[gpuIndex$var]]=nrow(varInfo$profile)
+  gpuIndex$precisionType=GPUVar$default_index_type
+  gpuIndex$initialization=FALSE
+  varInfo=addVarInfo(varInfo,gpuIndex)
   profileMeta1$varInfo=varInfo
   
   #Rename the loop var
@@ -40,8 +39,12 @@ RProfile1<-function(codeMetaInfo2){
 #1. Profile the variable type
 #2. rename the variable if the type does not match
 RProfile2<-function(profileMeta1){
-  if(DEBUG)
+  if(DEBUG){
     profileMeta1$varInfo$varTable=copy(profileMeta1$varInfo$varTable)
+    profileMeta1$varInfo$varVersion=copy(profileMeta1$varInfo$varVersion)
+  }
+  
+  
   
   profileMeta2=parserFrame(RProfile2_parserFunc,RProfile2_checkFunc,
                            RProfile2_updateFunc,profileMeta1)
@@ -61,7 +64,7 @@ RProfile2_parserFunc<-function(level,codeMetaInfo,curExp){
     rightExp=curExp[[3]]
     leftVar_char=deparse(leftExp)
     if(!is.call(leftExp)){
-      if(has.key(leftVar_char,varInfo$varTable)){
+      if(has.key(leftVar_char,varInfo$varVersion)){
         leftInfo=getVarInfo(varInfo,leftVar_char)
         rightInfo=getExpInfo(varInfo,rightExp)
         checkInfo=checkVarType(leftInfo,rightInfo)
@@ -70,8 +73,8 @@ RProfile2_parserFunc<-function(level,codeMetaInfo,curExp){
             stop("Type conversion inside the for or if body is not allowed, please assign the variable before it:\n:",
                  paste0("TraceBack:",paste0(level,collapse = "->"),"\n"),
                  deparse(curExp))
-          if(leftInfo$t_static=="Y")
-            stop("The left expression has a static type, changing the type of the left expression is not allowed:\n:",deparse(curExp))
+          if(leftInfo$constant=="Y")
+            stop("The left expression is a constant, changing the number of the left expression is not allowed:\n:",deparse(curExp))
           tmpMeta=getTmpVar(tmpMeta)
           newName=tmpMeta$varName
           curExp[[2]]=as.symbol(newName)
@@ -81,15 +84,19 @@ RProfile2_parserFunc<-function(level,codeMetaInfo,curExp){
           varInfo=addVarInfo(varInfo,leftInfo)
         }else{
           if(checkInfo$needResize){
-            resizeCode=paste0(leftVar_char,"=resize(",leftVar_char,",",checkInfo$size1,",",checkInfo$size2,")")
-            result$extCode=c(result$extCode,resizeCode)
+            versionBump=paste0(GPUVar$preservedFuncPrefix,"bump(",leftVar_char,")")
+            resizeCode=paste0(GPUVar$preservedFuncPrefix,"resize(",leftVar_char,",",checkInfo$size1,",",checkInfo$size2,")")
+            result$extCode=c(result$extCode,versionBump,resizeCode)
           }
-          if(checkInfo$needReassign||leftInfo$p_static!="Y"){
+          if(checkInfo$needRetype){
             leftInfo$precisionType=rightInfo$precisionType
           }
           leftInfo$value=rightInfo$value
           leftInfo$compileData=rightInfo$compileData
-          setVarInfo(varInfo,leftInfo)
+          if(checkInfo$needResize)
+            varInfo=addVarInfo(varInfo,leftInfo)
+          else
+            varInfo=setVarInfo(varInfo,leftInfo)
         }
       }else{
         rightInfo=getExpInfo(varInfo,rightExp)
@@ -113,9 +120,11 @@ RProfile2_parserFunc<-function(level,codeMetaInfo,curExp){
 #Exp="b*a[1,10]+c(4,43)[1]+10-1"
 #Simplify(Exp)
 
-
+#Filter the preserved functions
 RProfile2_checkFunc<-function(curExp){
-  #if(curExp[[1]]=="=")return(TRUE)
+  if(is.call(curExp)&&is.preservedFunc(curExp[[1]])){
+    return(FALSE)
+  }
   return(TRUE)
 }
 

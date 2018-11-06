@@ -61,23 +61,42 @@ T_scale="scale"
 T_matrix="matrix"
 GPUVar<-local({
   GPUVar_env=new.env()
-  GPUVar_env$gpu_tmp_var="gpuMagic_tmp"
+  #worker private data, loacted in global memory
+  GPUVar_env$gpu_worker_data="_gpu_w_data"
   #Per worker length
-  GPUVar_env$gpu_tmp_length_arg="gpu_tmp_length_arg"
-  GPUVar_env$gpu_matrix_size1="gpu_matrix_size1"
-  GPUVar_env$gpu_matrix_size2="gpu_matrix_size2"
-  GPUVar_env$gpu_return_variable="gpu_return_variable"
+  GPUVar_env$gpu_worker_data_size="_gpu_w_data_size"
+  GPUVar_env$gpu_worker_size1="_gpu_w_matrix_size1"
+  GPUVar_env$gpu_worker_size2="_gpu_w_matrix_size2"
+  #Per worker offsize
+  GPUVar_env$gpu_worker_matrix_offSize="_gpu_w_matrix_off"
+  
+  #worker shared data, located in global memory
+  GPUVar_env$gpu_global_shared_data="_gpu_s_data"
+  GPUVar_env$gpu_global_shared_size1="_gpu_matrix_s_size1"
+  GPUVar_env$gpu_global_shared_size2="_gpu_matrix_s_size2"
+  GPUVar_env$gpu_global_shared_offSize="_gpu_matrix_s_off"
+  
+  #worker private data, located in private memory
+  GPUVar_env$gpu_worker_private_data="_gpu_w_p_data"
+  GPUVar_env$gpu_worker_private_size1="_gpu_w_matrix_p_size1"
+  GPUVar_env$gpu_worker_private_size2="_gpu_w_matrix_p_size2"
+  GPUVar_env$gpu_worker_private_offSize="_gpu_w_matrix_p_off"
+  
+  
+  #return value
+  GPUVar_env$gpu_return_variable="_gpu_return_variable"
   #Per worker size
-  GPUVar_env$gpu_return_size="gpu_return_size"
+  GPUVar_env$gpu_return_size="_gpu_return_size"
+  
   #The vector that is looped on
-  GPUVar_env$gpu_worker_data="gpu_worker_data"
+  GPUVar_env$gpu_loop_data="_gpu_loop_data"
   
   
   #Deducted variable
-  GPUVar_env$gpu_tmp_matrix_offSize="gpu_matrix_offSize"
   GPUVar_env$gpu_global_id="gpu_global_id"
-  GPUVar_env$gpu_tmp_length="gpu_tmp_length"
-  GPUVar_env$gpu_worker_offset="gpu_worker_offset"
+  
+  #GPUVar_env$gpu_tmp_length="gpu_tmp_length"
+  #GPUVar_env$gpu_worker_offset="gpu_worker_offset"
   
   #parameters
   GPUVar_env$functionCount=0
@@ -85,7 +104,8 @@ GPUVar<-local({
   GPUVar_env$default_index_type="uint"
   
   GPUVar_env$gpu_loop_ind="gpu_loop_ind"
-  GPUVar_env$private_mem="private_mem_preserved"
+  
+  GPUVar_env$preservedFuncPrefix="compiler."
   return(GPUVar_env)
 })
 

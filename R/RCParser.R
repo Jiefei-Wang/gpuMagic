@@ -7,18 +7,37 @@ RCcompilerLevel1<-function(profileMeta3){
   profile=varInfo$profile
   
   #Preserved variables
-  gpu_tmp_var=GPUVar$gpu_tmp_var
-  gpu_tmp_matrix_offSize=GPUVar$gpu_tmp_matrix_offSize
-  gpu_tmp_length_arg=GPUVar$gpu_tmp_length_arg
+  #Global worker private data
+  gpu_worker_data=GPUVar$gpu_worker_data
+  #Per worker length
+  gpu_worker_data_size=GPUVar$gpu_worker_data_size
+  gpu_worker_size1=GPUVar$gpu_worker_size1
+  gpu_worker_size2=GPUVar$gpu_worker_size2
+  #Per worker offsize
+  gpu_worker_matrix_offSize=GPUVar$gpu_worker_matrix_offSize
+  
+  #worker shared data, located in global memory
+  gpu_global_shared_data=GPUVar$gpu_global_shared_data
+  gpu_global_shared_size1=GPUVar$gpu_global_shared_size1
+  gpu_global_shared_size2=GPUVar$gpu_global_shared_size2
+  gpu_global_shared_offSize=GPUVar$gpu_global_shared_offSize
+  
+  #worker private data, located in private memory
+  gpu_worker_private_data=GPUVar$gpu_worker_private_data
+  gpu_worker_private_size1=GPUVar$gpu_worker_private_size1
+  gpu_worker_private_size2=GPUVar$gpu_worker_private_size2
+  gpu_worker_private_offSize=GPUVar$gpu_worker_private_offSize
+  
+  
+  
   #Deducted variable
   gpu_global_id=GPUVar$gpu_global_id
-  gpu_tmp_length=GPUVar$gpu_tmp_length
   gpu_worker_offset=GPUVar$gpu_worker_offset
   
   gpu_code=c(
     paste0("unsigned long ",gpu_global_id,"=get_global_id(0);"),
-    paste0("unsigned long ", gpu_tmp_length,"=*",gpu_tmp_length_arg,";"),
-    paste0("unsigned long ", gpu_worker_offset,"=",gpu_global_id,"*",gpu_tmp_length,";")
+    paste0("unsigned long ", gpu_worker_data_size,"=*",gpu_worker_data_size,"_arg;"),
+    paste0("unsigned long ", gpu_worker_offset,"=",gpu_global_id,"*",gpu_worker_data_size,";")
   )
   gpu_matrix_num=-1
   
@@ -26,7 +45,7 @@ RCcompilerLevel1<-function(profileMeta3){
     curVar=profile[i,]
     if(curVar$dataType==T_matrix)
       gpu_matrix_num=gpu_matrix_num+1
-    if(curVar$all_static=="Y"){
+    if(curVar$constant=="Y"){
       next
     }
     if(curVar$require=="Y"){
