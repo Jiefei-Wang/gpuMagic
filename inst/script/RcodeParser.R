@@ -135,7 +135,7 @@ parms=list(ind=1:(n*n),A=A,B=10)
 codeMetaInfo=list()
 codeMetaInfo$Exp=funcToExp(test3)$code
 codeMetaInfo$parms=parms
-codeMetaInfo$staticParms=NULL
+codeMetaInfo$constantParms=NULL
 codeMetaInfo0=codePreprocessing(codeMetaInfo)
 codeMetaInfo1=RParser1(codeMetaInfo0)
 codeMetaInfo2=RParser2(codeMetaInfo1)
@@ -143,7 +143,7 @@ profileMeta1=RProfile1(codeMetaInfo2)
 profileMeta2=RProfile2(profileMeta1)
 profileMeta3=RRecompiler(profileMeta2)
 GPUExp1=RCcompilerLevel1(profileMeta3)
-
+GPUExp2=RCcompilerLevel2(GPUExp1)
 
 
 

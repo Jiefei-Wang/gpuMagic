@@ -10,10 +10,9 @@ RProfile1<-function(codeMetaInfo2){
   #The overall looped variable is redefined to distinguish the overall and individual looped variables.
   loopData=names(profileMeta1$parms)[1]
   func_args=profileMeta1$parms
-  names(func_args)[1]=GPUVar$gpu_worker_data
   
   #profile the function arguments and the preserved variable
-  varInfo=profileVar(func_args,profileMeta1$staticParms)
+  varInfo=profileVar(func_args,profileMeta1$constantParms)
   gpuIndex=getEmpyTable(1,type=T_scale)
   gpuIndex$var=GPUVar$gpu_global_id
   gpuIndex$precisionType=GPUVar$default_index_type
@@ -79,7 +78,7 @@ RProfile2_parserFunc<-function(level,codeMetaInfo,curExp){
           newName=tmpMeta$varName
           curExp[[2]]=as.symbol(newName)
           renameList=rbind(renameList,c(leftVar_char,newName))
-          leftInfo=rightInfo
+          leftInfo=copyVarInfo(rightInfo)
           leftInfo$var=newName
           varInfo=addVarInfo(varInfo,leftInfo)
         }else{
@@ -100,8 +99,10 @@ RProfile2_parserFunc<-function(level,codeMetaInfo,curExp){
         }
       }else{
         rightInfo=getExpInfo(varInfo,rightExp)
-        rightInfo$var=leftVar_char
-        varInfo=addVarInfo(varInfo,rightInfo)
+        leftInfo=copyVarInfo(rightInfo)
+        leftInfo$var=leftVar_char
+        leftInfo$version=1
+        varInfo=addVarInfo(varInfo,leftInfo)
       }
     }
   }

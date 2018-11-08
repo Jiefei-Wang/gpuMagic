@@ -61,11 +61,19 @@ C_ncol<-function(varInfo,Exp){
   return(R_getVarSize2(varInfo,Exp[[2]]))
 }
 C_subset<-function(varInfo,Exp){
-  if(length(Exp)==1)
-    return(deparse(Exp))
+  if(length(Exp)==1){
+    curVar=deparse(Exp)
+    if(is.numeric(Exp))
+      return(curVar)
+    curInfo=getVarInfo(varInfo,curVar,1)
+    if(curInfo$dataType==T_matrix)
+      return(paste0(curVar$address,"[0]"))
+    if(curInfo$dataType==T_scale)
+      return(paste0(curInfo$address))
+  }
   if(Exp[[1]]=="["){
     if(length(Exp)==3){
-      ExpChar=paste0(Exp[[2]],"[(unsigned int)",Exp[[3]],"-1]")
+      ExpChar=paste0(Exp[[2]],"[(unsigned int)",C_subset(varInfo,Exp[[3]]),"-1]")
       return(ExpChar)
     }
     if(length(Exp==4)){
@@ -74,14 +82,15 @@ C_subset<-function(varInfo,Exp){
       size1=R_getVarSize1(varInfo,Exp[[2]])
       if(Exp[[3]]==""||Exp[[4]]=="")
         stop("Compilation error, please contact the author: ",deparse(Exp))
-      ExpChar=paste0(Exp[[2]],"[(unsigned int)",Exp[[3]],"-1 +((unsigned int)",Exp[[4]],"-1)*",size1,"]")
+      ExpChar=paste0(Exp[[2]],"[(unsigned int)",C_subset(varInfo,Exp[[3]]),
+                     "-1 +((unsigned int)",C_subset(varInfo,Exp[[4]]),"-1)*",size1,"]")
       return(ExpChar)
     }
   }
   stop("The expression is not a subset function: ",deparse(Exp))
 }
 C_floor<-function(varInfo,Exp){
-  code=paste0("((int)",deparse(Exp[[2]]),")")
+  code=paste0("floor(",deparse(Exp[[2]]),")")
   return(code)
 }
 
@@ -93,15 +102,31 @@ C_NULL<-function(varInfo,Exp){
 
 
 
+R_getVarSize<-function(varInfo,var,ind){
+  curInfo=getVarInfo(varInfo,deparse(var),1)
+  var_ind=varInfo$matrixInd[[deparse(var)]]
+  loc=NA
+  if(curInfo$location=="global"&&!curInfo$shared)
+    loc="_global_private_"
+  if(curInfo$location=="global"&&curInfo$shared)
+    loc="_global_shared_"
+  if(curInfo$location=="local"&&!curInfo$shared)
+    loc="_local_private_"
+  if(curInfo$location=="local"&&curInfo$shared)
+    loc="_local_shared_"
+  if(is.na(loc))
+    stop("undetermined matrix property!")
+  
+    
+  size=paste0(GPUVar[[paste0("gpu",loc,"size",ind)]],"[",var_ind,"]")
+  
+  size
+}
 R_getVarSize1<-function(varInfo,var){
-  var_ind=varInfo$varTable[[deparse(var)]]-1
-  size1=paste0(GPUVar$gpu_matrix_size1,"[",var_ind,"]")
-  size1
+  R_getVarSize(varInfo,var,1)
 }
 R_getVarSize2<-function(varInfo,var){
-  var_ind=varInfo$varTable[[deparse(var)]]-1
-  size2=paste0(GPUVar$gpu_matrix_size2,"[",var_ind,"]")
-  size2
+  R_getVarSize(varInfo,var,2)
 }
 
 

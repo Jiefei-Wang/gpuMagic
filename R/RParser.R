@@ -1,7 +1,8 @@
 codePreprocessing<-function(codeMetaInfo){
   loopVar=names(codeMetaInfo$parms)[[1]]
+  names(codeMetaInfo$parms)[[1]]=GPUVar$gpu_loop_data
   #insert the preserved data reading code
-  readDataExp=parse(text=paste0(loopVar,"=",GPUVar$gpu_worker_data,"[",GPUVar$gpu_global_id,"+1]"))
+  readDataExp=parse(text=paste0(loopVar,"=",GPUVar$gpu_loop_data,"[",GPUVar$gpu_global_id,"+1]"))
   codeMetaInfo$Exp=c(readDataExp,codeMetaInfo$Exp)
   
   codeMetaInfo

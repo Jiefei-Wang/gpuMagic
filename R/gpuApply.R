@@ -1,6 +1,6 @@
 #' @export
-gpuSapply<-function(X,FUN,...,staticParms=c(),verbose=F,optimization="all",debugCode="",threadNum=NULL){
-  GPUcode1=compileGPUCode(X,FUN,...,staticParms=NULL,optimization="all")
+gpuSapply<-function(X,FUN,...,..constantParms=c(),.option=gpuSapply.getOption()){
+  GPUcode1=compileGPUCode(X,FUN,...,.constantParms=c(),.option=.option)
   if(debugCode!="")
     GPUcode1$gpu_code=debugCode
   GPUcode2=fillGPUdata(GPUcode1)
@@ -29,16 +29,26 @@ gpuSapply<-function(X,FUN,...,staticParms=c(),verbose=F,optimization="all",debug
   }
 }
 
-compileGPUCode<-function(X,FUN,...,staticParms=c(),optimization="all"){
+gpuSapply.getOption<-function(){
+  curOp=kernel.getOption()
+  curOp$autoType=FALSE
+  curOp$localThreadNum="Auto"
+  #all,worker number
+  curOp$optimization="all"
+  curOp$debugCode=""
+  return(curOp)
+}
+
+compileGPUCode<-function(X,FUN,...,.constantParms,.option){
   #Check and match the parameter names
   parms=list(...)
   parms=matchParms(X,parms,FUN)
   
   
   codeMetaInfo=list()
-  codeMetaInfo$Exp=funcToExp(FUN)$code
+  codeMetaInfo$Exp=funcToExp(test3)$code
   codeMetaInfo$parms=parms
-  codeMetaInfo$staticParms=staticParms
+  codeMetaInfo$constantParms=NULL
   codeMetaInfo0=codePreprocessing(codeMetaInfo)
   codeMetaInfo1=RParser1(codeMetaInfo0)
   codeMetaInfo2=RParser2(codeMetaInfo1)
@@ -46,9 +56,9 @@ compileGPUCode<-function(X,FUN,...,staticParms=c(),optimization="all"){
   profileMeta2=RProfile2(profileMeta1)
   profileMeta3=RRecompiler(profileMeta2)
   GPUExp1=RCcompilerLevel1(profileMeta3)
+  GPUExp2=RCcompilerLevel2(GPUExp1)
   
   
-  names(parms)[1]=GPUVar$gpu_worker_data
   GPUcode=completeProfileTbl(GPUExp1,parms)
   GPUcode1=completeGPUcode(GPUcode)
   GPUcode1$parms=parms
@@ -164,12 +174,14 @@ completeGPUcode<-function(GPUcode){
   GPUcode
 }
 
-completeProfileTbl<-function(GPUExp1,parms){
-  profile=GPUExp1$varInfo$profile
+completeProfileTbl<-function(GPUExp2,parms){
+  varInfo=GPUExp2$varInfo
+  profile=varInfo$profile
   ind=which(profile$require=="Y")
-  for(i in ind){
-    varName=profile[i,]$var
+  for(varName in varInfo$requiredVar){
+    curInfo=getVarInfo(varInfo,varName,1)
     var=parms[[varName]]
+    
     if(class(var)=="gpuMatrix"){
       curPrecision=getTypeNum(.type(var))
       curDim=dim(var)
@@ -177,24 +189,28 @@ completeProfileTbl<-function(GPUExp1,parms){
       curPrecision=T_DEFAULT_float
       curDim=dim(as.matrix(var))
     }
-    profile[i,]$size1=curDim[1]
-    profile[i,]$size2=curDim[2]
-    if(sum(curDim)==2){
-      profile[i,]$value=var[1]
-    }
+    curInfo$size1=curDim[1]
+    curInfo$size2=curDim[2]
+    varInfo=setVarInfo(varInfo,curInfo)
   }
-  ind=which(profile$require!="Y")
-  for(i in ind){
-    profile[i,]$size1=eval(parse(text=profile[i,]$size1))
-    profile[i,]$size2=eval(parse(text=profile[i,]$size2))
+  allVars=keys(varInfo$varVersion)
+  nonRequiredVars=allVars[!allVars%in% varInfo$requiredVar]
+  
+  for(varName in nonRequiredVars){
+    curInfo=getVarInfo(varInfo,varName,1)
+    curInfo$size1=eval(parse(text=curInfo$size1))
+    curInfo$size2=eval(parse(text=curInfo$size2))
+    varInfo=setVarInfo(varInfo,curInfo)
   }
-  returnInfo=GPUExp1$varInfo$returnInfo
+  returnVar=varInfo$returnInfo$var
+  returnInfo=getVarInfo(varInfo,returnVar)
+  
   returnInfo$size1=eval(parse(text=returnInfo$size1))
   returnInfo$size2=eval(parse(text=returnInfo$size2))
   
-  GPUExp1$varInfo$returnInfo=returnInfo
-  GPUExp1$varInfo$profile=profile
-  GPUExp1
+  GPUExp2$varInfo$returnInfo=returnInfo
+  GPUExp2$varInfo=varInfo
+  GPUExp2
   
 }
 

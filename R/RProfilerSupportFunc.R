@@ -2,7 +2,7 @@
 #===========================profiler 1========================
 
 #Profile a parameter and give the profile table back
-profileVar<-function(parms,staticParms){
+profileVar<-function(parms,constantParms){
   varInfo=list()
   varInfo$profile=getEmpyTable(0)
   varInfo$requiredVar=c()
@@ -24,7 +24,7 @@ profileVar<-function(parms,staticParms){
     
     info$precisionType=curPrecision
     
-    if(varName[i] %in% names(staticParms)){
+    if(varName[i] %in% names(constantParms)){
       info$constant=TRUE
       info$size1=nrow(as.matrix(parms[[i]]))
       info$size2=ncol(as.matrix(parms[[i]]))
@@ -48,6 +48,7 @@ profileVar<-function(parms,staticParms){
       }
       info$compileSize=TRUE
       info$require=TRUE
+      info$initialization=FALSE
     }
     varInfo=addVarInfo(varInfo,info)
     varInfo$requiredVar=c(varInfo$requiredVar,info$var)
@@ -204,14 +205,15 @@ checkVarType<-function(leftInfo,rightInfo){
   if(typeInherit(leftInfo$precisionType,rightInfo$precisionType)!=leftInfo$precisionType)
     needRetype=TRUE
   if(leftInfo$dataType!=rightInfo$dataType)
-    return(list(needRetype=needRetype,needReassign=TRUE))
+    return(list(needReassign=TRUE))
   if(leftInfo$size1!=rightInfo$size1||rightInfo$size2!=rightInfo$size2){
     len1=paste0(leftInfo$size1,"*",leftInfo$size2)
     len2=paste0(rightInfo$size1,"*",rightInfo$size2)
-    if(Simplify(len1)!=Simplify(len2)){
-      return(list(needRetype=needRetype,needReassign=TRUE))
+    if(Simplify(len1)!=Simplify(len2)||
+       rightInfo$size1=="NA"||rightInfo$size2=="NA"||
+       leftInfo$shared){
+      return(list(needReassign=TRUE))
     }else{
-      if(is.numeric(Simplify(len1)))
         return(list(needRetype=needRetype,needReassign=FALSE,needResize=TRUE,size1=rightInfo$size1,size2=rightInfo$size2))
     }
   }
@@ -221,8 +223,8 @@ checkVarType<-function(leftInfo,rightInfo){
 #Get an empty profile table
 getEmpyTable<-function(rowNum=0,type=""){
   tlbName=c("var","address","dataType","precisionType", "size1","size2","value","compileSize",
-            "compileData","require","initialization","global_share","constant","location","version")
-  boolVar=c("compileSize","compileData","require","initialization","global_share","constant")
+            "compileData","require","initialization","shared","constant","location","version")
+  boolVar=c("compileSize","compileData","require","initialization","shared","constant")
   tbl=as.data.frame(matrix("NA",ncol = length(tlbName), nrow = rowNum))
   names(tbl)=tlbName
   if(rowNum!=0){
@@ -231,16 +233,16 @@ getEmpyTable<-function(rowNum=0,type=""){
     tbl$compileData=FALSE
     tbl$require=FALSE
     tbl$initialization=TRUE
-    tbl$global_share=FALSE
+    tbl$shared=FALSE
     tbl$constant=FALSE
-    tbl$version="1"
+    tbl$version=1
     tbl$location="global"
     if(type==T_scale){
       tbl$dataType=T_scale
       tbl$compileSize=TRUE
       tbl$size1=1
       tbl$size2=1
-      tbl$location="private"
+      tbl$location="local"
     }
     if(type==T_matrix){
       tbl$dataType=T_matrix
@@ -284,3 +286,14 @@ is.preservedFunc<-function(func){
   func=as.character(func)
   length(grep(GPUVar$preservedFuncPrefix,func,fixed = T))!=0
 }
+copyVarInfo<-function(info){
+  info$require=FALSE
+  info$initialization=TRUE
+  info$shared=FALSE
+  info$constant=FALSE
+  info$location="global"
+  info
+}
+
+
+
