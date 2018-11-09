@@ -2,7 +2,7 @@
 gNumber<-function(precision=gpuMagic.option$getDefaultFloat()){
   return(0)
 }
-gMatrix<-function(nrow=1,ncol=1,precision=gpuMagic.option$getDefaultFloat(),location="global"){
+gMatrix<-function(nrow=1,ncol=1,precision=gpuMagic.option$getDefaultFloat(),shared=FALSE,location="global"){
   return(matrix(NA,nrow,ncol))
 }
 resize<-function(data,nrow,ncol){

@@ -1,8 +1,8 @@
 #codeMetaInfo=curMetaInfo
 if(FALSE){
-parserFunc=RPP_parserFunc
-checkFunc=RPP_checkFunc
-updateFunc=RPP_updateFunc
+parserFunc=RProfile2_parserFunc
+checkFunc=RProfile2_checkFunc
+updateFunc=RProfile2_updateFunc
 codeMetaInfo=profileMeta1
 level=c("top")
 }

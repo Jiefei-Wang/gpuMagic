@@ -62,39 +62,39 @@ T_matrix="matrix"
 GPUVar<-local({
   GPUVar_env=new.env()
   #worker private data, loacted in global memory
-  GPUVar_env$gpu_global_private_data="gpu_gp_data"
-  GPUVar_env$gpu_global_private_totalSize="gpu_gp_totalSize"
-  GPUVar_env$gpu_global_private_matrixNum="gpu_gp_matrixNum"
+  GPUVar_env$global_private_data="gpu_gp_data"
+  GPUVar_env$global_private_totalSize="gpu_gp_totalSize"
+  GPUVar_env$global_private_matrixNum="gpu_gp_matrixNum"
   
   #Per worker length
-  GPUVar_env$gpu_global_private_size1="gpu_gp_size1"
-  GPUVar_env$gpu_global_private_size2="gpu_gp_size2"
+  GPUVar_env$global_private_size1="gpu_gp_size1"
+  GPUVar_env$global_private_size2="gpu_gp_size2"
   #Per worker offset
-  GPUVar_env$gpu_global_private_offset="gpu_gp_offset"
+  GPUVar_env$global_private_offset="gpu_gp_offset"
   
   #worker shared data, located in global memory
-  GPUVar_env$gpu_global_shared_data="gpu_gs_data"
-  GPUVar_env$gpu_global_shared_size1="gpu_gs_size1"
-  GPUVar_env$gpu_global_shared_size2="gpu_gs_size2"
-  GPUVar_env$gpu_global_shared_offset="gpu_gs_offset"
+  GPUVar_env$global_shared_data="gpu_gs_data"
+  GPUVar_env$global_shared_size1="gpu_gs_size1"
+  GPUVar_env$global_shared_size2="gpu_gs_size2"
+  GPUVar_env$global_shared_offset="gpu_gs_offset"
   
   #worker private data, located in private/local memory
-  GPUVar_env$gpu_local_private_data="gpu_lp_data"
-  GPUVar_env$gpu_local_private_size1="gpu_lp_size1"
-  GPUVar_env$gpu_local_private_size2="gpu_lp_size2"
-  GPUVar_env$gpu_local_private_offset="gpu_lp_offset"
+  GPUVar_env$local_private_data="gpu_lp_data"
+  GPUVar_env$local_private_size1="gpu_lp_size1"
+  GPUVar_env$local_private_size2="gpu_lp_size2"
+  GPUVar_env$local_private_offset="gpu_lp_offset"
   
   #worker shared data, located in local memory
-  GPUVar_env$gpu_local_shared_data="gpu_ls_data"
-  GPUVar_env$gpu_local_shared_size1="gpu_ls_size1"
-  GPUVar_env$gpu_local_shared_size2="gpu_ls_size2"
-  GPUVar_env$gpu_local_shared_offset="gpu_ls_offset"
+  GPUVar_env$local_shared_data="gpu_ls_data"
+  GPUVar_env$local_shared_size1="gpu_ls_size1"
+  GPUVar_env$local_shared_size2="gpu_ls_size2"
+  GPUVar_env$local_shared_offset="gpu_ls_offset"
   
   
   #return value
-  GPUVar_env$gpu_return_variable="gpu_return_variable"
+  GPUVar_env$return_variable="gpu_return_variable"
   #Per worker size
-  GPUVar_env$gpu_return_size="gpu_return_size"
+  GPUVar_env$return_size="gpu_return_size"
   
   #The vector that is looped on
   GPUVar_env$gpu_loop_data="gpu_loop_data"
@@ -103,15 +103,20 @@ GPUVar<-local({
   #Deducted variable
   GPUVar_env$gpu_global_id="gpu_global_id"
   
-  #GPUVar_env$gpu_tmp_length="gpu_tmp_length"
-  GPUVar_env$gpu_worker_offset="gpu_worker_offset"
+  #The offset to find the worker data space in the global memory
+  #It is not an argument
+  GPUVar_env$worker_offset="gpu_worker_offset"
   
   #parameters
   GPUVar_env$functionCount=0
   GPUVar_env$functionName="gpu_kernel"
   GPUVar_env$default_index_type="uint"
   
+  #The for loop index
   GPUVar_env$gpu_loop_ind="gpu_loop_ind"
+  
+  #c(global_private_totalSize,global_private_matrixNum,return_size)
+  GPUVar_env$size_info="gpu_sizeInfo"
   
   GPUVar_env$preservedFuncPrefix="compiler."
   return(GPUVar_env)

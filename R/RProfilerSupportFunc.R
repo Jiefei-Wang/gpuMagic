@@ -8,7 +8,7 @@ profileVar<-function(parms,constantParms){
   varInfo$requiredVar=c()
   varInfo$varTable=hash()
   varInfo$varVersion=hash()
-  varInfo$profileTblName="profile"
+  varInfo$profileTblName="varInfo$profile"
   if(length(parms)==0) return(varInfo)
   varName=names(parms)
   for(i in 1:length(parms)){

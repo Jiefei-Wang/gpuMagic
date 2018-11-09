@@ -107,18 +107,18 @@ R_getVarSize<-function(varInfo,var,ind){
   var_ind=varInfo$matrixInd[[deparse(var)]]
   loc=NA
   if(curInfo$location=="global"&&!curInfo$shared)
-    loc="_global_private_"
+    loc="global_private_"
   if(curInfo$location=="global"&&curInfo$shared)
-    loc="_global_shared_"
+    loc="global_shared_"
   if(curInfo$location=="local"&&!curInfo$shared)
-    loc="_local_private_"
+    loc="local_private_"
   if(curInfo$location=="local"&&curInfo$shared)
-    loc="_local_shared_"
+    loc="local_shared_"
   if(is.na(loc))
     stop("undetermined matrix property!")
   
     
-  size=paste0(GPUVar[[paste0("gpu",loc,"size",ind)]],"[",var_ind,"]")
+  size=paste0(GPUVar[[paste0(loc,"size",ind)]],"[",var_ind,"]")
   
   size
 }

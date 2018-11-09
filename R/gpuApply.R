@@ -59,7 +59,7 @@ compileGPUCode<-function(X,FUN,...,.constantParms,.option){
   GPUExp2=RCcompilerLevel2(GPUExp1)
   
   
-  GPUcode=completeProfileTbl(GPUExp1,parms)
+  GPUcode=completeProfileTbl(GPUExp2)
   GPUcode1=completeGPUcode(GPUcode)
   GPUcode1$parms=parms
   
@@ -132,14 +132,14 @@ fillGPUdata<-function(GPUcode){
   GPUcode
 }
 
-
+#add the function definition
 completeGPUcode<-function(GPUcode){
-  profile=GPUcode$varInfo$profile
-  ind=which(profile$require=="Y")
+  varInfo=GPUcode$varInfo
+  profile=varInfo$profile
   code=paste0("__kernel void ",GPUVar$functionName,GPUVar$functionCount,"(")
-  for(i in ind){
-    curName=profile[i,]$var
-    curType=getTypeCXXStr(as.numeric(profile[i,]$precisionType))
+  for(curName in varInfo$requiredVar){
+    curInfo=getVarInfo(varInfo,curName,1)
+    curType=curInfo$precisionType
     code=paste0(code,"__global ",curType,"* ",curName,",")
   }
   tmp_var_list=c(GPUVar$gpu_tmp_var,GPUVar$gpu_tmp_length_arg,
@@ -174,10 +174,10 @@ completeGPUcode<-function(GPUcode){
   GPUcode
 }
 
-completeProfileTbl<-function(GPUExp2,parms){
+completeProfileTbl<-function(GPUExp2){
   varInfo=GPUExp2$varInfo
   profile=varInfo$profile
-  ind=which(profile$require=="Y")
+  parms=GPUExp2$parms
   for(varName in varInfo$requiredVar){
     curInfo=getVarInfo(varInfo,varName,1)
     var=parms[[varName]]
@@ -186,7 +186,7 @@ completeProfileTbl<-function(GPUExp2,parms){
       curPrecision=getTypeNum(.type(var))
       curDim=dim(var)
     }else{
-      curPrecision=T_DEFAULT_float
+      curPrecision=gpuMagic.option$getDefaultFloat()
       curDim=dim(as.matrix(var))
     }
     curInfo$size1=curDim[1]
@@ -208,7 +208,7 @@ completeProfileTbl<-function(GPUExp2,parms){
   returnInfo$size1=eval(parse(text=returnInfo$size1))
   returnInfo$size2=eval(parse(text=returnInfo$size2))
   
-  GPUExp2$varInfo$returnInfo=returnInfo
+  varInfo$returnInfo=returnInfo
   GPUExp2$varInfo=varInfo
   GPUExp2
   

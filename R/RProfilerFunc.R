@@ -6,19 +6,20 @@ profile_size<-function(varInfo,Exp){
   ExpInfo$precisionType=gpuMagic.option$getDefaultInt()
   ExpInfo$size1=1
   ExpInfo$size2=1
-  ExpInfo$compileSize=TRUE
-  ExpInfo$compileData=TRUE
   var_data=getVarInfo(varInfo,Exp[[2]])
-  if(var_data$compileSize==TRUE){
-    if(Exp[[1]]=="nrow")
-      ExpInfo$value=var_data$size1
-    if(Exp[[1]]=="ncol")
-      ExpInfo$value=var_data$size2
-    if(Exp[[1]]=="length"){
-      Exp$value=paste0("(",var_data$size1,"*",var_data$size2,")")
-    }
-    return(ExpInfo)
+  if(var_data$compileSize==TRUE||var_data$constant){
+    ExpInfo$compileData=TRUE
+    ExpInfo$compileSize=TRUE
   }
+  if(Exp[[1]]=="nrow")
+    ExpInfo$value=var_data$size1
+  if(Exp[[1]]=="ncol")
+    ExpInfo$value=var_data$size2
+  if(Exp[[1]]=="length"){
+    Exp$value=paste0("(",var_data$size1,"*",var_data$size2,")")
+  }
+  return(ExpInfo)
+  
 }
 
 
@@ -43,7 +44,7 @@ profile_matrix<-function(varInfo,Exp){
   if(length(data_ind)==0)
     stop("Unrecognized code: ",deparse(ExpRecord))
   data=Exp[[data_ind]]
-  #If the element is a numeric value(The only available form now)
+  #If the element is a numeric value(The currently only available one)
   if(is.numeric(data)){
     #Find the row and column number
     if(length(nrow_ind)==0)
@@ -58,16 +59,28 @@ profile_matrix<-function(varInfo,Exp){
     #If the value cannot be determined, an error will be given
     if(!is.numeric(rowNum)){
       var_data=getVarInfo(varInfo,rowNum)
-      if(var_data$compileData==TRUE&&var_data$dataType==T_scale){
-        rowNum=var_data$value
+      if(var_data$compileData==TRUE){
+        if(var_data$dataType==T_scale)
+          rowNum=var_data$value
+        else
+          if(var_data$size1==1&&var_data$size2==1)
+            rowNum=paste0(var_data$value,"[1]")
+          else
+            stop("Unsupported code: ",ExpRecord)
       }else{
         stop("Unsupported code: ",ExpRecord)
       }
     }
     if(!is.numeric(colNum)){
       var_data=getVarInfo(varInfo,colNum)
-      if(var_data$compileData==TRUE&&var_data$dataType==T_scale){
-        colNum=var_data$value
+      if(var_data$compileData==TRUE){
+        if(var_data$dataType==T_scale)
+          colNum=var_data$value
+        else
+          if(var_data$size1==1&&var_data$size2==1)
+            colNum=paste0(var_data$value,"[1]")
+          else
+            stop("Unsupported code: ",ExpRecord)
       }else{
         stop("Unsupported code: ",ExpRecord)
       }
@@ -92,7 +105,7 @@ profile_matrix<-function(varInfo,Exp){
 
 
 # Exp=parse(text="1+100")[[1]]
-
+#profile_arithmetic(varInfo,quote(ind+1))
 
 
 profile_arithmetic<-function(varInfo,Exp){
@@ -116,6 +129,8 @@ profile_arithmetic<-function(varInfo,Exp){
   ExpInfo$precisionType=typeInherit(leftInfo$precisionType,rightInfo$precisionType)
   if(leftInfo$compileSize==TRUE&&rightInfo$compileSize==TRUE)
     ExpInfo$compileSize=TRUE
+  else
+    stop("Dynamic matrix allocation is not allowed: ",deparse(Exp))
   if(leftInfo$compileData==TRUE&&rightInfo$compileData==TRUE){
     ExpInfo$compileData=TRUE
     ExpInfo$value=paste0("(",leftInfo$value,deparse(Exp[[1]]),rightInfo$value,")")
@@ -146,72 +161,67 @@ profile_arithmetic<-function(varInfo,Exp){
 }
 
 
+getSubInfo<-function(varInfo,curInfo,sub_var){
+  sub=list()
+  if(sub_var==""){
+    sub$compileData=curInfo$compileSize
+    sub$compileSize=curInfo$compileSize
+    
+    
+    sub$size=var_data$size1
+    if(sub$size=="1")
+      sub$type=T_scale
+    else
+      sub$type=T_matrix
+  }else{
+    if(is.numeric(sub_var)){
+      sub$compileData=TRUE
+      sub$compileSize=TRUE
+      sub$value=deparse(Exp[[3]])
+      sub$size=1
+      sub$type=T_scale
+    }else{
+      subVar=getVarInfo(varInfo,sub_var)
+      sub$compileData=subVar$compileData
+      sub$compileSize=subVar$compileSize
+      sub$value=subVar$value
+      sub$size=Simplify(paste0("(",subVar$size1,"*",subVar$size2,")"))
+      sub$type=ifelse(sub$size=="1",T_scale,T_matrix)
+    }
+  }
+  sub
+}
 
 profile_subset<-function(varInfo,Exp){
-  var_data=getVarInfo(varInfo,Exp[[2]])
+  
+  
+  
+  curInfo=getVarInfo(varInfo,Exp[[2]])
   sub1=list()
   sub2=list()
   if(length(Exp)>=3){
-    if(Exp[[3]]==""){
-      if(length(Exp)==3)
-        stop("Undefined code: ",deparse(Exp))
-      sub1$compile=TRUE
-      sub1$compileSize=TRUE
-      sub1$size=var_data$size1
-      sub1$type=T_matrix
-    }else{
-      if(is.numeric(Exp[[3]])){
-        sub1$compile=TRUE
-        sub1$value=deparse(Exp[[3]])
-        sub1$compileSize=TRUE
-        sub1$size=1
-        sub1$type=T_scale
-      }else{
-        subVar=getVarInfo(varInfo,Exp[[3]])
-        sub1$compile=subVar$compileData
-        sub1$value=subVar$value
-        sub1$compileSize=subVar$compileSize
-        sub1$size=paste0("(",subVar$size1,"*",subVar$size2,")")
-        sub1$type=subVar$dataType
-      }
-    }
+    sub1=getSubInfo(varInfo,curInfo,Exp[[3]])
+    if(Exp[[3]]==""&&length(Exp)==3&&sub$compileSize)
+      sub1$size=paste0(curInfo$size1,"*",curInfo$size2)
   }
+  
   if(length(Exp)==4){
-    if(Exp[[4]]==""){
-      sub2$compile=TRUE
-      sub2$compileSize=TRUE
-      sub2$size=var_data$size1
-      sub2$type=T_matrix
-    }else{
-      if(is.numeric(Exp[[4]])){
-        sub2$compile=TRUE
-        sub2$value=deparse(Exp[[4]])
-        sub2$compileSize=TRUE
-        sub2$size=1
-        sub2$type=T_scale
-      }else{
-        subVar=getVarInfo(varInfo,Exp[[4]])
-        sub2$compile=subVar$compileData
-        sub2$value=subVar$value
-        sub2$compileSize=subVar$compileSize
-        sub2$size=paste0("(",subVar$size1,"*",subVar$size2,")")
-        sub2$type=subVar$dataType
-      }
-    }
+    sub2=getSubInfo(varInfo,curInfo,Exp[[4]])
   }
   
   ExpInfo=getEmpyTable(1)
   ExpInfo$dataType=T_matrix
-  if(length(sub2)!=0){
+  if(length(Exp)==4){
     if(sub1$type==T_scale&&sub2$type==T_scale){
       ExpInfo$dataType=T_scale
+      ExpInfo$compileSize=TRUE
     }
-    if(ExpInfo$dataType==T_scale&&sub1$compile&&sub2$compile&&var_data$compileData){
-      ExpInfo$value=paste0("(",var_data$value,"[",sub1$value,",",sub2$value,"])")
+    if(ExpInfo$dataType==T_scale&&sub1$compileData&&sub2$compileData&&curInfo$compileData){
+      ExpInfo$value=Simplify(paste0("(",curInfo$value,"[",sub1$value,",",sub2$value,"])"))
       ExpInfo$compileData=TRUE
     }
-    if(sub1$compileSize&&sub2$compileSize&&var_data$compileSize){
-      ExpInfo$compileSize
+    if(sub1$compileSize&&sub2$compileSize){
+      ExpInfo$compileSize=TRUE
       ExpInfo$size1=sub1$size
       ExpInfo$size2=sub2$size
     }else{
@@ -220,12 +230,13 @@ profile_subset<-function(varInfo,Exp){
   }else{
     if(sub1$type==T_scale){
       ExpInfo$dataType=T_scale
+      ExpInfo$compileSize=TRUE
     }
-    if(ExpInfo$dataType==T_scale&&sub1$compile&&var_data$compileData){
-      ExpInfo$value=paste0("(",var_data$value,"[",sub1$value,"])")
+    if(ExpInfo$dataType==T_scale&&sub1$compileData&&curInfo$compileData){
+      ExpInfo$value=Simplify(paste0("(",curInfo$value,"[",sub1$value,"])"))
       ExpInfo$compileData=TRUE
     }
-    if(sub1$compileSize&&var_data$compileSize){
+    if(sub1$compileSize){
       ExpInfo$compileSize=TRUE
       ExpInfo$size1=sub1$size
       ExpInfo$size2=1
@@ -234,7 +245,7 @@ profile_subset<-function(varInfo,Exp){
     }
   }
 
-  ExpInfo$precisionType=var_data$precisionType
+  ExpInfo$precisionType=curInfo$precisionType
   return(ExpInfo)
 }
 
@@ -293,7 +304,7 @@ profile_gMatrix<-function(varInfo,Exp){
   ExpInfo$size2=args$ncol
   ExpInfo$compileSize=TRUE
   ExpInfo$location=args$location
-
+  ExpInfo$shared=args$shared
   return(ExpInfo)
 }
 

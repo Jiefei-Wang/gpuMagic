@@ -91,6 +91,7 @@ RProfile2_parserFunc<-function(level,codeMetaInfo,curExp){
             leftInfo$precisionType=rightInfo$precisionType
           }
           leftInfo$value=rightInfo$value
+          leftInfo$compileSize=rightInfo$compileSize
           leftInfo$compileData=rightInfo$compileData
           if(checkInfo$needResize)
             varInfo=addVarInfo(varInfo,leftInfo)

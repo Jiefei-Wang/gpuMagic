@@ -12,34 +12,37 @@ RCcompilerLevel1<-function(profileMeta3){
   
   #Preserved variables
   #Global worker private data
-  gpu_gp_data=GPUVar$gpu_global_private_totalSize
+  gpu_gp_data=GPUVar$global_private_totalSize
   #Per worker length
-  gpu_gp_totalSize=GPUVar$gpu_global_private_totalSize
-  gpu_gp_matrixNum=GPUVar$gpu_global_private_matrixNum
+  gpu_gp_totalSize=GPUVar$global_private_totalSize
+  gpu_gp_matrixNum=GPUVar$global_private_matrixNum
   
-  gpu_gp_size1=GPUVar$gpu_global_private_size1
-  gpu_gp_size2=GPUVar$gpu_global_private_size2
+  gpu_gp_size1=GPUVar$global_private_size1
+  gpu_gp_size2=GPUVar$global_private_size2
   #matrix index offset
-  gpu_gp_offset=GPUVar$gpu_global_private_offset
+  gpu_gp_offset=GPUVar$global_private_offset
   
   #worker shared data, located in global memory
-  gpu_gs_data=GPUVar$gpu_global_shared_data
-  gpu_gs_size1=GPUVar$gpu_global_shared_size1
-  gpu_gs_size2=GPUVar$gpu_global_shared_size2
-  gpu_gs_offset=GPUVar$gpu_global_shared_offset
+  gpu_gs_data=GPUVar$global_shared_data
+  gpu_gs_size1=GPUVar$global_shared_size1
+  gpu_gs_size2=GPUVar$global_shared_size2
+  gpu_gs_offset=GPUVar$global_shared_offset
   
   #worker private data, located in private/local memory
-  gpu_lp_data=GPUVar$gpu_local_private_data
-  gpu_lp_size1=GPUVar$gpu_local_private_size1
-  gpu_lp_size2=GPUVar$gpu_local_private_size2
-  gpu_lp_offset=GPUVar$gpu_local_private_offset
+  gpu_lp_data=GPUVar$local_private_data
+  gpu_lp_size1=GPUVar$local_private_size1
+  gpu_lp_size2=GPUVar$local_private_size2
+  gpu_lp_offset=GPUVar$local_private_offset
   
   #worker shared data, located in local memory
-  gpu_ls_data=GPUVar$gpu_local_shared_data
-  gpu_ls_size1=GPUVar$gpu_local_shared_size1
-  gpu_ls_size2=GPUVar$gpu_local_shared_size2
-  gpu_ls_offset=GPUVar$gpu_local_shared_offset
+  gpu_ls_data=GPUVar$local_shared_data
+  gpu_ls_size1=GPUVar$local_shared_size1
+  gpu_ls_size2=GPUVar$local_shared_size2
+  gpu_ls_offset=GPUVar$local_shared_offset
   
+  gpu_sizeInfo=GPUVar$size_info
+  
+  gpu_returnSize=GPUVar$return_size
   
   #Deducted variable
   gpu_global_id=GPUVar$gpu_global_id
@@ -47,11 +50,12 @@ RCcompilerLevel1<-function(profileMeta3){
   
   gpu_code=c(
     paste0("unsigned long ",gpu_global_id,"=get_global_id(0);"),
-    paste0("unsigned long ", gpu_gp_totalSize,"=*",gpu_gp_totalSize,"_arg;"),
-    paste0("unsigned long ", gpu_gp_matrixNum,"=*",gpu_gp_matrixNum,"_arg;"),
+    paste0("unsigned long ", gpu_gp_totalSize,"=*",gpu_sizeInfo,"[0];"),
+    paste0("unsigned long ", gpu_gp_matrixNum,"=*",gpu_sizeInfo,"[1];"),
     paste0("unsigned long ", gpu_gp_size1,"=",gpu_gp_size1,"_arg+",gpu_gp_matrixNum,";"),
     paste0("unsigned long ", gpu_gp_size2,"=",gpu_gp_size2,"_arg+",gpu_gp_matrixNum,";"),
-    paste0("unsigned long ", gpu_worker_offset,"=",gpu_global_id,"*",gpu_gp_totalSize,";")
+    paste0("unsigned long ", gpu_worker_offset,"=",gpu_global_id,"*",gpu_gp_totalSize,";"),
+    paste0("unsigned long ", gpu_returnSize,"=",gpu_sizeInfo,"[2];")
   )
   
   gpu_gp_num=-1
