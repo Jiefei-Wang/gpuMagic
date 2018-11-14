@@ -21,11 +21,24 @@ printf(\"%f,\",ind);
 library("microbenchmark")
 
 
+test3<-function(ind,A,B){
+  tmp=matrix(0,nrow(B),1)
+  for(i in 1:nrow(B)){
+    tmp[i]=B[i,ind]
+  }
+  C=A%*%tmp
+  return(C)
+}
+n=1
+m=5
+k=1
+A=matrix(runif(n*m),n,m)
+B=matrix(runif(n*m),m,k)
 
-
-
-
-
+gpuSapply(1:k,test3,A,B)
+res1=sapply(1:k,test3,A,B)
+res2=A%*%B
+range(res1-res2)
 
 matMul<-function(id,A,B){
   #find the index of the entry of C matrix
@@ -43,15 +56,15 @@ matMul<-function(id,A,B){
 }
 
   
-n=10000
-m=5000
-k=1000
+n=10
+m=5
+k=10
 A=matrix(runif(n*m),n,m)
 B=matrix(runif(n*m),m,k)
 
 
 getDeviceList()
-setDevice(2)
+setDevice(0)
 
 code=compileGPUCode(1:(n*k),matMul,A,B)
 cat(code$gpu_code)

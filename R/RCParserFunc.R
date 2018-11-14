@@ -73,7 +73,7 @@ C_subset<-function(varInfo,Exp){
   }
   if(Exp[[1]]=="["){
     if(length(Exp)==3){
-      ExpChar=paste0(Exp[[2]],"[(unsigned int)",C_subset(varInfo,Exp[[3]]),"-1]")
+      ExpChar=paste0(Exp[[2]],"[(",GPUVar$default_index_type,")",C_subset(varInfo,Exp[[3]]),"-1]")
       return(ExpChar)
     }
     if(length(Exp==4)){
@@ -82,8 +82,8 @@ C_subset<-function(varInfo,Exp){
       size1=R_getVarSize1(varInfo,Exp[[2]])
       if(Exp[[3]]==""||Exp[[4]]=="")
         stop("Compilation error, please contact the author: ",deparse(Exp))
-      ExpChar=paste0(Exp[[2]],"[(unsigned int)",C_subset(varInfo,Exp[[3]]),
-                     "-1 +((unsigned int)",C_subset(varInfo,Exp[[4]]),"-1)*",size1,"]")
+      ExpChar=paste0(Exp[[2]],"[(",GPUVar$default_index_type,")",C_subset(varInfo,Exp[[3]]),
+                     "-1 +((",GPUVar$default_index_type,")",C_subset(varInfo,Exp[[4]]),"-1)*",size1,"]")
       return(ExpChar)
     }
   }
@@ -93,12 +93,38 @@ C_floor<-function(varInfo,Exp){
   code=paste0("floor(",deparse(Exp[[2]]),")")
   return(code)
 }
-
+C_ceil<-function(varInfo,Exp){
+  code=paste0("ceil(",deparse(Exp[[2]]),")")
+  return(code)
+}
 C_NULL<-function(varInfo,Exp){
   return("")
 }
 
-
+C_message<-function(varInfo,Exp){
+  varName=Exp[[2]]
+  curInfo=getVarInfo(varInfo,varName)
+  if(curInfo$precisionType%in% c("double","float","half"))
+    printType="%f"
+  else
+    printType="%d"
+  if(curInfo$dataType==T_scale){
+    code=paste0("printf(\"",printType,"\",",curInfo$address,")")
+    return(code)
+  }
+  if(curInfo$dataType==T_matrix){
+    size1=R_getVarSize1(varInfo,varName)
+    size2=R_getVarSize2(varInfo,varName)
+    subsetCode=paste0(curInfo$address,"[gpu_msg_i +gpu_msg_j*",size1,"]")
+    code=c(paste0("for(uint gpu_msg_i=0;gpu_msg_i<",size1,";gpu_msg_i++){"),
+           paste0("for(uint gpu_msg_j=0;gpu_msg_j<",size2,";gpu_msg_j++){"),
+           paste0("printf(\"",printType,"\",",subsetCode,")"),
+           paste0(),
+           paste0()
+    )
+           
+  }
+}
 
 
 

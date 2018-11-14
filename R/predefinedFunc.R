@@ -1,8 +1,8 @@
 #These function does not have any meaning, just for making sure the GPU code can also be ran on CPU
-gNumber<-function(precision=gpuMagic.option$getDefaultFloat()){
+gNumber<-function(precision=gpuMagic.option$getDefaultFloat(),fixed=FALSE){
   return(0)
 }
-gMatrix<-function(nrow=1,ncol=1,precision=gpuMagic.option$getDefaultFloat(),shared=FALSE,location="global"){
+gMatrix<-function(nrow=1,ncol=1,precision=gpuMagic.option$getDefaultFloat(),fixed=FALSE,shared=FALSE,location="global"){
   return(matrix(NA,nrow,ncol))
 }
 resize<-function(data,nrow,ncol){

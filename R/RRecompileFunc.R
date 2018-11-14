@@ -28,3 +28,79 @@ recompile_matrix<-function(varInfo,curExp){
 }
 
 
+
+
+recompile_matrixMult<-function(varInfo,curExp){
+  code=c()
+  left_var=deparse(curExp[[2]])
+  right_var1=deparse(curExp[[3]][[2]])
+  right_var2=deparse(curExp[[3]][[3]])
+  left_info=getVarInfo(varInfo,left_var)
+  right_info1=getVarInfo(varInfo,right_var1)
+  right_info2=getVarInfo(varInfo,right_var2)
+  
+  pvs=GPUVar$private_var_space
+  ps=GPUVar$private_size
+  code=paste0(pvs,"=gMatrix(nrow=1,ncol=",ps,",fixed=TRUE,location=\"local\")")
+  code=c(code,
+         paste0(left_var,"=gMatrix(nrow=",matrixNrow(right_info1),
+                ",ncol=",matrixNcol(right_info2),",shared=",left_info$shared,
+                ",location=",left_info$location,")"),
+         paste0("for(",pvs,"_i1 in 1:nrow(",left_var,")){"),
+         paste0("for(",pvs,"_i2 in 1:ncol(",left_var,")){"),
+         paste0(left_var,"[",pvs,"_i1,",pvs,"_i2]=0"),
+         "}",
+         "}",
+         paste0("for(",pvs,"_i1 in 1:",matrixNrow(right_info1),"){"),
+         paste0(pvs,"_loopNum=ceiling(",matrixNcol(right_info1),"/",ps,")"),
+         paste0(pvs,"_start=1"),
+         paste0(pvs,"_end=1"),
+         paste0(pvs,"_length=0"),
+         paste0("for(",pvs,"_t in 1:",pvs,"_loopNum){"),
+         paste0(pvs,"_start=",pvs,"_end"),
+         paste0(pvs,"_end=",pvs,"_end+",ps),
+         paste0(pvs,"_end1=",pvs,"_end-1"),
+         paste0("if(",pvs,"_end1>",matrixNcol(right_info1),"){"),
+         paste0(pvs,"_end1=",matrixNcol(right_info1)),
+         "}",
+         paste0(pvs,"_length=",pvs,"_end1-",pvs,"_start+1"),
+         paste0("for(",pvs,"_t1 in 1:",pvs,"_length){"),
+         paste0(pvs,"[",pvs,"_t1]=",matrixInd(right_info1,paste0(pvs,"_i1")
+                                              ,paste0(pvs,"_t1"))),
+         "}",
+         paste0("for(",pvs,"_j2 in 1:",matrixNcol(right_info2),"){"),
+         paste0(pvs,"_tmp=0"),
+         paste0("for(",pvs,"_j1 in 1:",pvs,"_length){"),
+         paste0(pvs,"_tmp=",pvs,"_tmp+",pvs,"[",pvs,"_j1]*",
+                matrixInd(right_info2,paste0(pvs,"_j1"),paste0(pvs,"_j2"))),
+         "}",
+         paste0(matrixInd(left_info,paste0(pvs,"_i1"),paste0(pvs,"_j2")),
+                "=",matrixInd(left_info,paste0(pvs,"_i1"),paste0(pvs,"_j2")),"+",
+                pvs,"_tmp"),
+         "}",
+         "}",
+         "}"
+         )
+  #code=paste0(code,collapse = "\n")
+  code=parse(text=code)
+  code
+}
+
+matrixInd<-function(curInfo,i,j){
+  ifelse(curInfo$transpose,
+         paste0(curInfo$var,"[",j,",",i,"]"),
+         paste0(curInfo$var,"[",i,",",j,"]")
+  )
+}
+matrixNrow<-function(curInfo){
+  ifelse(curInfo$transpose,
+         paste0("ncol(",curInfo$var,")"),
+         paste0("nrow(",curInfo$var,")")
+         )
+}
+matrixNcol<-function(curInfo){
+  ifelse(curInfo$transpose,
+         paste0("nrow(",curInfo$var,")"),
+         paste0("ncol(",curInfo$var,")")
+  )
+}

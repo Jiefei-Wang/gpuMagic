@@ -47,7 +47,7 @@ parserFrame<-function(parserFunc,checkFunc,updateFunc,codeMetaInfo,level=c("top"
       if(curExp[[1]]=="if"){
         conditionExp=curExp[[2]]
         curLevel=c(level,"if")
-        if(checkFunc(loopInd)){
+        if(checkFunc(conditionExp)){
           res=ProcessCodeSingle(parserFunc,updateFunc,
                                 curCodeMetaInfo,curLevel,parsedExp,code,i,conditionExp)
           curCodeMetaInfo=res$codeMetaInfo

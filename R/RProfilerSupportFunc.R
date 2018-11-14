@@ -13,7 +13,7 @@ profileVar<-function(parms,constantParms){
   varName=names(parms)
   for(i in 1:length(parms)){
     if(class(parms[[i]])=="gpuMatrix"){
-      curPrecision=getTypeNum(.type(parms[[i]]))
+      curPrecision=.type(parms[[i]])
       curDim=dim(parms[[i]])
     }else{
       curPrecision=gpuMagic.option$getDefaultFloat()
@@ -23,6 +23,7 @@ profileVar<-function(parms,constantParms){
     info$var=varName[i]
     
     info$precisionType=curPrecision
+    info$shared=TRUE
     
     if(varName[i] %in% names(constantParms)){
       info$constant=TRUE
@@ -101,6 +102,7 @@ profileLoopVar<-function(varInfo,parsedExp){
       ExpProfile=getEmpyTable(1,type = T_scale)
       ExpProfile$var=var_char
       ExpProfile$initialization=FALSE
+      ExpProfile$precisionType=gpuMagic.option$getDefaultInt()
       varInfo=addVarInfo(varInfo,ExpProfile)
       loopBody=curExp[[4]]
       varInfo=profileLoopVar(varInfo,loopBody)
@@ -188,6 +190,7 @@ addVarInfo<-function(varInfo,newInfo){
   if(has.key(var_char,varInfo$varTable)){
     version=version+1
     var_char=paste0(newInfo$var,"+",version)
+    newInfo$version=version
   }
   varInfo$profile=rbind(varInfo$profile,newInfo)
   varInfo$varTable[[var_char]]=nrow(varInfo$profile)
@@ -223,18 +226,20 @@ checkVarType<-function(leftInfo,rightInfo){
 #Get an empty profile table
 getEmpyTable<-function(rowNum=0,type=""){
   tlbName=c("var","address","dataType","precisionType", "size1","size2","value","compileSize",
-            "compileData","require","initialization","shared","constant","location","version")
-  boolVar=c("compileSize","compileData","require","initialization","shared","constant")
+            "compileData","transpose","require","initialization","shared","constant","fixed","location","version")
+  boolVar=c("compileSize","compileData","require","initialization","shared","constant","fixed","transpose")
   tbl=as.data.frame(matrix("NA",ncol = length(tlbName), nrow = rowNum))
   names(tbl)=tlbName
   if(rowNum!=0){
     tbl$precisionType=gpuMagic.option$getDefaultFloat()
     tbl$compileSize=FALSE
     tbl$compileData=FALSE
+    tbl$transpose=FALSE
     tbl$require=FALSE
     tbl$initialization=TRUE
     tbl$shared=FALSE
     tbl$constant=FALSE
+    tbl$fixed=FALSE
     tbl$version=1
     tbl$location="global"
     if(type==T_scale){
@@ -294,6 +299,19 @@ copyVarInfo<-function(info){
   info$location="global"
   info
 }
-
-
+#Format a single code
+formatCall<-function(varInfo,Exp){
+  if(is.numeric(Exp)){
+    return(as.symbol("num"))
+  }
+  if(!is.call(Exp)){
+    return(as.symbol("var"))
+  }
+  if(length(Exp)>1){
+    for(i in 2:length(Exp)){
+      Exp[[i]]=formatCall(varInfo,Exp[[i]])
+    }
+  }
+  Exp
+}
 

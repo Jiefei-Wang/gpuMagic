@@ -114,24 +114,31 @@ test2<-function(){
 
 
 test3<-function(ind,A,B){
-  ind=ind-1
-  j=floor(ind/nrow(A))
-  i=ind-j*nrow(A)
-  j=j+1
-  i=i+1
-  C=0
-  for(k in 1:ncol(A)){
-    C=C+A[i,k]*B[k,j]
-    break
+  for(i in 1:10){
+    C=A[i,i]
   }
-  A
-  
   return(C)
 }
 n=10
 A=runif(n)
 B=runif(n)
-parms=list(ind=1:(n*n),A=A,B=10)
+
+
+test3<-function(ind,A,B){
+  tmp=matrix(0,nrow(B),1)
+  for(i in 1:nrow(B)){
+    tmp[i]=B[i,ind]
+  }
+  C=A%*%tmp
+  return(C)
+}
+n=10
+m=5
+k=10
+A=matrix(runif(n*m),n,m)
+B=matrix(runif(n*m),m,k)
+
+parms=list(ind=1:k,A=A,B=B)
 codeMetaInfo=list()
 codeMetaInfo$Exp=funcToExp(test3)$code
 codeMetaInfo$parms=parms

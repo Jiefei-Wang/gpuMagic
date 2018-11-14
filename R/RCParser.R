@@ -12,7 +12,7 @@ RCcompilerLevel1<-function(profileMeta3){
   
   #Preserved variables
   #Global worker private data
-  gpu_gp_data=GPUVar$global_private_totalSize
+  gpu_gp_data=GPUVar$global_private_data
   #Per worker length
   gpu_gp_totalSize=GPUVar$global_private_totalSize
   gpu_gp_matrixNum=GPUVar$global_private_matrixNum
@@ -46,23 +46,23 @@ RCcompilerLevel1<-function(profileMeta3){
   
   #Deducted variable
   gpu_global_id=GPUVar$gpu_global_id
-  gpu_worker_offset=GPUVar$gpu_worker_offset
+  gpu_worker_offset=GPUVar$worker_offset
   
   gpu_code=c(
-    paste0("unsigned long ",gpu_global_id,"=get_global_id(0);"),
-    paste0("unsigned long ", gpu_gp_totalSize,"=*",gpu_sizeInfo,"[0];"),
-    paste0("unsigned long ", gpu_gp_matrixNum,"=*",gpu_sizeInfo,"[1];"),
-    paste0("unsigned long ", gpu_gp_size1,"=",gpu_gp_size1,"_arg+",gpu_gp_matrixNum,";"),
-    paste0("unsigned long ", gpu_gp_size2,"=",gpu_gp_size2,"_arg+",gpu_gp_matrixNum,";"),
-    paste0("unsigned long ", gpu_worker_offset,"=",gpu_global_id,"*",gpu_gp_totalSize,";"),
-    paste0("unsigned long ", gpu_returnSize,"=",gpu_sizeInfo,"[2];")
+    paste0(GPUVar$default_index_type," ",gpu_global_id,"=get_global_id(0);"),
+    paste0(GPUVar$default_index_type," ", gpu_gp_totalSize,"=",gpu_sizeInfo,"[0];"),
+    paste0(GPUVar$default_index_type," ", gpu_gp_matrixNum,"=",gpu_sizeInfo,"[1];"),
+    paste0("global ",GPUVar$default_index_type,"* ", gpu_gp_size1,"=",gpu_gp_size1,"_arg+",gpu_gp_matrixNum,";"),
+    paste0("global ",GPUVar$default_index_type,"* ", gpu_gp_size2,"=",gpu_gp_size2,"_arg+",gpu_gp_matrixNum,";"),
+    paste0(GPUVar$default_index_type," ", gpu_worker_offset,"=",gpu_global_id,"*",gpu_gp_totalSize,";"),
+    paste0(GPUVar$default_index_type," ", gpu_returnSize,"=",gpu_sizeInfo,"[2];")
   )
   
   gpu_gp_num=-1
   gpu_gs_num=-1
   gpu_lp_num=-1
   gpu_ls_num=-1
-  
+  #matrixInd is for finding the index of a matrix size in the gpu code
   varInfo$matrixInd=hash()
   varInfo$matrix_gp=c()
   varInfo$matrix_gs=c()
@@ -204,10 +204,10 @@ RCTranslation<-function(varInfo,parsedExp){
       returnVar=curExp[[2]]
       returnInfo=getVarInfo(varInfo,returnVar)
       if(returnInfo$dataType==T_matrix){
-        curCode=paste0("for(unsigned long gpu_return_i=0;gpu_return_i<*",GPUVar$gpu_return_size,";gpu_return_i++){\n")
-        curCode=c(curCode,paste0(GPUVar$gpu_return_variable,"[gpu_return_i+",GPUVar$gpu_global_id,"*(*",GPUVar$gpu_return_size,")]=",returnInfo$address,"[gpu_return_i];\n}\n"))
+        curCode=paste0("for(",GPUVar$default_index_type," gpu_return_i=0;gpu_return_i<",GPUVar$return_size,";gpu_return_i++){\n")
+        curCode=c(curCode,paste0(GPUVar$return_variable,"[gpu_return_i+",GPUVar$gpu_global_id,"*",GPUVar$return_size,"]=",returnInfo$address,"[gpu_return_i];\n}\n"))
       }else{
-        curCode=paste0(GPUVar$gpu_return_variable,"[",GPUVar$gpu_global_id,"]=",returnInfo$address,";\n")
+        curCode=paste0(GPUVar$return_variable,"[",GPUVar$gpu_global_id,"]=",returnInfo$address,";\n")
       }
       gpu_code=c(gpu_code,curCode)
       next
@@ -237,6 +237,14 @@ RCTranslation<-function(varInfo,parsedExp){
       gpu_code=c(gpu_code,ifstate)
       next
     }
+    #If the function does not match the case above
+    func_char=deparse(curExp[[1]])
+    func=.cFuncs[[func_char]]
+    if(!is.null(func)){
+      gpu_code=c(gpu_code,func(varInfo,curExp))
+      next
+    }
+    
   }
   return(gpu_code)
 }

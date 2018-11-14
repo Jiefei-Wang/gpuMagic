@@ -12,8 +12,12 @@ codePreprocessing<-function(codeMetaInfo){
 #1.simplify the R code, each line should only have one function call,
 #If not, a temporary variable will be created to replace it.
 #2.If the code only has a symbol and the symbol is not recognized, it will be removed
-RParser1<-function(codeMetaInfo){
-  codeMetaInfo$tmpMeta=list(count=1)
+RParser1<-function(codeMetaInfo,tmpMeta=NULL){
+  if(is.null(tmpMeta)){
+    codeMetaInfo$tmpMeta=list(count=1)
+  }else{
+    codeMetaInfo$tmpMeta=tmpMeta
+  }
   codeMetaInfo1=parserFrame(RLevel1_parserFunc,RLevel1_checkFunc,
                             RLevel1_updateFunc,codeMetaInfo)
   codeMetaInfo1

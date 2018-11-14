@@ -1,11 +1,8 @@
 #The function list is on the buttom
 
 profile_size<-function(varInfo,Exp){
-  ExpInfo=getEmpyTable(1)
-  ExpInfo$dataType=T_scale
+  ExpInfo=getEmpyTable(1,T_scale)
   ExpInfo$precisionType=gpuMagic.option$getDefaultInt()
-  ExpInfo$size1=1
-  ExpInfo$size2=1
   var_data=getVarInfo(varInfo,Exp[[2]])
   if(var_data$compileSize==TRUE||var_data$constant){
     ExpInfo$compileData=TRUE
@@ -139,6 +136,7 @@ profile_arithmetic<-function(varInfo,Exp){
     ExpInfo$dataType=T_scale
     ExpInfo$size1=1
     ExpInfo$size2=1
+    ExpInfo$location="local"
   }
   if(leftInfo$dataType==T_scale&&rightInfo$dataType==T_matrix){
     ExpInfo$dataType=T_matrix
@@ -160,6 +158,27 @@ profile_arithmetic<-function(varInfo,Exp){
   return(ExpInfo)
 }
 
+profile_matrixMult<-function(varInfo,Exp){
+  ExpInfo=getEmpyTable(1,T_matrix)
+  leftExp=Exp[[2]]
+  rightExp=Exp[[3]]
+  leftInfo=getVarInfo(varInfo,leftExp)
+  rightInfo=getVarInfo(varInfo,rightExp)
+  if(leftInfo$constant||rightInfo$constant){
+    stop("The constant variable cannot be used in the matrix operation: \n",deparse(Exp))
+  }
+  if(leftInfo$size2!=rightInfo$size1){
+    warning("Undetermined/Uncomfortable matrix dimension: \n",deparse(Exp),
+            "\n If the variables are the function arguments, The result may be still valid")
+  }
+  ExpInfo$size1=leftInfo$size1
+  ExpInfo$size2=rightInfo$size2
+  if(leftInfo$compileSize&&rightInfo$compileSize){
+    ExpInfo$compileSize=TRUE
+  }
+  ExpInfo
+}
+
 
 getSubInfo<-function(varInfo,curInfo,sub_var){
   sub=list()
@@ -177,7 +196,7 @@ getSubInfo<-function(varInfo,curInfo,sub_var){
     if(is.numeric(sub_var)){
       sub$compileData=TRUE
       sub$compileSize=TRUE
-      sub$value=deparse(Exp[[3]])
+      sub$value=as.numeric(sub_var)
       sub$size=1
       sub$type=T_scale
     }else{
@@ -193,9 +212,6 @@ getSubInfo<-function(varInfo,curInfo,sub_var){
 }
 
 profile_subset<-function(varInfo,Exp){
-  
-  
-  
   curInfo=getVarInfo(varInfo,Exp[[2]])
   sub1=list()
   sub2=list()
@@ -268,6 +284,10 @@ profile_floor<-function(varInfo,Exp){
   ExpInfo=profile_symbol(varInfo,Exp[[2]])
   return(ExpInfo)
 }
+profile_ceil<-function(varInfo,Exp){
+  ExpInfo=profile_symbol(varInfo,Exp[[2]])
+  return(ExpInfo)
+}
 profile_return<-function(varInfo,Exp){
   ExpInfo=profile_symbol(varInfo,Exp[[2]])
   ExpInfo$var=GPUVar$gpu_return_variable
@@ -299,11 +319,12 @@ profile_gMatrix<-function(varInfo,Exp){
   }
   ExpInfo=getEmpyTable(1)
   ExpInfo$dataType=T_matrix
-  ExpInfo$precisionType=args$precision
+  ExpInfo$precisionType=gsub("\"","",args$precision,fixed = T)
   ExpInfo$size1=args$nrow
   ExpInfo$size2=args$ncol
+  ExpInfo$fixed=args$fixed
   ExpInfo$compileSize=TRUE
-  ExpInfo$location=args$location
+  ExpInfo$location=gsub("\"","",args$location,fixed = T)
   ExpInfo$shared=args$shared
   return(ExpInfo)
 }
@@ -316,8 +337,20 @@ profile_gNumber<-function(varInfo,Exp){
   }
   ExpInfo=getEmpyTable(1,type=T_scale)
   ExpInfo$precisionType=args$precision
+  ExpInfo$fixed=args$fixed
   return(ExpInfo)
 }
+#This function works only when the code is not transpose the matrix, but create a new matrix
+#eg: B=t(A)
+profile_transpose<-function(varInfo,Exp){
+  ExpInfo=getVarInfo(varInfo,Exp[[2]])
+  size1=ExpInfo$size1
+  size2=ExpInfo$size2
+  ExpInfo$size1=size1
+  ExpInfo$size2=size2
+  ExpInfo
+}
+
 
 profile_resize<-function(varInfo,Exp){
   args=matchFunArg(resize,Exp)

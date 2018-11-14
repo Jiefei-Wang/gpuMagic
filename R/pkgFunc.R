@@ -24,15 +24,19 @@ DEBUG=TRUE
 .profileFuncs$"*"=profile_arithmetic
 .profileFuncs$"/"=profile_arithmetic
 .profileFuncs$"["=profile_subset
-.profileFuncs$floor=profile_floor
+.profileFuncs[["floor"]]=profile_floor
+.profileFuncs[["ceiling"]]=profile_ceil
 .profileFuncs$gMatrix=profile_gMatrix
 .profileFuncs$gNumber=profile_gNumber
+.profileFuncs[["t"]]=profile_transpose
+.profileFuncs[["%*%"]]=profile_matrixMult
+
 
 
 #' @include RRecompileFunc.R
 .recompileFuncs=list()
 .recompileFuncs$matrix=recompile_matrix
-
+.recompileFuncs[["%*%"]]=recompile_matrixMult
 
 #' @include RCParserFunc.R
 .cFuncs=list()
@@ -44,7 +48,8 @@ DEBUG=TRUE
 .cFuncs$length= C_length 
 .cFuncs$nrow= C_nrow
 .cFuncs$ncol= C_ncol
-.cFuncs$floor=C_floor
+.cFuncs[["floor"]]=C_floor
+.cFuncs[["ceiling"]]=C_ceil
 .cFuncs$matrix=C_NULL
 .cFuncs$gMatrix=C_NULL
 .cFuncs$gNumber=C_NULL
@@ -119,6 +124,11 @@ GPUVar<-local({
   GPUVar_env$size_info="gpu_sizeInfo"
   
   GPUVar_env$preservedFuncPrefix="compiler."
+  
+  #This variable is for doing the matrix optimization
+  GPUVar_env$private_var_space="gpu_private_spcae"
+  GPUVar_env$private_size=10
+  
   return(GPUVar_env)
 })
 

@@ -56,18 +56,50 @@ RProfile2_parserFunc<-function(level,codeMetaInfo,curExp){
   tmpMeta=codeMetaInfo$tmpMeta
   varInfo=codeMetaInfo$varInfo
   renameList=c()
+  result$Exp=curExp
+  result$tmpMeta=tmpMeta
+  result$renameList=renameList
+  result$varInfo=varInfo
   
+  formatedCode=deparse(formatCall(varInfo,curExp))
+  #process transpose
+  if(formatedCode==deparse(parse(text="var=t(var)")[[1]])){
+    if(curExp[[2]]==curExp[[3]][[2]]){
+      #set the transpose
+      curInfo=getVarInfo(varInfo,curExp[[2]])
+      curInfo$transpose=!curInfo$transpose
+      varInfo=addVarInfo(varInfo,curInfo)
+      #set the version bump
+      curInfo=getVarInfo(varInfo,curExp[[2]])
+      var_char=curInfo$var
+      version=as.numeric(curInfo$version)
+      versionBump=parse(text=paste0(GPUVar$preservedFuncPrefix,"setVersion(",var_char,",",version,")"))[[1]]
+      result$extCode=c(result$extCode,versionBump)
+      return(result)
+    }
+  }
+  #stop when the code is like A=B%*%A, 
+  #it is unsafe to do the operation and assign back the result to the original matrix
+  if(formatedCode==deparse(parse(text="var=var%*%var")[[1]])){
+    if(curExp[[2]]==curExp[[3]][[3]]){
+      stop("The the left variable cannot be the same as the right variable:\n",deparse(curExp))
+    }
+  }
   
   if(curExp[[1]]=="="){ 
     leftExp=curExp[[2]]
     rightExp=curExp[[3]]
     leftVar_char=deparse(leftExp)
+    
     if(!is.call(leftExp)){
       if(has.key(leftVar_char,varInfo$varVersion)){
         leftInfo=getVarInfo(varInfo,leftVar_char)
+        if(leftInfo$fixed)
+          return(result)
         rightInfo=getExpInfo(varInfo,rightExp)
         checkInfo=checkVarType(leftInfo,rightInfo)
-        if(checkInfo$needReassign){
+        #Resize function is not working now, it needs some optimization
+        if(checkInfo$needReassign||checkInfo$needResize){
           if("for" %in% level || "if" %in% level)
             stop("Type conversion inside the for or if body is not allowed, please assign the variable before it:\n:",
                  paste0("TraceBack:",paste0(level,collapse = "->"),"\n"),
@@ -82,26 +114,25 @@ RProfile2_parserFunc<-function(level,codeMetaInfo,curExp){
           leftInfo$var=newName
           varInfo=addVarInfo(varInfo,leftInfo)
         }else{
-          if(checkInfo$needResize){
-            versionBump=paste0(GPUVar$preservedFuncPrefix,"bump(",leftVar_char,")")
-            resizeCode=paste0(GPUVar$preservedFuncPrefix,"resize(",leftVar_char,",",checkInfo$size1,",",checkInfo$size2,")")
-            result$extCode=c(result$extCode,versionBump,resizeCode)
-          }
           if(checkInfo$needRetype){
             leftInfo$precisionType=rightInfo$precisionType
-          }
-          leftInfo$value=rightInfo$value
-          leftInfo$compileSize=rightInfo$compileSize
-          leftInfo$compileData=rightInfo$compileData
-          if(checkInfo$needResize)
-            varInfo=addVarInfo(varInfo,leftInfo)
-          else
+            leftInfo$value=rightInfo$value
+            leftInfo$compileSize=rightInfo$compileSize
+            leftInfo$compileData=rightInfo$compileData
             varInfo=setVarInfo(varInfo,leftInfo)
+            
+            newInfo=getVarInfo(varInfo,leftVar_char)
+            version=newInfo$version
+            versionBump=parse(text=paste0(GPUVar$preservedFuncPrefix,"setVersion(",var_char,",",version,")"))[[1]]
+            result$extCode=c(result$extCode,versionBump)
+          }
         }
       }else{
         rightInfo=getExpInfo(varInfo,rightExp)
         leftInfo=copyVarInfo(rightInfo)
         leftInfo$var=leftVar_char
+        if(leftInfo$dataType==T_scale)
+          leftInfo$location="local"
         leftInfo$version=1
         varInfo=addVarInfo(varInfo,leftInfo)
       }
@@ -111,6 +142,7 @@ RProfile2_parserFunc<-function(level,codeMetaInfo,curExp){
     returnInfo=getVarInfo(varInfo,curExp[[2]])
     varInfo$returnInfo=returnInfo
   }
+  
   result$Exp=curExp
   result$tmpMeta=tmpMeta
   result$renameList=renameList
@@ -124,9 +156,11 @@ RProfile2_parserFunc<-function(level,codeMetaInfo,curExp){
 
 #Filter the preserved functions
 RProfile2_checkFunc<-function(curExp){
-  if(is.call(curExp)&&is.preservedFunc(curExp[[1]])){
+  if(!is.call(curExp)){
     return(FALSE)
   }
+  if(is.preservedFunc(curExp))
+    return(FALSE)
   return(TRUE)
 }
 
