@@ -13,6 +13,9 @@
 
 DEBUG=TRUE
 
+
+
+
 #' @include RProfilerFunc.R
 .profileFuncs=list()
 .profileFuncs$nrow=profile_size
@@ -54,7 +57,10 @@ DEBUG=TRUE
 .cFuncs$gMatrix=C_NULL
 .cFuncs$gNumber=C_NULL
 .cFuncs$resize=C_NULL
-
+.cFuncs[["message(var)"]]=C_message
+.cFuncs[["setVersion(var,num)"]]=C_setVersion
+.cFuncs[["var=var[var]"]]=C_oneSub
+.cFuncs[["gType=gType[gType,gType]"]]=C_twoSub
 
 
 
@@ -124,10 +130,12 @@ GPUVar<-local({
   GPUVar_env$size_info="gpu_sizeInfo"
   
   GPUVar_env$preservedFuncPrefix="compiler."
+  GPUVar_env$openclCode="opencl_"
   
   #This variable is for doing the matrix optimization
   GPUVar_env$private_var_space="gpu_private_spcae"
   GPUVar_env$private_size=10
+  
   
   return(GPUVar_env)
 })

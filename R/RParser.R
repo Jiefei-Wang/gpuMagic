@@ -5,6 +5,7 @@ codePreprocessing<-function(codeMetaInfo){
   readDataExp=parse(text=paste0(loopVar,"=",GPUVar$gpu_loop_data,"[",GPUVar$gpu_global_id,"+1]"))
   codeMetaInfo$Exp=c(readDataExp,codeMetaInfo$Exp)
   
+  
   codeMetaInfo
 }
 #Level 1 compiler
@@ -27,6 +28,14 @@ RParser1<-function(codeMetaInfo,tmpMeta=NULL){
 RLevel1_parserFunc<-function(level,codeMetaInfo,curExp){
   result=list()
   tmpMeta=codeMetaInfo$tmpMeta
+  
+  
+  code_char=deparse(curExp)[1]
+  if(substr(code_char,1,7)==GPUVar$openclCode){
+    result$Exp=curExp
+    result$tmpMeta=tmpMeta
+    return(result)
+  }
   
   if(!is.symbol(curExp)){
     if(curExp[[1]]=="="||curExp[[1]]=="=="){

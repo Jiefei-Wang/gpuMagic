@@ -168,8 +168,8 @@ profile_matrixMult<-function(varInfo,Exp){
     stop("The constant variable cannot be used in the matrix operation: \n",deparse(Exp))
   }
   if(leftInfo$size2!=rightInfo$size1){
-    warning("Undetermined/Uncomfortable matrix dimension: \n",deparse(Exp),
-            "\n If the variables are the function arguments, The result may be still valid")
+    #warning("Undetermined/Uncomfortable matrix dimension: \n",deparse(Exp),
+    #        "\n If the variables are the function arguments, The result may be still valid")
   }
   ExpInfo$size1=leftInfo$size1
   ExpInfo$size2=rightInfo$size2
@@ -187,7 +187,7 @@ getSubInfo<-function(varInfo,curInfo,sub_var){
     sub$compileSize=curInfo$compileSize
     
     
-    sub$size=var_data$size1
+    sub$size=curInfo$size1
     if(sub$size=="1")
       sub$type=T_scale
     else

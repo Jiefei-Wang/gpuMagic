@@ -1,44 +1,39 @@
-GPUcode2$gpu_code="
-  __kernel void gpu_kernel0(__global double* gpu_worker_data,__global double* A,__global double* B,__global float* gpuMagic_tmp,__global long* gpu_tmp_length_arg,__global long* gpu_matrix_offSize,__global long* gpu_matrix_size1,__global long* gpu_matrix_size2,__global double* gpu_return_variable,__global long* gpu_return_size){
-unsigned long gpu_global_id=get_global_id(0);
-  unsigned long gpu_tmp_length=*gpu_tmp_length_arg;
-  unsigned long gpu_worker_offset=gpu_global_id*gpu_tmp_length;
-  double ind ;
-  double opencl_tmp_1 ;
-  double opencl_tmp_2 ;
-  double e ;
-  ind=gpu_worker_data[gpu_global_id];
-
-  opencl_tmp_1=A[(int)ind-1];
-printf(\"%f,\",ind);
-  //opencl_tmp_2=B[(unsigned int)ind-1];
-  //e=opencl_tmp_1+opencl_tmp_2;
-  //gpu_return_variable[gpu_global_id]=e;
-}
-  "
-
 
 library("microbenchmark")
+library("tictoc")
 
-
+#The return size still has bug
 test3<-function(ind,A,B){
-  tmp=matrix(0,nrow(B),1)
-  for(i in 1:nrow(B)){
-    tmp[i]=B[i,ind]
-  }
+  tmp=B[,ind]
   C=A%*%tmp
+  #message(C)
   return(C)
 }
-n=1
-m=5
-k=1
+n=3
+m=4
+k=5
 A=matrix(runif(n*m),n,m)
-B=matrix(runif(n*m),m,k)
+B=matrix(runif(m*k),m,k)
+#.gpuResourcesManager$setMaxMemLimit(6*10^9)
+tic()
+res3=gpuSapply(1:k,test3,A,B)
+toc()
 
-gpuSapply(1:k,test3,A,B)
+code=compileGPUCode(1:k,test3,A,B)
+cat(code$gpu_code)
+fileName <- 'inst/script/debugCode.txt'
+debugcode=readChar(fileName, file.info(fileName)$size)
+opt=gpuSapply.getOption()
+opt$debugCode=debugcode
+gpuSapply(1:k,test3,A,B,.option = opt)
+tic()
 res1=sapply(1:k,test3,A,B)
+toc()
+tic()
 res2=A%*%B
+toc()
 range(res1-res2)
+range(res2-res3)
 
 matMul<-function(id,A,B){
   #find the index of the entry of C matrix

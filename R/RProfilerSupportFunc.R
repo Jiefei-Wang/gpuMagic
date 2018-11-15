@@ -300,18 +300,29 @@ copyVarInfo<-function(info){
   info
 }
 #Format a single code
-formatCall<-function(varInfo,Exp){
+formatCall<-function(Exp,generalType=FALSE){
   if(is.numeric(Exp)){
-    return(as.symbol("num"))
+    if(generalType)
+      return(as.symbol("gType"))
+    else
+      return(as.symbol("num"))
   }
   if(!is.call(Exp)){
-    return(as.symbol("var"))
+    if(generalType)
+      return(as.symbol("gType"))
+    else
+      return(as.symbol("var"))
   }
   if(length(Exp)>1){
     for(i in 2:length(Exp)){
-      Exp[[i]]=formatCall(varInfo,Exp[[i]])
+      Exp[[i]]=formatCall(Exp[[i]],generalType)
     }
   }
   Exp
 }
-
+#Test is a character is a number
+isNumeric<-function(char){
+  if(char=="")
+    return(FALSE)
+  return(!grepl("\\D", char))
+}

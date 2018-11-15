@@ -52,8 +52,8 @@ RCcompilerLevel1<-function(profileMeta3){
     paste0(GPUVar$default_index_type," ",gpu_global_id,"=get_global_id(0);"),
     paste0(GPUVar$default_index_type," ", gpu_gp_totalSize,"=",gpu_sizeInfo,"[0];"),
     paste0(GPUVar$default_index_type," ", gpu_gp_matrixNum,"=",gpu_sizeInfo,"[1];"),
-    paste0("global ",GPUVar$default_index_type,"* ", gpu_gp_size1,"=",gpu_gp_size1,"_arg+",gpu_gp_matrixNum,";"),
-    paste0("global ",GPUVar$default_index_type,"* ", gpu_gp_size2,"=",gpu_gp_size2,"_arg+",gpu_gp_matrixNum,";"),
+    paste0("global ",GPUVar$default_index_type,"* ", gpu_gp_size1,"=",gpu_gp_size1,"_arg+",gpu_gp_matrixNum,"*",gpu_global_id,";"),
+    paste0("global ",GPUVar$default_index_type,"* ", gpu_gp_size2,"=",gpu_gp_size2,"_arg+",gpu_gp_matrixNum,"*",gpu_global_id,";"),
     paste0(GPUVar$default_index_type," ", gpu_worker_offset,"=",gpu_global_id,"*",gpu_gp_totalSize,";"),
     paste0(GPUVar$default_index_type," ", gpu_returnSize,"=",gpu_sizeInfo,"[2];")
   )
@@ -175,6 +175,10 @@ RCcompilerLevel2<-function(GPUExp1){
     if(length(GPUExp1$varInfo$matrixInd)!=0)
       GPUExp1$varInfo$matrixInd=copy(GPUExp1$varInfo$matrixInd)
   }
+  GPUExp1$varInfo$curVarVersion=copy(GPUExp1$varInfo$varVersion)
+  for(i in keys(GPUExp1$varInfo$curVarVersion)){
+    GPUExp1$varInfo$curVarVersion[[i]]=1
+  }
   
   parsedExp=GPUExp1$Exp
   varInfo=GPUExp1$varInfo
@@ -193,13 +197,9 @@ RCTranslation<-function(varInfo,parsedExp){
   gpu_code=c()
   for(i in 1:length(parsedExp)){
     curExp=parsedExp[[i]]
-    if(curExp=="{")
+    if(curExp=="{"||is.symbol(curExp))
       next
-    if(switch(deparse(curExp[[1]]),"="=T,"=="=T,F)){
-      curCode=C_call_assign(varInfo,curExp)
-      gpu_code=c(gpu_code,curCode)
-      next
-    }
+    
     if(curExp[[1]]=="return"){
       returnVar=curExp[[2]]
       returnInfo=getVarInfo(varInfo,returnVar)
@@ -237,13 +237,42 @@ RCTranslation<-function(varInfo,parsedExp){
       gpu_code=c(gpu_code,ifstate)
       next
     }
-    #If the function does not match the case above
-    func_char=deparse(curExp[[1]])
-    func=.cFuncs[[func_char]]
+    #if the code format exactly match the template
+    formattedExp=formatCall(curExp,generalType=FALSE)
+    formattedExp_char=gsub(" ", "",deparse(formattedExp), fixed = TRUE)
+    func=.cFuncs[[formattedExp_char]]
     if(!is.null(func)){
-      gpu_code=c(gpu_code,func(varInfo,curExp))
+      curCode=func(varInfo,curExp)
+      gpu_code=c(gpu_code,curCode)
       next
     }
+    #if the code format exactly match the general type template
+    formattedExp=formatCall(curExp,generalType=TRUE)
+    formattedExp_char=gsub(" ", "",deparse(formattedExp), fixed = TRUE)
+    func=.cFuncs[[formattedExp_char]]
+    if(!is.null(func)){
+      curCode=func(varInfo,curExp)
+      gpu_code=c(gpu_code,curCode)
+      next
+    }
+    #if the code does not exactly match the template but has an equal sign, partially match is used
+    if(switch(deparse(curExp[[1]]),"="=T,"=="=T,F)){
+      curCode=C_call_assign(varInfo,curExp)
+      gpu_code=c(gpu_code,curCode)
+      next
+    }
+    
+    
+    
+    code_char=deparse(curExp)[1]
+    if(substr(code_char,1,7)==GPUVar$openclCode){
+      code_char=deparse(curExp)
+      curCode=paste0(substr(code_char,8,nchar(code_char)),";")
+      gpu_code=c(gpu_code,curCode)
+      next
+    }
+    
+    
     
   }
   return(gpu_code)

@@ -61,9 +61,11 @@ RProfile2_parserFunc<-function(level,codeMetaInfo,curExp){
   result$renameList=renameList
   result$varInfo=varInfo
   
-  formatedCode=deparse(formatCall(varInfo,curExp))
+  
+  formattedExp=formatCall(curExp,generalType=FALSE)
+  formattedExp_char=gsub(" ", "",deparse(formattedExp), fixed = TRUE)
   #process transpose
-  if(formatedCode==deparse(parse(text="var=t(var)")[[1]])){
+  if(formattedExp_char=="var=t(var)"){
     if(curExp[[2]]==curExp[[3]][[2]]){
       #set the transpose
       curInfo=getVarInfo(varInfo,curExp[[2]])
@@ -80,7 +82,7 @@ RProfile2_parserFunc<-function(level,codeMetaInfo,curExp){
   }
   #stop when the code is like A=B%*%A, 
   #it is unsafe to do the operation and assign back the result to the original matrix
-  if(formatedCode==deparse(parse(text="var=var%*%var")[[1]])){
+  if(formattedExp_char=="var=var%*%var"){
     if(curExp[[2]]==curExp[[3]][[3]]){
       stop("The the left variable cannot be the same as the right variable:\n",deparse(curExp))
     }

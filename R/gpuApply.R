@@ -143,7 +143,8 @@ fillGPUdata<-function(GPUcode1,.option=gpuSapply.getOption()){
   }
   lp_size=offset
   
-  kernel_args$sizeInfo[3]=as.numeric(varInfo$returnInfo$size1)*as.numeric(varInfo$returnInfo$size2)*length(parms[[GPUVar$gpu_loop_data]])
+  if(!is.null(varInfo$returnInfo))
+    kernel_args$sizeInfo[3]=as.numeric(varInfo$returnInfo$size1)*as.numeric(varInfo$returnInfo$size2)
   
   #add a 0 value if there is no value in the arguments
   for(var in names(kernel_args)){
@@ -153,11 +154,13 @@ fillGPUdata<-function(GPUcode1,.option=gpuSapply.getOption()){
   
   
   #Allocate the gpu memory
+  totalWorkerNum=length(parms[[1]])
   IntType=GPUVar$default_index_type
+  
   device_argument=list()
-  device_argument$gp_data=gpuMatrix(rep(0,gp_size+1),type="char")
-  device_argument$gp_size1=gpuMatrix(kernel_args$gp_size1,type=IntType)
-  device_argument$gp_size2=gpuMatrix(kernel_args$gp_size2,type=IntType)
+  device_argument$gp_data=gpuMatrix(rep(0,ceiling(gp_size*totalWorkerNum/8)+1),type="double")
+  device_argument$gp_size1=gpuMatrix(rep(kernel_args$gp_size1,totalWorkerNum),type=IntType)
+  device_argument$gp_size2=gpuMatrix(rep(kernel_args$gp_size2,totalWorkerNum),type=IntType)
   device_argument$gp_offset=gpuMatrix(kernel_args$gp_offset,type=IntType)
   
   device_argument$gs_data=gpuMatrix(rep(0,gs_size+1),type="char")
@@ -170,7 +173,7 @@ fillGPUdata<-function(GPUcode1,.option=gpuSapply.getOption()){
   device_argument$ls_size2=kernel.getSharedMem(length(kernel_args$ls_size2),type=IntType)
   device_argument$ls_offset=kernel.getSharedMem(length(kernel_args$ls_offset),type=IntType)
   
-  device_argument$return_var=gpuMatrix(rep(0,kernel_args$sizeInfo[3]),type=gpuMagic.option$getDefaultFloat())
+  device_argument$return_var=gpuMatrix(rep(0,kernel_args$sizeInfo[3]*totalWorkerNum),type=gpuMagic.option$getDefaultFloat())
   device_argument$sizeInfo=gpuMatrix(kernel_args$sizeInfo,type=IntType)
     
     
@@ -288,12 +291,14 @@ completeProfileTbl<-function(GPUExp2){
     varInfo=setVarInfo(varInfo,curInfo)
   }
   returnVar=varInfo$returnInfo$var
+  if(!is.null(returnVar)){
   returnInfo=getVarInfo(varInfo,returnVar)
   
   returnInfo$size1=eval(parse(text=returnInfo$size1))
   returnInfo$size2=eval(parse(text=returnInfo$size2))
-  
   varInfo$returnInfo=returnInfo
+  }
+  
   GPUExp2$varInfo=varInfo
   GPUExp2
   

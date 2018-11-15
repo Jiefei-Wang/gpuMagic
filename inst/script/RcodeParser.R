@@ -125,16 +125,14 @@ B=runif(n)
 
 
 test3<-function(ind,A,B){
-  tmp=matrix(0,nrow(B),1)
-  for(i in 1:nrow(B)){
-    tmp[i]=B[i,ind]
-  }
-  C=A%*%tmp
-  return(C)
+  tmp=B[,ind]
+  #C=A%*%tmp
+  #message(C)
+  #return(C)
 }
-n=10
+n=2
 m=5
-k=10
+k=2
 A=matrix(runif(n*m),n,m)
 B=matrix(runif(n*m),m,k)
 
@@ -151,7 +149,8 @@ profileMeta2=RProfile2(profileMeta1)
 profileMeta3=RRecompiler(profileMeta2)
 GPUExp1=RCcompilerLevel1(profileMeta3)
 GPUExp2=RCcompilerLevel2(GPUExp1)
-
+GPUcode=completeProfileTbl(GPUExp2)
+GPUcode1=completeGPUcode(GPUcode)
 
 
 
