@@ -77,17 +77,21 @@ C_subset<-function(varInfo,Exp){
   }
   if(Exp[[1]]=="["){
     if(length(Exp)==3){
-      ExpChar=paste0(Exp[[2]],"[(",GPUVar$default_index_type,")",C_subset(varInfo,Exp[[3]]),"-1]")
+      ExpChar=R_getVarSub(varInfo,Exp[[2]],C_subset(varInfo,Exp[[3]]),1)
+      #ExpChar=paste0(Exp[[2]],"[(",GPUVar$default_index_type,")",C_subset(varInfo,Exp[[3]]),"-1]")
       return(ExpChar)
     }
     if(length(Exp==4)){
       #var_data=getVarInfo(varInfo,Exp[[2]])
       #var_ind=varInfo[[Exp[[2]]]]
-      size1=R_getVarSize1(varInfo,Exp[[2]])
+      #size1=R_getVarSize1(varInfo,Exp[[2]])
       if(Exp[[3]]==""||Exp[[4]]=="")
         stop("Compilation error, please contact the author: ",deparse(Exp))
-      ExpChar=paste0(Exp[[2]],"[(",GPUVar$default_index_type,")",C_subset(varInfo,Exp[[3]]),
-                     "-1 +((",GPUVar$default_index_type,")",C_subset(varInfo,Exp[[4]]),"-1)*",size1,"]")
+      #ExpChar=paste0(Exp[[2]],"[(",GPUVar$default_index_type,")",C_subset(varInfo,Exp[[3]]),
+      #               "-1 +((",GPUVar$default_index_type,")",C_subset(varInfo,Exp[[4]]),"-1)*",size1,"]")
+      ExpChar=R_getVarSub(varInfo,Exp[[2]],
+                          C_subset(varInfo,Exp[[3]]),
+                          C_subset(varInfo,Exp[[4]]))
       return(ExpChar)
     }
   }
@@ -226,6 +230,43 @@ C_twoSub<-function(varInfo,Exp){
   code[code!=""]
 }
 
+
+C_matMul<-function(varInfo,Exp){
+  leftVar=Exp[[2]]
+  rightExp=Exp[[3]]
+  rightVar1=rightExp[[2]]
+  rightVar2=rightExp[[3]]
+  
+  code=c(
+    paste0(gpuMagic.option$getDefaultFloat()," gpu_matMul_tmp;"),
+    paste0("for(",GPUVar$default_index_type,
+           " gpu_matMul_i=0;gpu_matMul_i<",R_nrow(varInfo,rightVar1),
+           ";gpu_matMul_i++){"),
+    paste0("for(",GPUVar$default_index_type,
+           " gpu_matMul_i=0;gpu_matMul_i<",R_nrow(varInfo,rightVar1),
+           ";gpu_matMul_i++){"),
+    paste0(),
+    paste0(),
+    paste0(),
+    paste0(),
+    paste0(),
+    paste0(),
+    paste0()
+    
+  )
+}
+
+
+
+
+
+
+
+
+
+
+
+#Generate subset function
 R_processSub<-function(varInfo,sub,length,name){
   if(isNumeric(sub)){
     forLoopStart=""
@@ -253,7 +294,6 @@ R_processSub<-function(varInfo,sub,length,name){
     stop("Matrix subset by a vector is not supported")
   }
 }
-
 
 #Get an element from the matrix(eg. A[i,j])
 #i,j is 1-based index

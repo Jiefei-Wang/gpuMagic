@@ -13,6 +13,7 @@ gpuMagic.option<-local({
     getDefaultFloat=function(){e.default.float},
     getDefaultInt=function(){e.default.int},
     getDefaultType=function(){e.default.type},
+    getDefaultIndexType=function(){GPUVar$default_index_type},
     setDefaultFloat=function(type){
       checkTypeSupport(type)
       e.default.float=type
@@ -24,6 +25,10 @@ gpuMagic.option<-local({
     setDefaultType=function(type){
       checkTypeSupport(type)
       e.default.type=type
+    },
+    setDefaultIndexType=function(type){
+      checkTypeSupport(type)
+      GPUVar$default_index_type=type
     }
   )
 })

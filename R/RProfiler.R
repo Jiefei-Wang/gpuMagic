@@ -12,8 +12,8 @@ RProfile1<-function(codeMetaInfo2){
   func_args=profileMeta1$parms
   
   #profile the function arguments and the preserved variable
-  varInfo=profileVar(func_args,profileMeta1$constantParms)
-  gpuIndex=getEmpyTable(1,type=T_scale)
+  varInfo=profileVar(func_args,profileMeta1$argInfo)
+  gpuIndex=getEmpyTable(type=T_scale)
   gpuIndex$var=GPUVar$gpu_global_id
   gpuIndex$precisionType=GPUVar$default_index_type
   gpuIndex$initialization=FALSE
@@ -39,11 +39,8 @@ RProfile1<-function(codeMetaInfo2){
 #2. rename the variable if the type does not match
 RProfile2<-function(profileMeta1){
   if(DEBUG){
-    profileMeta1$varInfo$varTable=copy(profileMeta1$varInfo$varTable)
-    profileMeta1$varInfo$varVersion=copy(profileMeta1$varInfo$varVersion)
+    profileMeta1$varInfo=copyVarInfoTbl(profileMeta1$varInfo)
   }
-  
-  
   
   profileMeta2=parserFrame(RProfile2_parserFunc,RProfile2_checkFunc,
                            RProfile2_updateFunc,profileMeta1)
@@ -58,7 +55,6 @@ RProfile2_parserFunc<-function(level,codeMetaInfo,curExp){
   renameList=c()
   result$Exp=curExp
   result$tmpMeta=tmpMeta
-  result$renameList=renameList
   result$varInfo=varInfo
   
   
@@ -67,16 +63,29 @@ RProfile2_parserFunc<-function(level,codeMetaInfo,curExp){
   #process transpose
   if(formattedExp_char=="var=t(var)"){
     if(curExp[[2]]==curExp[[3]][[2]]){
+      curVar=curExp[[2]]
+      #Check if the target can be changed
+      if(getVarProperty(varInfo,curVar,"constVal")){
+        stop("The const value cannot be changed",deparse(curExp))
+      }
+      if(getVarProperty(varInfo,curVar,"lazyRef")){
+        stop("Cannot transpose the laze expression",deparse(curExp))
+      }
+      
       #set the transpose
-      curInfo=getVarInfo(varInfo,curExp[[2]])
-      curInfo$transpose=!curInfo$transpose
-      varInfo=addVarInfo(varInfo,curInfo)
+      varInfo=versionBump(varInfo,curVar)
+      curTranspose=getVarProperty(varInfo,curVar,"transpose")
+      curTranspose=!curTranspose
+      varInfo=setVarProperty(varInfo,curVar,"transpose",curTranspose)
+      
+      
       #set the version bump
-      curInfo=getVarInfo(varInfo,curExp[[2]])
-      var_char=curInfo$var
-      version=as.numeric(curInfo$version)
+      var_char=deparse(curVar)
+      version=getVarProperty(varInfo,curVar,"version")
       versionBump=parse(text=paste0(GPUVar$preservedFuncPrefix,"setVersion(",var_char,",",version,")"))[[1]]
-      result$extCode=c(result$extCode,versionBump)
+      
+      result$varInfo=varInfo
+      result$extCode=versionBump
       return(result)
     }
   }
@@ -88,58 +97,22 @@ RProfile2_parserFunc<-function(level,codeMetaInfo,curExp){
     }
   }
   
+  
+  
   if(curExp[[1]]=="="){ 
     leftExp=curExp[[2]]
-    rightExp=curExp[[3]]
-    leftVar_char=deparse(leftExp)
-    
-    if(!is.call(leftExp)){
-      if(has.key(leftVar_char,varInfo$varVersion)){
-        leftInfo=getVarInfo(varInfo,leftVar_char)
-        if(leftInfo$fixed)
-          return(result)
-        rightInfo=getExpInfo(varInfo,rightExp)
-        checkInfo=checkVarType(leftInfo,rightInfo)
-        #Resize function is not working now, it needs some optimization
-        if(checkInfo$needReassign||checkInfo$needResize){
-          if("for" %in% level || "if" %in% level)
-            stop("Type conversion inside the for or if body is not allowed, please assign the variable before it:\n:",
-                 paste0("TraceBack:",paste0(level,collapse = "->"),"\n"),
-                 deparse(curExp))
-          if(leftInfo$constant=="Y")
-            stop("The left expression is a constant, changing the number of the left expression is not allowed:\n:",deparse(curExp))
-          tmpMeta=getTmpVar(tmpMeta)
-          newName=tmpMeta$varName
-          curExp[[2]]=as.symbol(newName)
-          renameList=rbind(renameList,c(leftVar_char,newName))
-          leftInfo=copyVarInfo(rightInfo)
-          leftInfo$var=newName
-          varInfo=addVarInfo(varInfo,leftInfo)
-        }else{
-          if(checkInfo$needRetype){
-            leftInfo$precisionType=rightInfo$precisionType
-            leftInfo$value=rightInfo$value
-            leftInfo$compileSize=rightInfo$compileSize
-            leftInfo$compileData=rightInfo$compileData
-            varInfo=setVarInfo(varInfo,leftInfo)
-            
-            newInfo=getVarInfo(varInfo,leftVar_char)
-            version=newInfo$version
-            versionBump=parse(text=paste0(GPUVar$preservedFuncPrefix,"setVersion(",var_char,",",version,")"))[[1]]
-            result$extCode=c(result$extCode,versionBump)
-          }
-        }
-      }else{
-        rightInfo=getExpInfo(varInfo,rightExp)
-        leftInfo=copyVarInfo(rightInfo)
-        leftInfo$var=leftVar_char
-        if(leftInfo$dataType==T_scale)
-          leftInfo$location="local"
-        leftInfo$version=1
-        varInfo=addVarInfo(varInfo,leftInfo)
+    if(is.symbol(leftExp)){
+      #profile the left symbol
+      res=profile_symbol_left(level,codeMetaInfo,varInfo,curExp)
+      for(i in names(res)){
+        result[[i]]=res[[i]]
       }
+      return(result)
     }
+    
+    
   }
+  
   if(curExp[[1]]=="return"){
     returnInfo=getVarInfo(varInfo,curExp[[2]])
     varInfo$returnInfo=returnInfo

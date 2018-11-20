@@ -6,6 +6,7 @@ library("tictoc")
 test3<-function(ind,A,B){
   tmp=B[,ind]
   C=A%*%tmp
+  
   #message(C)
   return(C)
 }
@@ -19,13 +20,21 @@ tic()
 res3=gpuSapply(1:k,test3,A,B)
 toc()
 
-code=compileGPUCode(1:k,test3,A,B)
+code=compileGPUCode("vector",test3,"matrix","matrix")
+code$Exp
+
 cat(code$gpu_code)
 fileName <- 'inst/script/debugCode.txt'
 debugcode=readChar(fileName, file.info(fileName)$size)
 opt=gpuSapply.getOption()
 opt$debugCode=debugcode
+opt$verbose=T
 gpuSapply(1:k,test3,A,B,.option = opt)
+
+
+
+
+
 tic()
 res1=sapply(1:k,test3,A,B)
 toc()
@@ -51,9 +60,9 @@ matMul<-function(id,A,B){
 }
 
   
-n=10
-m=5
-k=10
+n=1000
+m=5000
+k=1000
 A=matrix(runif(n*m),n,m)
 B=matrix(runif(n*m),m,k)
 

@@ -36,10 +36,13 @@ DEBUG=TRUE
 
 
 
+
+
+
 #' @include RRecompileFunc.R
 .recompileFuncs=list()
 .recompileFuncs$matrix=recompile_matrix
-.recompileFuncs[["%*%"]]=recompile_matrixMult
+#.recompileFuncs[["%*%"]]=recompile_matrixMult
 
 #' @include RCParserFunc.R
 .cFuncs=list()
@@ -61,7 +64,7 @@ DEBUG=TRUE
 .cFuncs[["setVersion(var,num)"]]=C_setVersion
 .cFuncs[["var=var[var]"]]=C_oneSub
 .cFuncs[["gType=gType[gType,gType]"]]=C_twoSub
-
+.cFuncs[["gType=gType%*%gType"]]=C_matMul
 
 
 

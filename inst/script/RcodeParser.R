@@ -123,11 +123,15 @@ n=10
 A=runif(n)
 B=runif(n)
 
+64*100*100
+#bug
+a=nrow(A)
+a=a+1
 
 test3<-function(ind,A,B){
-  tmp=B[,ind]
-  #C=A%*%tmp
-  #message(C)
+  a=nrow(A)
+  a=a+1
+  
   #return(C)
 }
 n=2
@@ -136,11 +140,25 @@ k=2
 A=matrix(runif(n*m),n,m)
 B=matrix(runif(n*m),m,k)
 
+
+
+
+test3<-function(ind,A,B){
+  ind=ind-1
+  j=floor(ind/nrow(A))
+  i=ind-j*nrow(A)
+  j=j+1
+  i=i+1
+  C=0
+  for(k in 1:ncol(A)){
+    C=C+A[i,k]*B[k,j]
+  }
+  return(C)
+}
 parms=list(ind=1:k,A=A,B=B)
 codeMetaInfo=list()
 codeMetaInfo$Exp=funcToExp(test3)$code
 codeMetaInfo$parms=parms
-codeMetaInfo$constantParms=NULL
 codeMetaInfo0=codePreprocessing(codeMetaInfo)
 codeMetaInfo1=RParser1(codeMetaInfo0)
 codeMetaInfo2=RParser2(codeMetaInfo1)

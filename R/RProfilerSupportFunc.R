@@ -2,13 +2,11 @@
 #===========================profiler 1========================
 
 #Profile a parameter and give the profile table back
-profileVar<-function(parms,constantParms){
-  varInfo=list()
-  varInfo$profile=getEmpyTable(0)
+profileVar<-function(parms,argInfo){
+  varInfo=getEmpVarInfoTbl()
+  varInfo$parmsName="parms"
   varInfo$requiredVar=c()
-  varInfo$varTable=hash()
-  varInfo$varVersion=hash()
-  varInfo$profileTblName="varInfo$profile"
+  
   if(length(parms)==0) return(varInfo)
   varName=names(parms)
   for(i in 1:length(parms)){
@@ -19,38 +17,30 @@ profileVar<-function(parms,constantParms){
       curPrecision=gpuMagic.option$getDefaultFloat()
       curDim=dim(as.matrix(parms[[i]]))
     }
-    info=getEmpyTable(1)
+    info=getEmpyTable()
     info$var=varName[i]
     
     info$precisionType=curPrecision
     info$shared=TRUE
+    info$constVal=TRUE
+    info$compileSize1=TRUE
+    info$compileSize2=TRUE
+    info$require=TRUE
+    info$initialization=FALSE
     
-    if(varName[i] %in% names(constantParms)){
-      info$constant=TRUE
-      info$size1=nrow(as.matrix(parms[[i]]))
-      info$size2=ncol(as.matrix(parms[[i]]))
-      info$value=paste0("c(",paste0(parms[[i]],collapse = ","),")")
-      info$compileSize=TRUE
+    if(curDim[1]==1&&curDim[2]==1){
+      info$dataType=T_scale
+      info$size1=1
+      info$size2=1
+      info$value=paste0("(",varInfo$parmsName,"[[",i,"]])")
       info$compileData=TRUE
-      info$require=FALSE
-      info$initialization=FALSE
     }else{
-      info$size1=paste0("(",varInfo$profileTblName,"[",i,",]","$size1)")
-      info$size2=paste0("(",varInfo$profileTblName,"[",i,",]","$size2)")
-      
-      if(curDim[1]==1&&curDim[2]==1){
-        info$dataType=T_scale
-        info$size1=1
-        info$size2=1
-        info$value=paste0("(",varInfo$profileTblName,"[",i,",]","$value)")
-        info$compileData=TRUE
-      }else{
-        info$dataType=T_matrix
-      }
-      info$compileSize=TRUE
-      info$require=TRUE
-      info$initialization=FALSE
+      info$dataType=T_matrix
+      info$size1=paste0("(nrow(",varInfo$parmsName,"[[",i,",]]))")
+      info$size2=paste0("(ncol(",varInfo$parmsName,"[[",i,",]]))")
     }
+    
+    
     varInfo=addVarInfo(varInfo,info)
     varInfo$requiredVar=c(varInfo$requiredVar,info$var)
   }
@@ -99,7 +89,7 @@ profileLoopVar<-function(varInfo,parsedExp){
       next
     if(curExp[[1]]=="for"){
       var_char=deparse(curExp[[2]])
-      ExpProfile=getEmpyTable(1,type = T_scale)
+      ExpProfile=getEmpyTable(type = T_scale)
       ExpProfile$var=var_char
       ExpProfile$initialization=FALSE
       ExpProfile$precisionType=gpuMagic.option$getDefaultInt()
@@ -120,14 +110,21 @@ profileLoopVar<-function(varInfo,parsedExp){
 #==================================Profiler 2==========================
 
 #Find the function parameters
+#If the functions' argument does not show in the expression, the default value will be used
 matchFunArg<-function(fun,Exp){
-  funArg=lapply(formals(fun),as.character)
+  funArg=formals(fun)
   ExpArg=standardise_call(Exp)
   if(length(ExpArg)>1){
     argName=names(ExpArg)
     for(i in 2:length(ExpArg)){
-      funArg[[argName[i]]]=deparse(ExpArg[[i]])
+      funArg[[argName[i]]]=ExpArg[[i]]
     }
+  }
+  for(i in 1:length(funArg)){
+    if(deparse(funArg[[i]])=="")
+      funArg[[i]]=NA
+    if(is.call(funArg[[i]]))
+      funArg[[i]]=eval(funArg[[i]])
   }
   return(funArg)
 }
@@ -158,50 +155,8 @@ getExpInfo<-function(varInfo,Exp){
   
   return(ExpInfo)
 }
-#Get the variable profile
-getVarInfo<-function(varInfo,varName,version="auto"){
-  if(is.character(varName))
-    var_char=varName
-  else
-    var_char=deparse(varName)
-  
-  #Check if the symbol does not exist in the table
-  if(!has.key(var_char,varInfo$varVersion))
-    stop(paste0("The given variable is not found: ",var_char))
-  if(version=="auto")
-    version=as.numeric(varInfo$varVersion[[var_char]])
-  var_char=paste0(var_char,"+",version)
-  var_ind=varInfo$varTable[[var_char]]
-  var_data=varInfo$profile[var_ind,,drop=F]
-  var_data
-}
-setVarInfo<-function(varInfo,newInfo){
-  var_char=paste0(newInfo$var,"+",newInfo$version)
-  #Check if the symbol does not exist in the table
-  if(!has.key(var_char,varInfo$varTable))
-    stop(paste0("The given variable is not found: ",var_char))
-  var_ind=varInfo$varTable[[var_char]]
-  varInfo$profile[var_ind,]=newInfo
-  varInfo
-}
-addVarInfo<-function(varInfo,newInfo){
-  version=as.numeric(newInfo$version)
-  var_char=paste0(newInfo$var,"+",version)
-  if(has.key(var_char,varInfo$varTable)){
-    version=version+1
-    var_char=paste0(newInfo$var,"+",version)
-    newInfo$version=version
-  }
-  varInfo$profile=rbind(varInfo$profile,newInfo)
-  varInfo$varTable[[var_char]]=nrow(varInfo$profile)
-  varInfo$varVersion[[newInfo$var]]=version
-  varInfo
-}
-
 
 checkVarType<-function(leftInfo,rightInfo){
-  if(leftInfo$constant)
-    stop("The static variable cannot be changed:\n",leftInfo$var)
   needReassign=FALSE
   needResize=FALSE
   needRetype=FALSE
@@ -209,6 +164,7 @@ checkVarType<-function(leftInfo,rightInfo){
     needRetype=TRUE
   if(leftInfo$dataType!=rightInfo$dataType)
     return(list(needReassign=TRUE))
+  
   if(leftInfo$size1!=rightInfo$size1||rightInfo$size2!=rightInfo$size2){
     len1=paste0(leftInfo$size1,"*",leftInfo$size2)
     len2=paste0(rightInfo$size1,"*",rightInfo$size2)
@@ -223,48 +179,14 @@ checkVarType<-function(leftInfo,rightInfo){
   return(list(needRetype=needRetype,needReassign=FALSE,needResize=FALSE))
 }
 
-#Get an empty profile table
-getEmpyTable<-function(rowNum=0,type=""){
-  tlbName=c("var","address","dataType","precisionType", "size1","size2","value","compileSize",
-            "compileData","transpose","require","initialization","shared","constant","fixed","location","version")
-  boolVar=c("compileSize","compileData","require","initialization","shared","constant","fixed","transpose")
-  tbl=as.data.frame(matrix("NA",ncol = length(tlbName), nrow = rowNum))
-  names(tbl)=tlbName
-  if(rowNum!=0){
-    tbl$precisionType=gpuMagic.option$getDefaultFloat()
-    tbl$compileSize=FALSE
-    tbl$compileData=FALSE
-    tbl$transpose=FALSE
-    tbl$require=FALSE
-    tbl$initialization=TRUE
-    tbl$shared=FALSE
-    tbl$constant=FALSE
-    tbl$fixed=FALSE
-    tbl$version=1
-    tbl$location="global"
-    if(type==T_scale){
-      tbl$dataType=T_scale
-      tbl$compileSize=TRUE
-      tbl$size1=1
-      tbl$size2=1
-      tbl$location="local"
-    }
-    if(type==T_matrix){
-      tbl$dataType=T_matrix
-    }
-  }
-  for(i in colnames(tbl)){
-    tbl[,i]=as.character(tbl[,i])
-  }
-  
-  for(i in boolVar){
-    tbl[,i]=as.logical(tbl[,i])
-  }
-  tbl
-}
 #Determine which type can preserve the information 
 #of the information in type1 and type2
 typeInherit<-function(type1,type2){
+  if(!is.character(type1))
+    type1=as.character(type1)
+  if(!is.character(type2))
+    type2=as.character(type2)
+  
   group_float=c("half","float","double")
   group_int=c("char","int","long","uint","ulong")
   
@@ -291,12 +213,25 @@ is.preservedFunc<-function(func){
   func=as.character(func)
   length(grep(GPUVar$preservedFuncPrefix,func,fixed = T))!=0
 }
+#This function determine when the variable is defined, which property can be inherit from the right expression
 copyVarInfo<-function(info){
-  info$require=FALSE
-  info$initialization=TRUE
   info$shared=FALSE
-  info$constant=FALSE
   info$location="global"
+  info$version=1
+  
+  info$require=FALSE
+  info$constVal=FALSE
+  info$constDef=FALSE
+  info$lazyRef=FALSE
+  info$initialization=TRUE
+  info$changed=FALSE
+  info$used=FALSE
+  #Some optimization
+  if(info$compileSize1&&info$compileSize2&&info$size1=="1"&&info$size2=="1")
+    info$dataType=T_scale
+  if(info$dataType==T_scale)
+    info$location="local"
+  
   info
 }
 #Format a single code
@@ -326,3 +261,18 @@ isNumeric<-function(char){
     return(FALSE)
   return(!grepl("\\D", char))
 }
+
+toCharacter<-function(charOrSym){
+  if(!is.character(charOrSym))
+    charOrSym=deparse(charOrSym)
+  charOrSym
+}
+Simplify2<-function(Exp){
+  res=Simplify(Exp)
+  if(isNumeric(res))
+    return(res)
+  else
+    return(paste0("(",res,")"))
+}
+
+

@@ -194,6 +194,8 @@ compileGPUCode<-function(X,FUN,...,.constantParms=NULL,.option=gpuSapply.getOpti
   codeMetaInfo$Exp=funcToExp(FUN)$code
   codeMetaInfo$parms=parms
   codeMetaInfo$constantParms=.constantParms
+  
+  
   codeMetaInfo0=codePreprocessing(codeMetaInfo)
   codeMetaInfo1=RParser1(codeMetaInfo0)
   codeMetaInfo2=RParser2(codeMetaInfo1)
