@@ -29,10 +29,11 @@ DEBUG=TRUE
 .profileFuncs$"["=profile_subset
 .profileFuncs[["floor"]]=profile_floor
 .profileFuncs[["ceiling"]]=profile_ceil
-.profileFuncs$gMatrix=profile_gMatrix
-.profileFuncs$gNumber=profile_gNumber
+.profileFuncs[["gMatrix"]]=profile_gMatrix
+.profileFuncs[["gNumber"]]=profile_gNumber
 .profileFuncs[["t"]]=profile_transpose
 .profileFuncs[["%*%"]]=profile_matrixMult
+.profileFuncs[["subRef"]]=profile_subRef
 
 
 
@@ -60,6 +61,7 @@ DEBUG=TRUE
 .cFuncs$gMatrix=C_NULL
 .cFuncs$gNumber=C_NULL
 .cFuncs$resize=C_NULL
+.cFuncs[["subRef"]]=C_NULL
 .cFuncs[["message(var)"]]=C_message
 .cFuncs[["setVersion(var,num)"]]=C_setVersion
 .cFuncs[["var=var[var]"]]=C_oneSub

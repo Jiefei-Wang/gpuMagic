@@ -24,7 +24,7 @@ getEmpyTable<-function(type=""){
   tbl=data.frame(var="NA",dataType=T_matrix,precisionType=gpuMagic.option$getDefaultFloat(),size1="NA",size2="NA",value="NA",
                  shared=FALSE,location="global",version=1,
                  address="NA",compileSize1=FALSE,compileSize2=FALSE,compileValue=FALSE,transpose=FALSE,
-                 require=FALSE,constVal=FALSE,constDef=FALSE,lazyRef=FALSE,initialization=TRUE,changed=FALSE,used=FALSE,stringsAsFactors=FALSE)
+                 require=FALSE,constVal=FALSE,constDef=FALSE,lazyRef=FALSE,ref="",initialization=TRUE,changed=FALSE,used=FALSE,stringsAsFactors=FALSE)
   if(type==T_scale){
     tbl$dataType=T_scale
     tbl$compileSize1=TRUE
@@ -41,7 +41,7 @@ getMandatoryVar<-function(){
 }
 getOptVar<-function(){
   c("address","compileSize1","compileSize2","compileValue","transpose","require",
-    "constVal","constDef","lazyRef","initialization","changed","used")
+    "constVal","constDef","lazyRef","ref","initialization","changed","used")
 }
 getTableVarProperty<-function(){
   mandatoryVar=getMandatoryVar()
@@ -82,8 +82,7 @@ getVarInfo<-function(varInfo,varName,version="auto"){
   var_ind=varInfo$varIndex[[var_char]]
   var_data=varInfo$profile[var_ind,,drop=F]
   var_Tbl=getEmpyTable()
-  for(i in colnames(var_data))
-    var_Tbl[1,i]=var_data[1,i]
+  var_Tbl[1,colnames(var_data)]=var_data[1,colnames(var_data)]
   var_opt_data=varInfo$optProfile[[var_char]]
   if(!is.null(var_opt_data)){
     for(i in colnames(var_opt_data)){
@@ -183,11 +182,15 @@ getVarProperty<-function(varInfo,varName,property,version="auto"){
   
   propertyInfo=data.frame()
   for(prop in property){
-    if(tblVarInfo[1,prop]=="mandatory"){
+    type=tblVarInfo[1,prop]
+    if(is.null(type)){
+      stop("The property does not exist, please check if you have a typo: ",prop)
+    }
+    if(type=="mandatory"){
       propertyInfo[1,prop]=varInfo$profile[var_ind,prop]
       next
     }
-    if(tblVarInfo[1,prop]=="optional"){
+    if(type=="optional"){
       optInfo=optionalInfo[1,prop]
       if(is.null(optInfo))
         optInfo=defaultTable[1,prop]
@@ -195,6 +198,7 @@ getVarProperty<-function(varInfo,varName,property,version="auto"){
     }
     
   }
+  if(ncol(propertyInfo)==1)propertyInfo=propertyInfo[1,1]
   return(propertyInfo)
 }
 

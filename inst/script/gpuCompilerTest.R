@@ -1,46 +1,38 @@
 
 library("microbenchmark")
 library("tictoc")
-
 #The return size still has bug
 test3<-function(ind,A,B){
-  tmp=B[,ind]
+  #tmp=B[,ind]
+  tmp=subRef(B,,ind)
   C=A%*%tmp
   
-  #message(C)
   return(C)
 }
-n=3
-m=4
-k=5
+n=1024
+m=10000
+k=1024
 A=matrix(runif(n*m),n,m)
 B=matrix(runif(m*k),m,k)
 #.gpuResourcesManager$setMaxMemLimit(6*10^9)
 tic()
 res3=gpuSapply(1:k,test3,A,B)
 toc()
-
-code=compileGPUCode("vector",test3,"matrix","matrix")
-code$Exp
-
-cat(code$gpu_code)
-fileName <- 'inst/script/debugCode.txt'
-debugcode=readChar(fileName, file.info(fileName)$size)
-opt=gpuSapply.getOption()
-opt$debugCode=debugcode
-opt$verbose=T
-gpuSapply(1:k,test3,A,B,.option = opt)
-
-
-
-
-
-tic()
-res1=sapply(1:k,test3,A,B)
-toc()
 tic()
 res2=A%*%B
 toc()
+
+
+code=compileGPUCode(1:k,test3,A,B)
+code$Exp
+cat(code$gpu_code)
+
+
+
+
+res1=sapply(1:k,test3,A,B)
+res2=A%*%B
+
 range(res1-res2)
 range(res2-res3)
 
@@ -60,9 +52,9 @@ matMul<-function(id,A,B){
 }
 
   
-n=1000
-m=5000
-k=1000
+n=10
+m=50
+k=20
 A=matrix(runif(n*m),n,m)
 B=matrix(runif(n*m),m,k)
 

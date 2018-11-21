@@ -142,19 +142,20 @@ B=matrix(runif(n*m),m,k)
 
 
 
-
+#The return size still has bug
 test3<-function(ind,A,B){
-  ind=ind-1
-  j=floor(ind/nrow(A))
-  i=ind-j*nrow(A)
-  j=j+1
-  i=i+1
-  C=0
-  for(k in 1:ncol(A)){
-    C=C+A[i,k]*B[k,j]
-  }
+  #tmp=B[,ind]
+  tmp=subRef(B,,ind)
+  C=A%*%tmp
+  
+  #message(C)
   return(C)
 }
+n=3
+m=4
+k=5
+A=matrix(runif(n*m),n,m)
+B=matrix(runif(m*k),m,k)
 parms=list(ind=1:k,A=A,B=B)
 codeMetaInfo=list()
 codeMetaInfo$Exp=funcToExp(test3)$code
@@ -171,6 +172,7 @@ GPUcode=completeProfileTbl(GPUExp2)
 GPUcode1=completeGPUcode(GPUcode)
 
 
+Exp=quote(gpu_loop_data[opencl_tmp_1])
+R_expression_sub(varInfo,Exp,1,1)
 
-
-
+C_subset(varInfo,Exp)

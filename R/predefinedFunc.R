@@ -8,7 +8,9 @@ gMatrix<-function(nrow=1,ncol=1,precision=gpuMagic.option$getDefaultFloat(),cons
 resize<-function(data,nrow,ncol){
   return(matrix(data,nrow,ncol))
 }
-
+subRef<-function(variable,i="",j=""){
+  stop("subset reference is not allowed in R")
+}
 
 #Exp=parse(text="gMatrix()")[[1]]
 #matchFunArg(gMatrix,Exp)

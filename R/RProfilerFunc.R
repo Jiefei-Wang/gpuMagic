@@ -3,7 +3,10 @@ profile_symbol_left<-function(level,codeMetaInfo,varInfo,curExp){
   rightExp=curExp[[3]]
   leftVar_char=deparse(leftExp)
   
-  if(is.call(rightExp)&&(rightExp[[1]]=="gMatrix"||rightExp[[1]]=="gNumber")){
+  if(is.call(rightExp)&&
+     (rightExp[[1]]=="gMatrix"||
+      rightExp[[1]]=="gNumber"||
+      rightExp[[1]]=="subRef")){
     if(hasVar(varInfo,leftVar_char)){
       tmpMeta=codeMetaInfo$tmpMeta
       tmpMeta=getTmpVar(tmpMeta)
@@ -435,9 +438,26 @@ profile_gNumber<-function(varInfo,Exp){
   ExpInfo$constDef=args$constDef
   return(ExpInfo)
 }
+
+profile_subRef<-function(varInfo,Exp){
+  args=matchFunArg(subRef,Exp)
+  if(getVarProperty(varInfo,args$variable,"dataType")!=T_matrix){
+    stop("Only matrix is allow to create a reference: ",deparse(Exp))
+  }
+  code_char=paste0(args$variable,"[",args$i,",",args$j,"]")
+  code=parse(text=code_char)[[1]]
+  refInfo=profile_subset(varInfo,code)
+  refInfo$lazyRef=TRUE
+  refInfo$ref=code_char
+  refInfo
+}
+
+
+
 #This function works only when the code is not transpose the matrix, but create a new matrix
 #eg: B=t(A)
 profile_transpose<-function(varInfo,Exp){
+  stop("The matrix transpose does not work now")
   ExpInfo=getVarInfo(varInfo,Exp[[2]])
   size1=ExpInfo$size2
   size2=ExpInfo$size1
@@ -450,6 +470,9 @@ profile_transpose<-function(varInfo,Exp){
   
   ExpInfo
 }
+
+
+
 
 
 profile_resize<-function(varInfo,Exp){

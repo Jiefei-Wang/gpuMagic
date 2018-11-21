@@ -2,8 +2,7 @@
 
 RCcompilerLevel1<-function(profileMeta3){
   if(DEBUG){
-    profileMeta3$varInfo$varTable=copy(profileMeta3$varInfo$varTable)
-    profileMeta3$varInfo$varVersion=copy(profileMeta3$varInfo$varVersion)
+    profileMeta3$varInfo=copyVarInfoTbl(profileMeta3$varInfo)
   }
   tmpMeta=profileMeta3$tmpMeta
   parsedExp=profileMeta3$Exp
@@ -73,9 +72,12 @@ RCcompilerLevel1<-function(profileMeta3){
     curInfo=getVarInfo(varInfo,curVar,1)
     #if(curInfo$dataType==T_matrix)
     #  gpu_matrix_num=gpu_matrix_num+1
-    if(curInfo$constant){
+    if(curInfo$lazyRef){
       next
     }
+    
+    if(curInfo$location!="local"||curInfo$shared)
+      curInfo$dataType=T_matrix
     
     if(!curInfo$initialization){
       curInfo$address=curInfo$var
@@ -83,7 +85,6 @@ RCcompilerLevel1<-function(profileMeta3){
         gpu_gs_num=gpu_gs_num+1
         varInfo$matrixInd[[curVar]]=gpu_gs_num
         varInfo$matrix_gs=c(varInfo$matrix_gs,curVar)
-        curInfo$dataType=T_matrix
       }
       varInfo=setVarInfo(varInfo,curInfo)
       next
@@ -170,14 +171,9 @@ RCcompilerLevel1<-function(profileMeta3){
 
 RCcompilerLevel2<-function(GPUExp1){
   if(DEBUG){
-    GPUExp1$varInfo$varTable=copy(GPUExp1$varInfo$varTable)
-    GPUExp1$varInfo$varVersion=copy(GPUExp1$varInfo$varVersion)
+    GPUExp1$varInfo=copyVarInfoTbl(GPUExp1$varInfo)
     if(length(GPUExp1$varInfo$matrixInd)!=0)
       GPUExp1$varInfo$matrixInd=copy(GPUExp1$varInfo$matrixInd)
-  }
-  GPUExp1$varInfo$curVarVersion=copy(GPUExp1$varInfo$varVersion)
-  for(i in keys(GPUExp1$varInfo$curVarVersion)){
-    GPUExp1$varInfo$curVarVersion[[i]]=1
   }
   
   parsedExp=GPUExp1$Exp
@@ -246,6 +242,7 @@ RCTranslation<-function(varInfo,parsedExp){
       gpu_code=c(gpu_code,curCode)
       next
     }
+    
     #if the code format exactly match the general type template
     formattedExp=formatCall(curExp,generalType=TRUE)
     formattedExp_char=gsub(" ", "",deparse(formattedExp), fixed = TRUE)
@@ -262,8 +259,7 @@ RCTranslation<-function(varInfo,parsedExp){
       next
     }
     
-    
-    
+    #If the code starts with opencl_
     code_char=deparse(curExp)[1]
     if(substr(code_char,1,7)==GPUVar$openclCode){
       code_char=deparse(curExp)

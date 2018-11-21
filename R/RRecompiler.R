@@ -1,7 +1,7 @@
 RRecompiler<-function(profileMeta2){
   profileMeta3=profileMeta2
   if(DEBUG)
-    profileMeta3$varInfo$varTable=copy(profileMeta3$varInfo$varTable)
+    profileMeta3$varInfo=copyVarInfoTbl(profileMeta3$varInfo)
   
   profileMeta3$varInfo$curVarVersion=copy(profileMeta3$varInfo$varVersion)
   for(i in keys(profileMeta3$varInfo$curVarVersion)){

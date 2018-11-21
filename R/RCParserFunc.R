@@ -64,38 +64,21 @@ C_nrow<-function(varInfo,Exp){
 C_ncol<-function(varInfo,Exp){
   return(R_getVarSize2(varInfo,Exp[[2]]))
 }
+#This function assume the result of the subset is a number
 C_subset<-function(varInfo,Exp){
-  if(length(Exp)==1){
-    curVar=deparse(Exp)
-    if(is.numeric(Exp))
-      return(curVar)
-    curInfo=getVarInfo(varInfo,curVar,1)
-    if(curInfo$dataType==T_matrix)
-      return(paste0(curVar$address,"[0]"))
-    if(curInfo$dataType==T_scale)
-      return(paste0(curInfo$address))
+  if(length(Exp)==1)
+    return(R_expression_sub(varInfo,Exp,1))
+  if(length(Exp)==3){
+    var=Exp[[2]]
+    sub1=Exp[[3]]
+    sub2=1
+    return(R_expression_sub(varInfo,var,deparse(sub1),sub2))
+  }else{
+    var=Exp[[2]]
+    sub1=Exp[[3]]
+    sub2=Exp[[4]]
+    return(R_expression_sub(varInfo,var,deparse(sub1),sub2))
   }
-  if(Exp[[1]]=="["){
-    if(length(Exp)==3){
-      ExpChar=R_getVarSub(varInfo,Exp[[2]],C_subset(varInfo,Exp[[3]]),1)
-      #ExpChar=paste0(Exp[[2]],"[(",GPUVar$default_index_type,")",C_subset(varInfo,Exp[[3]]),"-1]")
-      return(ExpChar)
-    }
-    if(length(Exp==4)){
-      #var_data=getVarInfo(varInfo,Exp[[2]])
-      #var_ind=varInfo[[Exp[[2]]]]
-      #size1=R_getVarSize1(varInfo,Exp[[2]])
-      if(Exp[[3]]==""||Exp[[4]]=="")
-        stop("Compilation error, please contact the author: ",deparse(Exp))
-      #ExpChar=paste0(Exp[[2]],"[(",GPUVar$default_index_type,")",C_subset(varInfo,Exp[[3]]),
-      #               "-1 +((",GPUVar$default_index_type,")",C_subset(varInfo,Exp[[4]]),"-1)*",size1,"]")
-      ExpChar=R_getVarSub(varInfo,Exp[[2]],
-                          C_subset(varInfo,Exp[[3]]),
-                          C_subset(varInfo,Exp[[4]]))
-      return(ExpChar)
-    }
-  }
-  stop("The expression is not a subset function: ",deparse(Exp))
 }
 C_floor<-function(varInfo,Exp){
   code=paste0("floor(",deparse(Exp[[2]]),")")
@@ -124,8 +107,7 @@ C_message<-function(varInfo,Exp){
     size1=R_getVarSize1(varInfo,varName)
     size2=R_getVarSize2(varInfo,varName)
     subsetCode=paste0(curInfo$address,"[gpu_msg_i +gpu_msg_j*",size1,"]")
-    code=c(paste0("printf(\"",varName,":\\n\");"),
-           paste0("for(uint gpu_msg_i=0;gpu_msg_i<",size1,";gpu_msg_i++){"),
+    code=c(paste0("for(uint gpu_msg_i=0;gpu_msg_i<",size1,";gpu_msg_i++){"),
            paste0("for(uint gpu_msg_j=0;gpu_msg_j<",size2,";gpu_msg_j++){"),
            paste0("printf(\"",printType,"  \",",subsetCode,");"),
            "}",
@@ -240,33 +222,43 @@ C_matMul<-function(varInfo,Exp){
   code=c(
     paste0(gpuMagic.option$getDefaultFloat()," gpu_matMul_tmp;"),
     paste0("for(",GPUVar$default_index_type,
-           " gpu_matMul_i=0;gpu_matMul_i<",R_nrow(varInfo,rightVar1),
+           " gpu_matMul_i=1;gpu_matMul_i<=",R_nrow(varInfo,rightVar1),
            ";gpu_matMul_i++){"),
     paste0("for(",GPUVar$default_index_type,
-           " gpu_matMul_i=0;gpu_matMul_i<",R_nrow(varInfo,rightVar1),
-           ";gpu_matMul_i++){"),
-    paste0(),
-    paste0(),
-    paste0(),
-    paste0(),
-    paste0(),
-    paste0(),
-    paste0()
-    
+           " gpu_matMul_j=1;gpu_matMul_j<=",R_ncol(varInfo,rightVar2),
+           ";gpu_matMul_j++){"),
+    paste0("gpu_matMul_tmp=0;"),
+    paste0("for(",GPUVar$default_index_type,
+           " gpu_matMul_k=1;gpu_matMul_k<=",R_ncol(varInfo,rightVar1),
+           ";gpu_matMul_k++){"),
+    paste0("gpu_matMul_tmp=gpu_matMul_tmp+",
+           R_expression_sub(varInfo,rightVar1,"gpu_matMul_i","gpu_matMul_k",i_C=TRUE,j_C=TRUE),
+           "*",
+           R_expression_sub(varInfo,rightVar2,"gpu_matMul_k","gpu_matMul_j",i_C=TRUE,j_C=TRUE),
+           ";"),
+    "}",
+    paste0(R_expression_sub(varInfo,leftVar,"gpu_matMul_i","gpu_matMul_j",i_C=TRUE,j_C=TRUE),
+           "=",
+           "gpu_matMul_tmp;"),
+    "}",
+    "}"
   )
+  code
 }
 
 
+#Generate subset function, used for matrix subsetting
+#example B=A[sub1]
+#sub:The index of the matrix, eg.sub1
+#length: the dimension of the matrix, in case of the row index,it is nrow(A)
+#name: the variable name to be used as the c variable index
+#gpu_name__value_left and gpu_name_value will be used to index B[gpu_name__value_left] and A[gpu_name_value]
+#The final result would be:
+#for(gpu_name_value=something;gpu_name_value<something;gpu_name_value++){  <----res[[1]]
+#gpu_name__value_left=f(gpu_name_value);                                   <----res[[2]]
+#B[gpu_name__value_left] = A[gpu_name_value];
+#}                                                                         <----res[[3]]
 
-
-
-
-
-
-
-
-
-#Generate subset function
 R_processSub<-function(varInfo,sub,length,name){
   if(isNumeric(sub)){
     forLoopStart=""
@@ -295,30 +287,112 @@ R_processSub<-function(varInfo,sub,length,name){
   }
 }
 
-#Get an element from the matrix(eg. A[i,j])
+#get the i,jth element from the expression, 
+#the expression can be a variable, a matrix subset or a number
+#i,j can be interpreted as an R object or a C object, it is determined by i_C and j_C
+R_expression_sub<-function(varInfo,Exp,i,j=1,opt=FALSE,i_C=FALSE,j_C=FALSE){
+  if(Exp=="")
+    return(i)
+  if(is.character(Exp))
+    Exp=parse(text=Exp)[[1]]
+  #if the expression is an element
+  if(length(Exp)==1){
+    curVar=deparse(Exp)
+    if(is.numeric(Exp))
+      return(curVar)
+    if(getVarProperty(varInfo,curVar,"lazyRef")){
+      refExp=parse(text=getVarProperty(varInfo,curVar,"ref"))[[1]]
+      ref_i=deparse(refExp[[3]])
+      ref_j=deparse(refExp[[4]])
+      ref_i_C=R_expression_sub(varInfo,ref_i,i,1,opt=FALSE,i_C=i_C,FALSE)
+      ref_j_C=R_expression_sub(varInfo,ref_j,j,1,opt=FALSE,j_C=j_C,FALSE)
+      res=R_expression_sub(varInfo,refExp[[2]],ref_i_C,ref_j_C,opt=FALSE,i_C=TRUE,j_C=TRUE)
+      return(res)
+    }
+    dataType=getVarProperty(varInfo,curVar,"dataType")
+    if(dataType==T_scale)
+      return(getVarProperty(varInfo,curVar,"address",1))
+    if(dataType==T_matrix){
+      if(!i_C){
+        sub1=parse(text=i)[[1]]
+        i_C_ind=R_expression_sub(varInfo,sub1,1,1,opt=FALSE,TRUE,TRUE)
+      }else{
+        i_C_ind=i
+      }
+      if(!j_C){
+        sub2=parse(text=j)[[1]]
+        j_C_ind=R_expression_sub(varInfo,sub2,1,1,opt=FALSE,TRUE,TRUE)
+      }else{
+        j_C_ind=j
+      }
+      res=R_getVarSub(varInfo,Exp,i_C_ind,j_C_ind,opt)
+      return(res)
+    }
+    stop("unrecognized code: ",deparse(Exp))
+  }
+  if(Exp[[1]]=="["){
+    curVar=Exp[[2]]
+    if(Exp[[3]]=="")
+      sub1=""
+    else
+      sub1=Exp[[3]]
+    
+    if(length(Exp)==3){
+      sub2=1
+    }else{
+      if(Exp[[4]]=="")
+        sub2=""
+      else
+        sub2=Exp[[4]]
+    }
+    i_C_ind=R_expression_sub(varInfo,sub1,i,1,opt=FALSE,i_C,TRUE)
+    j_C_ind=R_expression_sub(varInfo,sub2,j,1,opt=FALSE,j_C,TRUE)
+    res=R_getVarSub(varInfo,curVar,i_C_ind,j_C_ind,opt)
+    return(res)
+  }
+  stop("unrecognized code: ",deparse(Exp))
+}
+
+
+#Get an element from the matrix(eg. A[i,j]), the transpose will be taken into account
 #i,j is 1-based index
-R_getVarSub<-function(varInfo,var,i,j=1){
+#i,j should be either a number or a variable in C code
+R_getVarSub<-function(varInfo,var,i,j=1,opt=FALSE){
   
   if(!is.character(var))
     var=deparse(var)
-  curInfo=getVarInfo(varInfo,var,1)
-  address=curInfo$address
   
+  if(var=="")
+    return(as.character(i))
+  
+  if(isNumeric(i))
+    sub1=Simplify(paste0(i,"-1"))
+  else
+    sub1=paste0(i,"-1")
+  
+  address=getVarProperty(varInfo,var,"address",1)
   if(j==1||j=="1"){
-    return(paste0(address,"[(",GPUVar$default_index_type,")(",i,"-1)]"))
+    return(paste0(address,"[(",GPUVar$default_index_type,")(",sub1,")]"))
   }
   
-  curInfo=getVarInfo(varInfo,var,varInfo$curVarVersion[[var]])
+  transpose=getVarProperty(varInfo,var,"transpose")
   size1=R_getVarSize1(varInfo,var)
-  ifelse(curInfo$transpose,
-         paste0(address,"[(",GPUVar$default_index_type,")(",j,
-                "-1 +(",i,"-1)*",size1,")]"),
-         paste0(address,"[(",GPUVar$default_index_type,")(",i,
-                "-1 +(",j,"-1)*",size1,")]")
-         )
+  if(isNumeric(j))
+    sub2=Simplify(paste0(j,"-1"))
+  else
+    sub2=paste0(j,"-1")
   
+  if(transpose){
+    sub=paste0(sub2," +(",sub1,")*",size1)
+    res=paste0(address,"[(",GPUVar$default_index_type,")(",sub,")]")
+  }else{
+    sub=paste0(sub1," +(",sub2,")*",size1)
+    res=paste0(address,"[(",GPUVar$default_index_type,")(",sub,")]")
+  }
+  return(res)
 }
 
+#Get the number of rows for a matrix in C format
 R_nrow<-function(varInfo,var){
   if(!is.character(var))
     var=deparse(var)
@@ -328,6 +402,7 @@ R_nrow<-function(varInfo,var){
          R_getVarSize1(varInfo,var)
          )
 }
+#Get the number of rows for a matrix in C format
 R_ncol<-function(varInfo,var){
   if(!is.character(var))
     var=deparse(var)
@@ -337,12 +412,46 @@ R_ncol<-function(varInfo,var){
          R_getVarSize2(varInfo,var)
   )
 }
+R_length<-function(varInfo,var){
+  return(Simplify(paste0(R_getVarSize1(varInfo,var),"*",
+                R_getVarSize2(varInfo,var))))
+  
+}
+
 
 R_getVarSize<-function(varInfo,var,ind){
   if(!is.character(var))
     var=deparse(var)
   curInfo=getVarInfo(varInfo,var,1)
+  if(curInfo$dataType==T_scale) return(1)
+  if(curInfo$lazyRef){
+    refCode=parse(text=curInfo$ref)[[1]]
+    refVar=refCode[[2]]
+    if(ind==1){
+      if(refCode[[3]]=="")
+        return(R_nrow(varInfo,refVar))
+      
+      sub1=refCode[[3]]
+      if(isNumeric(sub1))
+        return(1)
+      
+      return(R_length(varInfo,sub1))
+    }
+    if(ind==2){
+      if(refCode[[4]]=="")
+        return(R_ncol(varInfo,refVar))
+      
+      sub2=refCode[[4]]
+      if(isNumeric(sub2))
+        return(1)
+      
+      return(R_length(varInfo,sub2))
+    }
+  }
+  
   var_ind=varInfo$matrixInd[[var]]
+  if(var_ind==""||is.na(var_ind))
+    stop("Error in finding the matrix size") 
   loc=NA
   if(curInfo$location=="global"&&!curInfo$shared)
     loc="global_private_"
@@ -360,9 +469,13 @@ R_getVarSize<-function(varInfo,var,ind){
   
   size
 }
+#get the variable row number in C code format
+#Use R_nrow instead, this function does not take the transpose into account
 R_getVarSize1<-function(varInfo,var){
   R_getVarSize(varInfo,var,1)
 }
+#get the variable column number in C code format
+#Use R_ncol instead, this function does not take the transpose into account
 R_getVarSize2<-function(varInfo,var){
   R_getVarSize(varInfo,var,2)
 }

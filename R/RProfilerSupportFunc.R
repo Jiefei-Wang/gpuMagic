@@ -36,8 +36,8 @@ profileVar<-function(parms,argInfo){
       info$compileData=TRUE
     }else{
       info$dataType=T_matrix
-      info$size1=paste0("(nrow(",varInfo$parmsName,"[[",i,",]]))")
-      info$size2=paste0("(ncol(",varInfo$parmsName,"[[",i,",]]))")
+      info$size1=paste0("(nrow(",varInfo$parmsName,"[[",i,"]]))")
+      info$size2=paste0("(ncol(",varInfo$parmsName,"[[",i,"]]))")
     }
     
     

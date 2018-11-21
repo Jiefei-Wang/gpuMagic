@@ -35,4 +35,5 @@ Collate:
     'kernelManager.R'
     'pkgSetting.R'
     'predefinedFunc.R'
+    'varInfoManager.R'
 VignetteBuilder: knitr
