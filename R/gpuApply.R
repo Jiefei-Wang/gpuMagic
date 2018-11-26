@@ -72,7 +72,7 @@ fillGPUdata<-function(GPUcode1,.option=gpuSapply.getOption()){
   kernel_args$gs_offset=rep(0,length(varInfo$matrix_gs))
   kernel_args$lp_offset=rep(0,length(varInfo$matrix_lp))
   kernel_args$ls_offset=rep(0,length(varInfo$matrix_ls))
-  
+  #gp_totalsize, gp_matrixNum, return size
   kernel_args$sizeInfo=rep(0,3)
   
   

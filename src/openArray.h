@@ -34,10 +34,9 @@ public:
 
 	//Some special data creating method
 	static openArray* constant(double number, size_t length, dtype type);
-	static openArray* repeatData(void* src, size_t length,size_t repeatNum, dtype type);
 private:
 	void gpuAlloc(size_t size, dtype type);
-	void gpuAlloc(size_t size, void* hostData, dtype type);
+	void gpuAlloc(void * hostData, size_t length, dtype type);
 	static int typesize(dtype type);
 	//Convert the data type to a given type(Single value)
 

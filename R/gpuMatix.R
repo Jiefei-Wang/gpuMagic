@@ -1,7 +1,7 @@
 
 .gpuMatrix=setClass(
   Class="gpuMatrix",
-  slots = c(data="matrix",type="character",isReady="logical",gpuAddress="ANY")
+  slots = c(data="matrix",dimension="vector",type="character",gpuAddress="ANY")
 )
 #' @export
 gpuMatrix<-function(data,type="auto"){
@@ -12,21 +12,30 @@ gpuMatrix<-function(data,type="auto"){
   }
    
   checkTypeSupport(type)
-  #data=convertDataType(data,type)
-  ad=gpuRefAddress(data,type)
-  obj=.gpuMatrix(data=data,type=type,isReady=TRUE,gpuAddress=ad)
+  ad=gpuRefAddress()
+  ad$upload(data,type)
+  
+  obj=.gpuMatrix(data=data,dimension=dim(data),type=type,gpuAddress=ad)
+  
   
   obj
 }
-gpuMatrixWithRep<-function(data,repNum,type="auto"){
-  data=as.matrix(data)
-  
+#' @export
+gpuEmptMatrix<-function(row=1,col=1,type="auto"){
   if(type=="auto"){
     type=gpuMagic.option$getDefaultType()
   }
   
+  checkTypeSupport(type)
+  ad=gpuRefAddress()
+  ad$upload(row*col,type)
   
+  obj=.gpuMatrix(data=NULL,dimension=c(row,col),type=type,gpuAddress=ad)
+  
+  
+  obj
 }
+
 
 
 #======================Get the slot data======================
@@ -37,21 +46,25 @@ gpuMatrixWithRep<-function(data,repNum,type="auto"){
   ad
 }
 
-.data<-function(obj) obj@data
+.data<-function(obj){
+  if(is.null( obj@data))
+    stop("The data is not available")
+  obj@data
+}
 ".data<-"<-function(obj,value){
   obj@data<-as.matrix(value)
   obj
 }
+.dim<-function(obj) obj@dimension
+.nrow<-function(obj)obj@dimension[1]
+.ncol<-function(obj)obj@dimension[2]
+.length<-function(obj) obj@dimension[1]*obj@dimension[2]
+
 
 .type<-function(obj) obj@type
 ".type<-"<-function(obj,value){
   checkTypeSupport(value)
   obj@type<-value
-  obj
-}
-.readyStatus<-function(obj) obj@isReady
-".readyStatus<-"<-function(obj,value){
-  obj@isReady<-value
   obj
 }
 
@@ -65,8 +78,6 @@ setMethod(
   signature = "gpuMatrix",
   definition = function(obj){
     obj@gpuAddress$upload(.data(obj),.type(obj))
-    .readyStatus(obj)=TRUE
-    obj@gpuAddress$setReadyStatus(TRUE)
     obj
   }
 )
@@ -79,29 +90,8 @@ setMethod(
   f="download",
   signature = "gpuMatrix",
   definition = function(obj){
-    obj@data=obj@gpuAddress$download()
-    .readyStatus(obj)=TRUE
-    obj@gpuAddress$setReadyStatus(TRUE)
+    obj@data=as.matrix(obj@gpuAddress$download(),.nrow(obj),.ncol(obj))
     obj
-  }
-)
-
-setGeneric(name="sync",def=function(obj) standardGeneric("sync"))
-
-#' @export
-setMethod(
-  f="sync",
-  signature = "gpuMatrix",
-  definition = function(obj){
-    if(!.readyStatus(obj)){
-      obj=upload(obj)
-      return(obj)
-    }
-    if(!obj@gpuAddress$getReadyStatus()){
-      obj=download(obj)
-      return(obj)
-    }
-    return(obj)
   }
 )
 
@@ -111,30 +101,30 @@ setMethod(
 #' @export
 setMethod("nrow", signature(x="gpuMatrix"),
           function(x) {
-            nrow(.data(x))
+            .nrow(x)
           }
 )
 #' @export
 setMethod("ncol", signature(x="gpuMatrix"),
           function(x) {
-            ncol(.data(x))
+            .ncol(x)
           }
 )
 #' @export
 setMethod("dim", signature(x="gpuMatrix"),
           function(x) {
-            dim(.data(x))
+            .dim(x)
           }
 )
 #' @export
 setMethod("length", signature(x="gpuMatrix"),
           function(x) {
-            length(.data(x))
+            .length(x)
           }
 )
 #' @export
 as.matrix.gpuMatrix<-function(obj,...){
-  as.matrix(.data(obj))
+  as.matrix(.data(obj),.nrow(obj),.ncol(obj))
 }
 #' @export
 as.vector.gpuMatrix<-function(obj,...){
@@ -170,6 +160,5 @@ setMethod("[<-",
                   x@data[i,j]=value
               }
             }
-            .readyStatus(x)<-FALSE
             return(x)
           })

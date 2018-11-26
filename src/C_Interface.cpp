@@ -11,14 +11,10 @@ void getCurDeviceIndex(int * id)
 {
 	*id = kernelManager::getDeviceIndex();
 }
-void upload(void* data, double * length, int* type, void** address) {
-	
-	openArray* matrix = new openArray(data,*length, (dtype)*type);
-	*address = (void*)matrix;
-}
-void uploadWithRep(void * data, double * length, double * repNum, int * type, void ** address)
+void upload(void * data, double * length, int * type, void ** address)
 {
-	*address=(void*)openArray::repeatData(data, *length, *repNum, (dtype)*type);
+	openArray* matrix = new openArray(data, *length, (dtype)*type);
+	*address = (void*)matrix;
 }
 
 void gpuMalloc(double* length, int * type, void ** address)

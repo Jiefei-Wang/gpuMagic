@@ -18,7 +18,7 @@
   
   getGPUmemInd<-function(size){
     if(e$memoryUsage+size>e$totalMemory){
-      if(debug)
+      if(DEBUG)
         message("The data is larger than the available GPU memory, a garbage collection is triggered")
       gc()
       if(e$memoryUsage+size>e$totalMemory)
@@ -50,39 +50,28 @@
   }
   
   list(
-    upload=function(obj,data,repNum,type){
-      if(!is.numeric(repNum)){
-        stop("Invalid input")
-      }
+    upload=function(data,type){
       ##Check if the data is larger than the available memory size and get the memory index
-      size=getTypeSize(type)*length(data)*repNum
+      size=getTypeSize(type)*length(data)
       gpuInd=getGPUmemInd(size)
       
-      if(repNum==1){
         res=.C(
           "upload",convertDataType(data,type),
           as.double(length(data)),getTypeNum(type),as.double(0)
         )
-      }else{
-        res=.C(
-          "uploadWithRep",convertDataType(data,type),
-          as.double(length(data)),as.double(repNum),
-          getTypeNum(type),as.double(0)
-        )
-      }
       
       e$addressList[[as.character(gpuInd)]]=res[[length(res)]]
       e$addressSizeList[[as.character(gpuInd)]]=size
       
       return(gpuInd)
     },
-    gpuMalloc<-function(length,type){
+    gpuMalloc<-function(len,type){
       ##Check if the data is larger than the available memory size and get the memory index
-      size=getTypeSize(type)*length*repNum
+      size=getTypeSize(type)*len
       gpuInd=getGPUmemInd(size)
       
       res=.C(
-        "upload",as.double(length(data)),getTypeNum(type),as.double(0)
+        "gpuMalloc",as.double(len),getTypeNum(type),as.double(0)
       )
       
       e$addressList[[as.character(gpuInd)]]=res[[length(res)]]
@@ -91,27 +80,26 @@
       return(gpuInd)
     }
     ,
-    download=function(ind,dim,type){
+    download=function(ind,len,type){
       if(!has.key(as.character(ind),e$addressList))
         stop("The GPU resources does not exist!")
       ad=e$addressList[[as.character(ind)]]
-      len=dim[1]*dim[2]
       if(type=="char"){
         empData=paste0(rep(" ",len),collapse = "")
         res=.C("download",empData,ad)
-        return(matrix(as.numeric(charToRaw(res[[1]])),dim[1],dim[2]))
+        return(as.numeric(charToRaw(res[[1]])))
       }else{
         empData=convertDataType(rep(0,len),type)
         res=.C("download",empData,ad)
         
-        return(matrix(res[[1]],dim[1],dim[2]))
+        return(res[[1]])
       }
       
     },
     getAddress=function(ind){
       return(e$addressList[[as.character(ind)]])
     },
-    releaseAddress=function(obj,ind){
+    releaseAddress=function(ind){
       if(e$unload)
         return()
       #message(ind)

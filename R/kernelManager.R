@@ -11,13 +11,7 @@
   #message(globalThreadNum)
   codePack=readCode(file,src)
   src=codePack$src
-  #cat(src)
-  #message(codePack)
-  ##Performing auto type conversion, tranfer R matrix and vector to GPUmatrix class
   
-  #res=parseProgram(codePack,kernel,parms,autoType)
-  #src=res$src
-  #sig=paste0(res$sig,signature,collapse = "")
   sig=paste0(flag,codePack$timeSig,signature)
   
   device=getCurDeviceIndex()
@@ -26,7 +20,6 @@
       next
     if(class(parms[[i]])!="gpuMatrix")
       parms[[i]]=gpuMatrix(parms[[i]])
-    parms[[i]]@gpuAddress$setReadyStatus(FALSE)
     if(parms[[i]]@gpuAddress$getDevice()!=device)
       stop("The data is not in the same device!")
   }
@@ -131,23 +124,7 @@ parseProgram<-function(codePack,kernel,parms,autoType=TRUE){
   list(src=codePack$src,sig=sig)
 }
 
-kernelSub<-function(kernel,src,typeList){
-  headerPattern=paste0("void ",kernel,"[(].*?[)]")
-  ind=regexpr(headerPattern,src)
-  code=substr(src,ind,ind+attr(ind,"match.length"))
-  src=gsub(headerPattern,"PRESERVED_FUNCTION_CALL",src)
-  if(length(typeList)>0)
-  for(i in 1:length(typeList)){
-    pattern=paste0("([^a-zA-Z0-9_])(",paste0("AUTO",i),")([^a-zA-Z0-9_])")
-    x1=paste0("\\1 __global ",typeList[i],"\\3 ")
-    #x2=paste0("\\1",typeList[i],"\\3")
-    code=gsub(pattern,x1,code)
-    src=gsub(pattern,x1,src)
-  }
-  code=paste0("__kernel ",code)
-  src=gsub("PRESERVED_FUNCTION_CALL",code,src)
-  src
-}
+
 #Clean The code to make the kernel code more stable
 #Clean comments, tabs and unnecessary wrap.
 cleanCode<-function(src){

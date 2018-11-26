@@ -17,7 +17,7 @@ openArray::openArray( void * src, size_t length, dtype type)
 	device_id = kernelManager::getDeviceIndex();
 	void* host_data = malloc(length*typesize(type));
 	RTogpu(host_data, src, type, length);
-	gpuAlloc(length, host_data, type);
+	gpuAlloc(host_data, length, type);
 	this->length = length;
 	dataType = type;
 	free(host_data);
@@ -46,19 +46,6 @@ openArray* openArray::constant(double number, size_t length, dtype type)
 	free(tmp_data);
 	return oa;
 }
-
-openArray * openArray::repeatData(void * src, size_t length, size_t repeatNum, dtype type)
-{
-	openArray* oa = new openArray(length*repeatNum, type);
-	cl_command_queue queue = kernelManager::getQueue(oa->getDeviceId());
-	void* host_data = malloc(length*typesize(type));
-	RTogpu(host_data, src, type, length);
-	cl_int error = clEnqueueFillBuffer(queue, *(*oa).getDeviceData(), host_data, length*typesize(type), 0, repeatNum*length*typesize(type), 0, NULL, NULL);
-	if (error != CL_SUCCESS) errorHandle("An error has occured in memory assignment!");
-	free(host_data);
-	return oa;
-}
-
 
 
 
@@ -127,14 +114,15 @@ void openArray::gpuAlloc(size_t size, dtype type)
 	}
 }
 
-void openArray::gpuAlloc(size_t size, void * hostData, dtype type)
+void openArray::gpuAlloc(void * hostData,size_t length, dtype type)
 {
 	cl_context context = kernelManager::getContext(getDeviceId());
 	cl_int error;
-	data=clCreateBuffer(context, CL_MEM_READ_WRITE| CL_MEM_COPY_HOST_PTR, size*typesize(type), hostData, &error);
+	data = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, length*typesize(type), hostData, &error);
+	
 	if (error != CL_SUCCESS) {
 		string errorInfo = string("Fail to allocate ") +
-			to_string(size*typesize(type) / 1024 / 1024) + 
+			to_string(length*typesize(type) / 1024 / 1024) +
 			"MB memory on device, error info: " + getErrorString(error);
 		errorHandle(errorInfo);
 	}

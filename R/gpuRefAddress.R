@@ -1,18 +1,13 @@
 #' @include pkgFunc.R
 #======================GPU address S5 class====================
 
-gpuRefAddress=setRefClass("gpuRefAddress", fields = c("address","dim","type","device","isReady"))
+gpuRefAddress=setRefClass("gpuRefAddress", fields = c("address","length","type","device"))
 gpuRefAddress$methods(
-  initialize = function(data,type,repNum) {
-    data=as.matrix(data)
-    .self$dim=dim(data)
-    .self$dim[2]=.self$dim[2]*repNum
-    .self$type=type
-    .self$device=getCurDeviceIndex()
-    .self$isReady=TRUE
-    .self$address=.gpuResourcesManager$upload(.self,data,repNum,type)
+  initialize = function() {
+    .self$address=NULL
   }
 )
+
 gpuRefAddress$methods(
   getType = function() {
     .self$type
@@ -28,38 +23,45 @@ gpuRefAddress$methods(
     .gpuResourcesManager$getAddress(.self$address)
   }
 )
+
 gpuRefAddress$methods(
-  getReadyStatus = function() {
-    .self$isReady
-  }
-)
-gpuRefAddress$methods(
-  setReadyStatus = function(status) {
-    .self$isReady=status
+  finalize = function() {
+      .gpuResourcesManager$releaseAddress(.self$address)
   }
 )
 
 gpuRefAddress$methods(
-  finalize = function() {
+  gpuMalloc = function(len,type) {
+    if(!is.null(.self$address))
       .gpuResourcesManager$releaseAddress(.self,.self$address)
+    .self$length=len
+    .self$type=type
+    .self$device=getCurDeviceIndex()
+    .self$address=.gpuResourcesManager$gpuMalloc(len,type)
   }
 )
+
 gpuRefAddress$methods(
   upload = function(data,type) {
-    .gpuResourcesManager$releaseAddress(.self,.self$address)
-    .self$initialize(data,type)
+    if(!is.null(.self$address))
+      .gpuResourcesManager$releaseAddress(.self$address)
+    data=as.matrix(data)
+    .self$length=length(data)
+    .self$type=type
+    .self$device=getCurDeviceIndex()
+    .self$address=.gpuResourcesManager$upload(data,type)
   }
 )
 gpuRefAddress$methods(
   download = function() {
-    .gpuResourcesManager$download(.self$address,.self$dim,.self$type)
+    .gpuResourcesManager$download(.self$address,.self$length,.self$type)
   }
 )
 
 gpuRefAddress$methods(
   switchDevice = function() {
-    data=.gpuResourcesManager$download(.self$address,.self$dim,.self$type)
-    .self$initialize(data,.self$type)
+    data=.gpuResourcesManager$download(.self$address,.self$length,.self$type)
+    upload(data,.self$type)
   }
 )
 

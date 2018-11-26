@@ -6,9 +6,7 @@ extern "C" LibExport
 void getCurDeviceIndex(int* id);
 
 extern "C" LibExport
-void upload(void* data, double * length, int* type, void** address);
-extern "C" LibExport
-void uploadWithRep(void* data, double * length, double* repNum, int* type, void** address);
+void upload(void * data, double * length, int * type, void ** address);
 extern "C" LibExport
 void gpuMalloc(double* length, int* type, void** address);
 

@@ -16,6 +16,7 @@ A=matrix(runif(n*m),n,m)
 B=matrix(runif(m*k),m,k)
 #.gpuResourcesManager$setMaxMemLimit(6*10^9)
 tic()
+for(i in 1:10)
 res3=gpuSapply(1:k,test3,A,B)
 toc()
 tic()
@@ -27,6 +28,17 @@ range(res2-res3)
 code=compileGPUCode(1:k,test3,A,B)
 code$Exp
 cat(code$gpu_code)
+
+file="inst/script/debugCode.txt"
+src=readChar(file, file.info(file)$size)
+opt=gpuSapply.getOption()
+opt$debugCode=src
+
+tic()
+for(i in 1:10)
+  res3=gpuSapply(1:k,test3,A,B,.option = opt)
+toc()
+
 
 
 
