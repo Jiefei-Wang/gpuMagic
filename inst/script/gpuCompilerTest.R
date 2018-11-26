@@ -22,6 +22,7 @@ tic()
 res2=A%*%B
 toc()
 
+range(res2-res3)
 
 code=compileGPUCode(1:k,test3,A,B)
 code$Exp
@@ -34,7 +35,6 @@ res1=sapply(1:k,test3,A,B)
 res2=A%*%B
 
 range(res1-res2)
-range(res2-res3)
 
 matMul<-function(id,A,B){
   #find the index of the entry of C matrix

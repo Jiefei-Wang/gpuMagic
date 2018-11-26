@@ -1,26 +1,4 @@
 #' @include pkgFunc.R
-
-
-#======================Type definition====================
-# T_auto=1L
-# T_F32=2L
-# T_F64=3L
-# T_I32=4L
-# T_I64=5L
-# T_DEFAULT=T_F64
-# T_DEFAULT_INT=T_I32
-# T_DEFAULT_float=T_F64
-
-
-# getTypeStr<-function(type){
-#   switch(
-#     type,"auto","float","double","integer","long"
-#   )
-# }
-
-
-
-
 #======================GPU resources manager====================
 #The gpu manager is not supposed to be called by the user
 #It manage the all resources on a device
@@ -37,52 +15,82 @@
   e$addressList=hash()
   e$addressSizeList=hash()
   e$empPtr=0
-  list(
-    upload=function(obj,data,type){
-      
-      ##Check if the data is larger than the available memory size
-      size=getTypeSize(type)*dim(data)[1]*dim(data)[2]
-      if(e$memoryUsage+size>e$totalMemory){
-        if(debug)
-          message("The data is larger than the available GPU memory, a garbage collection is triggered")
-        gc()
-        if(e$memoryUsage+size>e$totalMemory)
-          stop("The data is larger than the available GPU memory! Garbage collection can not free more space")
-        }
-      e$memoryUsage=e$memoryUsage+size
-      
-      
-      ##Check if there is at least one avaible memory index
+  
+  getGPUmemInd<-function(size){
+    if(e$memoryUsage+size>e$totalMemory){
+      if(debug)
+        message("The data is larger than the available GPU memory, a garbage collection is triggered")
+      gc()
+      if(e$memoryUsage+size>e$totalMemory)
+        stop("The data is larger than the available GPU memory! Garbage collection can not free more space")
+    }
+    e$memoryUsage=e$memoryUsage+size
+    
+    
+    ##Check if there is at least one avaible memory index
+    if(length(e$addressList)>=e$maxAddressNum){
+      if(debug)
+        message("The GPU address index is full, a garbage collection is triggered")
+      gc()
       if(length(e$addressList)>=e$maxAddressNum){
-        if(debug)
-          message("The GPU address index is full, a garbage collection is triggered")
-        gc()
-        if(length(e$addressList)>=e$maxAddressNum){
-          stop("The GPU address index is full! Garbage collection can not free more index")
-        }
+        stop("The GPU address index is full! Garbage collection can not free more index")
+      }
+    }
+    
+    ##Find an empty index
+    repeat{
+      if(e$empPtr>=e$maxAddressNum){
+        e$empPtr=0
+      }
+      e$empPtr=e$empPtr+1
+      if(!has.key(as.character(e$empPtr),e$addressList))
+        break
+    }
+    return(e$empPtr)
+  }
+  
+  list(
+    upload=function(obj,data,repNum,type){
+      if(!is.numeric(repNum)){
+        stop("Invalid input")
+      }
+      ##Check if the data is larger than the available memory size and get the memory index
+      size=getTypeSize(type)*length(data)*repNum
+      gpuInd=getGPUmemInd(size)
+      
+      if(repNum==1){
+        res=.C(
+          "upload",convertDataType(data,type),
+          as.double(length(data)),getTypeNum(type),as.double(0)
+        )
+      }else{
+        res=.C(
+          "uploadWithRep",convertDataType(data,type),
+          as.double(length(data)),as.double(repNum),
+          getTypeNum(type),as.double(0)
+        )
       }
       
-      ##Find an empty index
-      repeat{
-        if(e$empPtr>=e$maxAddressNum){
-          e$empPtr=0
-        }
-        e$empPtr=e$empPtr+1
-        if(!has.key(as.character(e$empPtr),e$addressList))
-          break
-      }
+      e$addressList[[as.character(gpuInd)]]=res[[length(res)]]
+      e$addressSizeList[[as.character(gpuInd)]]=size
       
+      return(gpuInd)
+    },
+    gpuMalloc<-function(length,type){
+      ##Check if the data is larger than the available memory size and get the memory index
+      size=getTypeSize(type)*length*repNum
+      gpuInd=getGPUmemInd(size)
       
       res=.C(
-        "upload",convertDataType(data,type),
-        as.double(dim(data)),getTypeNum(type),as.double(0)
+        "upload",as.double(length(data)),getTypeNum(type),as.double(0)
       )
-      e$addressList[[as.character(e$empPtr)]]=res[[length(res)]]
-      e$addressSizeList[[as.character(e$empPtr)]]=size
       
-      #e$addressList[[as.character(e$empPtr)]]=1
-      return(e$empPtr)
-    },
+      e$addressList[[as.character(gpuInd)]]=res[[length(res)]]
+      e$addressSizeList[[as.character(gpuInd)]]=size
+      
+      return(gpuInd)
+    }
+    ,
     download=function(ind,dim,type){
       if(!has.key(as.character(ind),e$addressList))
         stop("The GPU resources does not exist!")

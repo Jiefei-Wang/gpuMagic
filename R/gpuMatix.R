@@ -18,6 +18,17 @@ gpuMatrix<-function(data,type="auto"){
   
   obj
 }
+gpuMatrixWithRep<-function(data,repNum,type="auto"){
+  data=as.matrix(data)
+  
+  if(type=="auto"){
+    type=gpuMagic.option$getDefaultType()
+  }
+  
+  
+}
+
+
 #======================Get the slot data======================
 .getAddress<-function(obj){
   ad=obj@gpuAddress$getAddress()

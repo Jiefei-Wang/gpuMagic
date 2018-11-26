@@ -11,21 +11,23 @@ void getCurDeviceIndex(int * id)
 {
 	*id = kernelManager::getDeviceIndex();
 }
-void upload(void* data, double * dim, int* type, void** address) {
-	openArray* matrix = nullptr;
-	switch (*type) {
-	case dtype::c:
-		matrix = new openArray(dim[0], dim[1], data, dtype::c);
-		break;
-	case dtype::i32:
-		matrix = new openArray(dim[0], dim[1], data, dtype::i32);
-		break;
-	default:
-		matrix = new openArray(dim[0], dim[1], data, (dtype)*type);
-		break;
-	};
+void upload(void* data, double * length, int* type, void** address) {
+	
+	openArray* matrix = new openArray(data,*length, (dtype)*type);
 	*address = (void*)matrix;
 }
+void uploadWithRep(void * data, double * length, double * repNum, int * type, void ** address)
+{
+	*address=(void*)openArray::repeatData(data, *length, *repNum, (dtype)*type);
+}
+
+void gpuMalloc(double* length, int * type, void ** address)
+{
+	openArray* matrix = new openArray(*length, (dtype)*type);
+	*address = (void*)matrix;
+}
+
+
 void download(void* data, void** address) {
 	openArray* matrix = *(openArray**)address;
 	dtype type = matrix->getDataType();
@@ -37,9 +39,10 @@ void download(void* data, void** address) {
 	//These two type should be transfer to an R-compatible type
 	void* host_data = matrix->getHostData();
 	//print_partial_matrix("test:", (cl_int*)host_data, matrix->dims(0), matrix->dims(1));
-	gpuToR(data, host_data, type, matrix->dims(0)*matrix->dims(1));
+	gpuToR(data, host_data, type, matrix->getLength());
 	matrix->releaseHostData();
 }
+
 
 
 void clear(void** address) {
@@ -53,7 +56,10 @@ void hasKernel(char** signature, char** kernel, bool* res) {
 
 
 void createKernel(char** signature,char** kernel,  char** code,char** flag) {
-	kernelManager::compiler_flag = string(*flag);
+	if (flag != nullptr)
+		kernelManager::compiler_flag = string(*flag);
+	else
+		kernelManager::compiler_flag = string();
 	//message(std::string(*code));
 	kernelManager::createKernel(std::string(*signature), std::string(*kernel), std::string(*code));
 }

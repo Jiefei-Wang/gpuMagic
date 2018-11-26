@@ -3,13 +3,14 @@
 
 gpuRefAddress=setRefClass("gpuRefAddress", fields = c("address","dim","type","device","isReady"))
 gpuRefAddress$methods(
-  initialize = function(data,type) {
+  initialize = function(data,type,repNum) {
     data=as.matrix(data)
     .self$dim=dim(data)
+    .self$dim[2]=.self$dim[2]*repNum
     .self$type=type
     .self$device=getCurDeviceIndex()
     .self$isReady=TRUE
-    .self$address=.gpuResourcesManager$upload(.self,data,type)
+    .self$address=.gpuResourcesManager$upload(.self,data,repNum,type)
   }
 )
 gpuRefAddress$methods(

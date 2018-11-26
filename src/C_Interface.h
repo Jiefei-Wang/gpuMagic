@@ -6,9 +6,15 @@ extern "C" LibExport
 void getCurDeviceIndex(int* id);
 
 extern "C" LibExport
-void upload(void* data, double * dim, int* type, void** address);
+void upload(void* data, double * length, int* type, void** address);
+extern "C" LibExport
+void uploadWithRep(void* data, double * length, double* repNum, int* type, void** address);
+extern "C" LibExport
+void gpuMalloc(double* length, int* type, void** address);
+
 extern "C" LibExport
 void download(void* data, void** address);
+
 
 extern "C" LibExport
 void clear(void** address);
@@ -16,7 +22,7 @@ extern "C" LibExport
 void hasKernel(char** signature, char** kernel, bool* res);
 
 extern "C" LibExport
-void createKernel(char** signature,char** kernel,  char** code, char** flag);
+void createKernel(char** signature,char** kernel,  char** code, char** flag=nullptr);
 extern "C" LibExport
 void loadParameter(char** signature, char** kernel, void** data_address, int *parm_index);
 extern "C" LibExport
