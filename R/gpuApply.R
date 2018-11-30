@@ -173,7 +173,10 @@ fillGPUdata<-function(GPUcode1,.option=gpuSapply.getOption()){
   device_argument$ls_size2=kernel.getSharedMem(length(kernel_args$ls_size2),type=IntType)
   device_argument$ls_offset=kernel.getSharedMem(length(kernel_args$ls_offset),type=IntType)
   
-  device_argument$return_var=gpuMatrix(rep(0,kernel_args$sizeInfo[3]*totalWorkerNum),type=gpuMagic.option$getDefaultFloat())
+  returnSize=kernel_args$sizeInfo[3]*totalWorkerNum
+  if(returnSize==0)
+    returnSize=1
+  device_argument$return_var=gpuMatrix(rep(0,returnSize),type=gpuMagic.option$getDefaultFloat())
   device_argument$sizeInfo=gpuMatrix(kernel_args$sizeInfo,type=IntType)
     
     

@@ -34,8 +34,12 @@ profile_symbol_left<-function(level,codeMetaInfo,varInfo,curExp){
     #If the definition of the left expression cannot be changed, skip it
     if(leftInfo$constDef)
       return(list())
+    if(leftInfo$lazyRef)
+      return(list())
     if(leftInfo$constVal)
       stop("The left expression is a constant, changing the number of the left expression is not allowed:\n:",deparse(curExp))
+    
+    
     
     rightInfo=getExpInfo(varInfo,rightExp)
     checkInfo=checkVarType(leftInfo,rightInfo)

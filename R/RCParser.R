@@ -196,18 +196,7 @@ RCTranslation<-function(varInfo,parsedExp){
     if(curExp=="{"||is.symbol(curExp))
       next
     
-    if(curExp[[1]]=="return"){
-      returnVar=curExp[[2]]
-      returnInfo=getVarInfo(varInfo,returnVar)
-      if(returnInfo$dataType==T_matrix){
-        curCode=paste0("for(",GPUVar$default_index_type," gpu_return_i=0;gpu_return_i<",GPUVar$return_size,";gpu_return_i++){\n")
-        curCode=c(curCode,paste0(GPUVar$return_variable,"[gpu_return_i+",GPUVar$gpu_global_id,"*",GPUVar$return_size,"]=",returnInfo$address,"[gpu_return_i];\n}\n"))
-      }else{
-        curCode=paste0(GPUVar$return_variable,"[",GPUVar$gpu_global_id,"]=",returnInfo$address,";\n")
-      }
-      gpu_code=c(gpu_code,curCode)
-      next
-    }
+    
     
     if(curExp[[1]]=="for"){
       curCode=RCTranslation(varInfo,curExp[[4]])
@@ -231,6 +220,15 @@ RCTranslation<-function(varInfo,parsedExp){
       }
       ifstate=paste0(ifFunc,elseFunc)
       gpu_code=c(gpu_code,ifstate)
+      next
+    }
+    
+    #If the code starts with opencl_
+    code_char=deparse(curExp)[1]
+    if(substr(code_char,1,7)==GPUVar$openclCode){
+      code_char=deparse(curExp)
+      curCode=paste0(substr(code_char,8,nchar(code_char)),";")
+      gpu_code=c(gpu_code,curCode)
       next
     }
     #if the code format exactly match the template
@@ -259,14 +257,14 @@ RCTranslation<-function(varInfo,parsedExp){
       next
     }
     
-    #If the code starts with opencl_
-    code_char=deparse(curExp)[1]
-    if(substr(code_char,1,7)==GPUVar$openclCode){
-      code_char=deparse(curExp)
-      curCode=paste0(substr(code_char,8,nchar(code_char)),";")
+    func=.cFuncs[[deparse(curExp[[1]])]]
+    if(!is.null(func)){
+      curCode=func(varInfo,curExp)
       gpu_code=c(gpu_code,curCode)
       next
     }
+    
+    
     
     
     

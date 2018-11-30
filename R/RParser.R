@@ -59,7 +59,7 @@ RLevel1_parserFunc<-function(level,codeMetaInfo,curExp){
     #General strategy for all functions that do not appear above
     if(length(curExp)>1)
       for(i in 2:length(curExp)){
-        if(is.call(curExp[[i]])){
+        if(deparse(curExp[[i]])!=""&&is.call(curExp[[i]])){
           res=createNewVar(tmpMeta,curExp[[i]])
           tmpMeta=res$tmpMeta
           result$extCode=c(result$extCode,res$code)

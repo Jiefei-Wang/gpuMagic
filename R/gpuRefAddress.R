@@ -1,4 +1,3 @@
-#' @include pkgFunc.R
 #======================GPU address S5 class====================
 
 gpuRefAddress=setRefClass("gpuRefAddress", fields = c("address","length","type","device"))
@@ -20,12 +19,16 @@ gpuRefAddress$methods(
 )
 gpuRefAddress$methods(
   getAddress = function() {
-    .gpuResourcesManager$getAddress(.self$address)
+    if(!is.null(.self$address))
+      .gpuResourcesManager$getAddress(.self$address)
+    else
+      stop("The GPU resources does not exist")
   }
 )
 
 gpuRefAddress$methods(
   finalize = function() {
+    if(!is.null(.self$address))
       .gpuResourcesManager$releaseAddress(.self$address)
   }
 )
@@ -62,6 +65,7 @@ gpuRefAddress$methods(
   switchDevice = function() {
     data=.gpuResourcesManager$download(.self$address,.self$length,.self$type)
     upload(data,.self$type)
+    .self$device=getCurDeviceIndex()
   }
 )
 

@@ -17,24 +17,22 @@ test_that("Matrix upload and download",{
 
 #Cannot pass now
 test_that("Matrix assignment",{
-  skip("Matrix assignment")
+  type=c("char","half","float","double","int","long","uint","ulong")
   for(i in 1:5){
     k=100
     mydata=matrix(1:k,10)
-    mydata1=gpuMatrix(mydata,i)
+    mydata_dev=gpuMatrix(mydata,type[i])
 
-    mydata1[1]=10
-    mydata1[2,]=11
-    mydata1[,3]=12
-    mydata1=sync(mydata1)
-
+    mydata_dev[1]=10
+    mydata_dev[2,]=11
+    mydata_dev[,3]=12
+    mydata_dev[4,4]=15
+    
     mydata[1]=10
     mydata[2,]=11
     mydata[,3]=12
+    mydata[4,4]=15
 
-    mydata1[]=0
-    mydata1=download(mydata1)
-
-    expect_equal(as.matrix(mydata1),mydata)
+    expect_equal(as.matrix(mydata_dev),mydata)
   }
 })

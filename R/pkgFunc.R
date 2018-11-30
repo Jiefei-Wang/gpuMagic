@@ -4,6 +4,10 @@
 #' @import hash
 #' @useDynLib gpuMagic
 
+.onDetach<-function(libpath){
+  gc()
+}
+
 .onUnload<-function(libpath){
   library.dynam.unload("gpuMagic",libpath)
   .gpuResourcesManager$deleteEnv()
@@ -48,15 +52,16 @@ DEBUG=TRUE
 #' @include RCParserFunc.R
 .cFuncs=list()
 .cFuncs$"["=C_subset
-.cFuncs$"+"=C_arithmaticOP
-.cFuncs$"-"=C_arithmaticOP
-.cFuncs$"*"=C_arithmaticOP
-.cFuncs$"/"=C_arithmaticOP
+.cFuncs$"gType=gType+gType"=C_arithmaticOP
+.cFuncs$"gType=gType-gType"=C_arithmaticOP
+.cFuncs$"gType=gType*gType"=C_arithmaticOP
+.cFuncs$"gType=gType/gType"=C_arithmaticOP
 .cFuncs$length= C_length 
 .cFuncs$nrow= C_nrow
 .cFuncs$ncol= C_ncol
 .cFuncs[["floor"]]=C_floor
 .cFuncs[["ceiling"]]=C_ceil
+.cFuncs[["return"]]=C_return
 .cFuncs$matrix=C_NULL
 .cFuncs$gMatrix=C_NULL
 .cFuncs$gNumber=C_NULL

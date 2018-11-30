@@ -28,7 +28,7 @@ gpuEmptMatrix<-function(row=1,col=1,type="auto"){
   
   checkTypeSupport(type)
   ad=gpuRefAddress()
-  ad$upload(row*col,type)
+  ad$gpuMalloc(row*col,type)
   
   obj=.gpuMatrix(data=NULL,dimension=c(row,col),type=type,gpuAddress=ad)
   
@@ -130,35 +130,95 @@ as.matrix.gpuMatrix<-function(obj,...){
 as.vector.gpuMatrix<-function(obj,...){
   as.vector(.data(obj))
 }
+getIndexFromExp<-function(Exp){
+  requiredFile=c("i","j","drop")
+  res=list(i=NA,j=NA,drop=TRUE)
+  argList=as.list(Exp)[-c(1,2)]
+  argName=names(argList)
+  if(!is.null(argName)){
+    for(name in argName[argName!=""]){
+        res[[name]]=argList[[name]]
+        argList[[name]]=NULL
+    }
+    requiredFile=requiredFile[!(requiredFile%in%argName)]
+  }
+  if(length(requiredFile)>0&&length(argList)>0){
+    for(i in 1:min(length(requiredFile),length(argList))){
+      res[[requiredFile[i]]]=deparse(argList[[i]])
+    }
+  }
+  return(res)
+}
+
 #' @export
 setMethod("[",
           signature(x = "gpuMatrix", i = "ANY", j = "ANY", drop="missing"),
-          function(x, i, j, drop) {
-            #message(list(sys = sys.call(), match = match.call()))
-            if(missing(i)&&missing(j))
-              return(.data(x))
-            if(missing(i))
-              return(x@data[,j,drop=drop])
-            if(missing(j))
-              return(x@data[i,,drop=drop])
+          function(x, i=NA, j=NA,..., drop=TRUE) {
+            func_call=sys.call()
+            index=getIndexFromExp(func_call)
+            #Empty index
+            if(
+              (index$i==""&&index$j=="")||
+              (index$i==""&&is.na(index$j))||
+              (is.na(index$i)&&index$j=="")
+               )
+              return(.data(x)[])
+            #One index
+            if(is.na(index$j))
+              return(.data(x)[i,drop=drop])
+            if(is.na(index$i))
+              stop("Undefined behavior")
+            #Two index
+            if(index$i=="")
+              return(.data(x)[,j,drop=drop])
+            if(index$j=="")
+              return(.data(x)[i,,drop=drop])
+            
             return(.data(x)[i,j])
           })
 #' @export
 setMethod("[<-",
           signature(x = "gpuMatrix", i = "ANY", j = "ANY", value = "numeric"),
-          function(x, i, j, value) {
-            #message(list(sys = sys.call(), match = match.call()))
-            if(missing(i)&&missing(j))
-              .data(x)=value
-            else{
-              if(missing(i))
-                x@data[,j]=value
-              else{
-                if(missing(j))
-                  x@data[i,]=value
-                else
-                  x@data[i,j]=value
-              }
+          function(x, i, j,..., value) {
+            func_call=sys.call()
+            index=getIndexFromExp(func_call)
+            mydata=.data(x)
+            if(
+              (index$i==""&&index$j=="")||
+              (index$i==""&&is.na(index$j))||
+              (is.na(index$i)&&index$j=="")
+            ){
+              mydata[]<-value
+              .data(x)=mydata
+              .dim(x)=dim(mydata)
+              return(x)
             }
+            #One index
+            if(is.na(index$j)){
+              mydata[i]<-value
+              .data(x)=mydata
+              .dim(x)=dim(mydata)
+              return(x)
+              }
+            if(is.na(index$i))
+              stop("Undefined behavior")
+            #Two index
+            if(index$i==""){
+              mydata[,j]<-value
+              .data(x)=mydata
+              .dim(x)=dim(mydata)
+              return(x)
+            }
+            if(index$j==""){
+              mydata[i,]<-value
+              .data(x)=mydata
+              .dim(x)=dim(mydata)
+              return(x)
+            }
+            
+            mydata[i,j]<-value
+            .data(x)=mydata
+            .dim(x)=dim(mydata)
             return(x)
+              
           })

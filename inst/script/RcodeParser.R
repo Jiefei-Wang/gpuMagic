@@ -144,12 +144,9 @@ B=matrix(runif(n*m),m,k)
 
 #The return size still has bug
 test3<-function(ind,A,B){
-  #tmp=B[,ind]
   tmp=subRef(B,,ind)
-  C=A%*%tmp
-  
-  #message(C)
-  return(C)
+  tmp[1,1]=1
+  return(tmp)
 }
 n=3
 m=4

@@ -102,7 +102,6 @@
     releaseAddress=function(ind){
       if(e$unload)
         return()
-      #message(ind)
       if(!hash::has.key(as.character(ind),e$addressList)){
         warning("GPU memory has already been free")
         return()

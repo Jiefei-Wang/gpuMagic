@@ -10,7 +10,8 @@ createNewVar<-function(tmpMeta,parsedExp){
     for(i in seq(2,length(parsedExp))){
       #If the argument is also a function call
       curArg=parsedExp[[i]]
-      if(is.call(curArg)){
+      curArg_char=deparse(parsedExp[[i]])
+      if(curArg_char!=""&&is.call(curArg)){
         res=createNewVar(tmpMeta,curArg)
         tmpMeta=res$tmpMeta
         #change the argument to a parameter
@@ -30,7 +31,7 @@ createNewVar<-function(tmpMeta,parsedExp){
 
 getTmpVar<-function(tmpMeta){
   count=tmpMeta$count
-  return(list(count=count+1,varName=paste0("opencl_tmp_",count)))
+  return(list(count=count+1,varName=paste0("gpu_tmp_",count)))
 }
 
 compressCodeChunk<-function(Exp){

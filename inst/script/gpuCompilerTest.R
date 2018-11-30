@@ -3,20 +3,17 @@ library("microbenchmark")
 library("tictoc")
 #The return size still has bug
 test3<-function(ind,A,B){
-  #tmp=B[,ind]
   tmp=subRef(B,,ind)
-  C=A%*%tmp
-  
-  return(C)
+  tmp[1,]=1
+  return(B[,ind])
 }
-n=1024
-m=10000
-k=1024
+n=10
+m=20
+k=30
 A=matrix(runif(n*m),n,m)
 B=matrix(runif(m*k),m,k)
 #.gpuResourcesManager$setMaxMemLimit(6*10^9)
 tic()
-for(i in 1:10)
 res3=gpuSapply(1:k,test3,A,B)
 toc()
 tic()
