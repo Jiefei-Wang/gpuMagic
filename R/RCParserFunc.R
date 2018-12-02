@@ -47,24 +47,57 @@ C_call_assign<-function(varInfo,Exp){
 }
 
 C_arithmaticOP<-function(varInfo,Exp){
-  leftEle=C_subset(varInfo,Exp[[2]])
-  rightEle=C_subset(varInfo,Exp[[3]])
-  op=deparse(Exp[[1]])
-  if(op!="/")
-    code=paste0(leftEle,op,rightEle)
-  else
-    code=paste0("(",gpuMagic.option$getDefaultFloat(),")",leftEle,op,rightEle)
+  leftVar=Exp[[2]]
+  
+  rightExp=Exp[[3]]
+  
+  leftEle=rightExp[[2]]
+  rightEle=rightExp[[3]]
+  op=deparse(rightExp[[1]])
+    
+  leftDataType=getVarProperty(varInfo,leftVar,"dataType")
+  if(leftDataType==T_scale){
+    loopCode=""
+    rightCode=paste0(R_expression_sub(varInfo,leftEle,i=1),
+                    op,
+                    R_expression_sub(varInfo,rightEle,i=1)
+                    )
+    leftCode=R_expression_sub(varInfo,leftVar,i=1)
+    endCode=""
+  }else{
+    loopCode=c(
+      paste0("for(", GPUVar$default_index_type," gpu_index_i=0;gpu_index_i<",R_nrow(varInfo,leftVar),";gpu_index_i++){"),
+      paste0("for(", GPUVar$default_index_type," gpu_index_j=0;gpu_index_j<",R_ncol(varInfo,leftVar),";gpu_index_j++){")
+    )
+    rightCode=paste0(R_expression_sub(varInfo,leftEle,i="gpu_index_i",j="gpu_index_j",i_C =TRUE,j_C=TRUE,base=0),
+                     op,
+                     R_expression_sub(varInfo,rightEle,i="gpu_index_i",j="gpu_index_j",i_C =TRUE,j_C=TRUE,base=0))
+    
+    leftCode=R_expression_sub(varInfo,leftVar,i="gpu_index_i",j="gpu_index_j",i_C =TRUE,j_C=TRUE,base=0)
+    
+    
+    endCode=c(
+      "}",
+      "}")
+  }
+  
+  if(op=="/")
+    rightCode=paste0("(",gpuMagic.option$getDefaultFloat(),")",rightCode)
+  
+  code=c(loopCode,
+         paste0(leftCode,"=",rightCode,";"),
+         endCode)
   code
 }
 
 C_length<-function(varInfo,Exp){
-  return(paste0(R_getVarSize1(varInfo,Exp[[2]]),"*",R_getVarSize2(varInfo,Exp[[2]])))
+  return(paste0(R_nrow(varInfo,Exp[[2]]),"*",R_ncol(varInfo,Exp[[2]])))
 }
 C_nrow<-function(varInfo,Exp){
-  return(R_getVarSize1(varInfo,Exp[[2]]))
+  return(R_nrow(varInfo,Exp[[2]]))
 }
 C_ncol<-function(varInfo,Exp){
-  return(R_getVarSize2(varInfo,Exp[[2]]))
+  return(R_ncol(varInfo,Exp[[2]]))
 }
 #This function assume the result of the subset is a number
 C_subset<-function(varInfo,Exp){
@@ -105,8 +138,12 @@ C_return<-function(varInfo,Exp){
   curCode
   
 }
-
-
+C_break<-function(varInfo,Exp){
+  "break;"
+}
+C_next<-function(varInfo,Exp){
+  "continue;"
+}
 
 C_NULL<-function(varInfo,Exp){
   return("")
@@ -233,13 +270,14 @@ C_twoSub<-function(varInfo,Exp){
 }
 
 
-C_matMul<-function(varInfo,Exp){
+C_matMul1<-function(varInfo,Exp){
   leftVar=Exp[[2]]
   rightExp=Exp[[3]]
   rightVar1=rightExp[[2]]
   rightVar2=rightExp[[3]]
-  
+
   code=c(
+    "{",
     paste0(gpuMagic.option$getDefaultFloat()," gpu_matMul_tmp;"),
     paste0("for(",GPUVar$default_index_type,
            " gpu_matMul_i=1;gpu_matMul_i<=",R_nrow(varInfo,rightVar1),
@@ -261,9 +299,63 @@ C_matMul<-function(varInfo,Exp){
            "=",
            "gpu_matMul_tmp;"),
     "}",
+    "}",
     "}"
   )
+  
+  
+  
   code
+}
+
+
+C_matMul<-function(varInfo,Exp){
+    leftVar=Exp[[2]]
+    rightExp=Exp[[3]]
+    rightVar1=rightExp[[2]]
+    rightVar2=rightExp[[3]]
+    defaultFloat=gpuMagic.option$getDefaultFloat()
+    defaultIndex=GPUVar$default_index_type
+    privateSize=GPUVar$private_size
+    
+    leftSub=R_expression_sub(varInfo,leftVar,"gpu_i","gpu_j",i_C=T,j_C=T,base=0)
+    
+    code=c(
+      "{",
+      paste0(defaultIndex," A_row=",R_nrow(varInfo,rightVar1),";"),
+      paste0(defaultIndex," A_col=",R_ncol(varInfo,rightVar1),";"),
+      paste0(defaultIndex," B_col=",R_ncol(varInfo,rightVar2),";"),
+      paste0(defaultFloat," gpu_private_spcae","[",privateSize,"];"),
+      paste0(defaultIndex," gpu_loopNum=ceil((",defaultFloat,")A_col/",privateSize,");"),
+      paste0(defaultIndex," gpu_start=0;"),
+      paste0(defaultIndex," gpu_end=0;"),
+      paste0(defaultIndex, " gpu_length=0;"),
+      paste0("for(",defaultIndex," gpu_t=0;gpu_t<gpu_loopNum;gpu_t++){"),
+      "gpu_start=gpu_end;",
+      paste0("gpu_end=gpu_end+",privateSize,";"),
+      paste0("if(gpu_end>A_col) gpu_end=A_col;"),
+      "gpu_length=gpu_end-gpu_start;",
+      paste0("for(",defaultIndex," gpu_i=0;gpu_i<A_row;gpu_i++){"),
+      paste0("for(",defaultIndex," gpu_k=0;gpu_k<gpu_length;gpu_k++){"),
+      paste0("gpu_private_spcae[gpu_k]=",
+             R_expression_sub(varInfo,rightVar1,"gpu_i",paste0("gpu_k+gpu_t*",privateSize),i_C=T,j_C=T,base=0),";"),
+      "}",
+      paste0("for(",defaultIndex," gpu_j=0;gpu_j<B_col;gpu_j++){"),
+      paste0(defaultFloat," gpu_tmp=0;"),
+      paste0("for(",defaultIndex," gpu_k=0;gpu_k<gpu_length;gpu_k++){"),
+      paste0("gpu_tmp=gpu_tmp+gpu_private_spcae[gpu_k]*",
+             R_expression_sub(varInfo,rightVar2,paste0("gpu_k+gpu_t*",privateSize),"gpu_j",i_C=T,j_C=T,base=0),";"),
+      "}",
+      "if(gpu_t==0){",
+      paste0(leftSub,"=gpu_tmp;"),
+      "}else{",
+      paste0(leftSub,"=",leftSub,"+gpu_tmp;"),
+      "}",
+      "}",
+      "}",
+      "}",
+      "}"
+    )
 }
 
 

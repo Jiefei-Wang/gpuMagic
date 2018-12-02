@@ -48,8 +48,14 @@ R_processSub<-function(varInfo,sub,length,name){
 #Exp can be a scaler, then the value will be returned
 R_expression_sub<-function(varInfo,Exp,i,j=1,opt=FALSE,optCode=list(),i_C=FALSE,j_C=FALSE,base=1){
   if(Exp==""){
-    if(j==base)
-      return(i)
+    if(j==base){
+      if(i_C)
+        return(paste0(i,"+",1-base))
+      else
+        return(Simplify(paste0(i,"+",1-base)))
+      
+    }
+    
     stop("Unexpected subset value")
   }
   if(is.character(Exp))
@@ -63,9 +69,10 @@ R_expression_sub<-function(varInfo,Exp,i,j=1,opt=FALSE,optCode=list(),i_C=FALSE,
       refExp=parse(text=getVarProperty(varInfo,curVar,"ref"))[[1]]
       ref_i=deparse(refExp[[3]])
       ref_j=deparse(refExp[[4]])
+      
       ref_i_C=R_expression_sub(varInfo,ref_i,i=i,j=base,i_C=i_C,base=base)
       ref_j_C=R_expression_sub(varInfo,ref_j,i=j,j=base,j_C=j_C,base=base)
-      res=R_expression_sub(varInfo,refExp[[2]],i=ref_i_C,j=ref_j_C,i_C=TRUE,j_C=TRUE,base=base)
+      res=R_expression_sub(varInfo,refExp[[2]],i=ref_i_C,j=ref_j_C,i_C=TRUE,j_C=TRUE)
       return(res)
     }
     dataType=getVarProperty(varInfo,curVar,"dataType")
@@ -74,17 +81,17 @@ R_expression_sub<-function(varInfo,Exp,i,j=1,opt=FALSE,optCode=list(),i_C=FALSE,
     if(dataType==T_matrix){
       if(!i_C){
         sub1=parse(text=i)[[1]]
-        i_C_ind=R_expression_sub(varInfo,sub1,i=0,i_C=TRUE,base=0)
+        i_C_ind=R_expression_sub(varInfo,sub1,i=0,j=0,i_C=TRUE,base=0)
       }else{
-        i_C_ind=i
+        i_C_ind=paste0(i,"+",1-base)
       }
       if(!j_C){
         sub2=parse(text=j)[[1]]
-        j_C_ind=R_expression_sub(varInfo,sub2,i=0,i_C=TRUE,base=0)
+        j_C_ind=R_expression_sub(varInfo,sub2,i=0,j=0,i_C=TRUE,base=0)
       }else{
-        j_C_ind=j
+        j_C_ind=paste0(j,"+",1-base)
       }
-      res=R_getVarSub(varInfo,Exp,i_C_ind,j_C_ind,opt,base=base)
+      res=R_getVarSub(varInfo,Exp,i_C_ind,j_C_ind,opt)
       return(res)
     }
     stop("unrecognized code: ",deparse(Exp))
@@ -97,15 +104,15 @@ R_expression_sub<-function(varInfo,Exp,i,j=1,opt=FALSE,optCode=list(),i_C=FALSE,
       sub1=Exp[[3]]
     
     if(length(Exp)==3){
-      sub2=base
+      sub2=1
     }else{
       if(Exp[[4]]=="")
         sub2=""
       else
         sub2=Exp[[4]]
     }
-    i_C_ind=R_expression_sub(varInfo,sub1,i=i,i_C=i_C)
-    j_C_ind=R_expression_sub(varInfo,sub2,i=j,i_C=j_C)
+    i_C_ind=R_expression_sub(varInfo,sub1,i=i,j=base,i_C=i_C,base=base)
+    j_C_ind=R_expression_sub(varInfo,sub2,i=j,j=base,i_C=j_C,base=base)
     res=R_getVarSub(varInfo,curVar,i_C_ind,j_C_ind,opt)
     return(res)
   }

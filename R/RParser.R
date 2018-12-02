@@ -1,11 +1,14 @@
+#1.Rename the first function argument and add the looped variable in a code format
+#2.special treatment for the break and next
 codePreprocessing<-function(codeMetaInfo){
   loopVar=names(codeMetaInfo$parms)[[1]]
   names(codeMetaInfo$parms)[[1]]=GPUVar$gpu_loop_data
   #insert the preserved data reading code
   readDataExp=parse(text=paste0(loopVar,"=",GPUVar$gpu_loop_data,"[",GPUVar$gpu_global_id,"+1]"))
-  codeMetaInfo$Exp=c(readDataExp,codeMetaInfo$Exp)
+  Exp=c(readDataExp,codeMetaInfo$Exp)
+  #Exp=renameControlCode(Exp)
   
-  
+  codeMetaInfo$Exp=Exp
   codeMetaInfo
 }
 #Level 1 compiler

@@ -1,11 +1,40 @@
+#==============================preprocess==========================
+renameControlCode<-function(parsedExp){
+  for(i in 1:length(parsedExp)){
+    curExp=parsedExp[[i]]
+    if(is.call(curExp)){
+      if(curExp=="break")
+        parsedExp[[i]]=quote(opencl_break)
+      if(curExp=="next")
+        parsedExp[[i]]=quote(opencl_next)
+    }else{
+      next
+    }
+    if(curExp[[1]]=="for"){
+      curExp[[4]]=renameControlCode(curExp[[4]])
+      parsedExp[[i]]=curExp
+    }
+    if(curExp[[1]]=="if"){
+      curExp[[3]]=renameControlCode(curExp[[3]])
+      if(length(curExp)==4){
+        curExp[[4]]=renameControlCode(curExp[[4]])
+      }
+      parsedExp[[i]]=curExp
+    }
+  }
+  return(parsedExp)
+}
+
 #==============================parser 1==========================
 
-#parsedExp=parse(text="f(g(),a)")[[1]]
+#parsedExp=parse(text="(tmp + tmp1) * tmp")[[1]]
 #Create a new variable to represent a function call
 createNewVar<-function(tmpMeta,parsedExp){
   tmpMeta=getTmpVar(tmpMeta)
   curName=tmpMeta$varName
   curCode=c()
+  if(is.call(parsedExp)&&parsedExp[[1]]=="(")
+    parsedExp=parsedExp[[2]]
   if(length(parsedExp)>1){
     for(i in seq(2,length(parsedExp))){
       #If the argument is also a function call
@@ -62,12 +91,13 @@ printExp<-function(Exp){
 
 
 renameVarInCode<-function(code,start,oldName,newName){
-  oldName=as.character(oldName)
-  newName=as.symbol(newName)
+  oldName=toCharacter(oldName)
+  if(!is.symbol(newName))
+    newName=as.symbol(newName)
+  renameList=list(newName)
+  names(renameList)=oldName
   if(start<=length(code)){
     for(i in start:length(code)){
-      renameList=list(newName)
-      names(renameList)=oldName
       code[[i]]=do.call('substitute', list(code[[i]], renameList))
     }
   }

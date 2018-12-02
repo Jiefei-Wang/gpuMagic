@@ -1,0 +1,90 @@
+testFunc<-function(ind,A,B){
+  #C=A[ind,]%*%B
+  C=subRef(A,ind,)%*%B
+  return(C)
+}
+n=2000
+m=10000
+k=2000
+A=matrix(runif(n*m),n,m)
+B=matrix(runif(m*k),m,k)
+tic()
+res_gpu=gpuSapply(1:n,testFunc,A,B)
+toc()
+tic()
+res_cpu=A%*%B
+toc()
+
+range(res_cpu-t(res_gpu))
+
+
+
+
+testFunc2<-function(col_ind,A){
+  largest=0
+  largest_ind=1
+  second_largest=0
+  second_largest_ind=1
+  for(i in 1:nrow(A)){
+    curA=A[i,col_ind]
+    if(curA>largest){
+      second_largest=largest
+      second_largest_ind=largest_ind
+      largest=curA
+      largest_ind=i
+    }else{
+      if(curA>second_largest){
+        second_largest=curA
+        second_largest_ind=i
+      }
+    }
+  }
+  return(second_largest_ind)
+}
+n=10000
+m=10000
+A=matrix(runif(max=1000,n*m),n,m)*10
+
+
+tic()
+res_gpu=gpuSapply(1:m,testFunc2,A)
+toc()
+tic()
+res_cpu=sapply(1:m,testFunc2,A)
+toc()
+tic()
+A_rank=apply(-A,2,rank)
+second_largest_ind=which(A_rank==2,arr.ind = T)[,1]
+toc()
+
+range(res_cpu-res_gpu)
+
+
+
+gpuMagic.option$setDefaultFloat("float")
+tic()
+res_gpu=gpuSapply(1:m,testFunc2,A)
+toc()
+gpuMagic.option$setDefaultFloat("double")
+
+
+
+
+code=compileGPUCode(1:m,testFunc2,A)
+cat(code$gpu_code)
+
+
+
+
+
+
+
+
+
+
+
+min(which(res_cpu-res_gpu!=0))
+col=1679
+A[res_cpu[col],col]
+A[res_gpu[col],col]
+max(A[,col])

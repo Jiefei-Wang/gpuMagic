@@ -245,8 +245,8 @@ profile_arithmetic<-function(varInfo,Exp){
     ExpInfo$size2=leftInfo$size2
   }
   if(leftInfo$dataType==T_matrix&&rightInfo$dataType==T_matrix){
-    if(leftInfo$size1!=rightInfo$size1||leftInfo$size2!=rightInfo$size2)
-      stop("The matrix size does not match: ",deparse(Exp))
+    #if(leftInfo$size1!=rightInfo$size1||leftInfo$size2!=rightInfo$size2)
+    #  stop("The matrix size does not match: ",deparse(Exp))
     ExpInfo$dataType=T_matrix
     ExpInfo$size1=leftInfo$size1
     ExpInfo$size2=leftInfo$size2

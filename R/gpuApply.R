@@ -158,12 +158,12 @@ fillGPUdata<-function(GPUcode1,.option=gpuSapply.getOption()){
   IntType=GPUVar$default_index_type
   
   device_argument=list()
-  device_argument$gp_data=gpuMatrix(rep(0,ceiling(gp_size*totalWorkerNum/8)+1),type="double")
+  device_argument$gp_data=gpuEmptMatrix(row=floor(gp_size*totalWorkerNum/4)+1,col=1,type="int")
   device_argument$gp_size1=gpuMatrix(rep(kernel_args$gp_size1,totalWorkerNum),type=IntType)
   device_argument$gp_size2=gpuMatrix(rep(kernel_args$gp_size2,totalWorkerNum),type=IntType)
   device_argument$gp_offset=gpuMatrix(kernel_args$gp_offset,type=IntType)
   
-  device_argument$gs_data=gpuMatrix(rep(0,gs_size+1),type="char")
+  device_argument$gs_data=gpuEmptMatrix(row=floor(gs_size/4)+1,type="int")
   device_argument$gs_size1=gpuMatrix(kernel_args$gs_size1,type=IntType)
   device_argument$gs_size2=gpuMatrix(kernel_args$gs_size2,type=IntType)
   device_argument$gs_offset=gpuMatrix(kernel_args$gs_offset,type=IntType)
@@ -176,7 +176,7 @@ fillGPUdata<-function(GPUcode1,.option=gpuSapply.getOption()){
   returnSize=kernel_args$sizeInfo[3]*totalWorkerNum
   if(returnSize==0)
     returnSize=1
-  device_argument$return_var=gpuMatrix(rep(0,returnSize),type=gpuMagic.option$getDefaultFloat())
+  device_argument$return_var=gpuEmptMatrix(returnSize,type=gpuMagic.option$getDefaultFloat())
   device_argument$sizeInfo=gpuMatrix(kernel_args$sizeInfo,type=IntType)
     
     

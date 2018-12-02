@@ -1,26 +1,29 @@
 
 library("microbenchmark")
 library("tictoc")
-#The return size still has bug
-test3<-function(ind,A,B){
-  tmp=subRef(B,,ind)
-  tmp[1,]=1
-  return(B[,ind])
+
+getDeviceList()
+setDevice(2)
+#gpuMagic.option$setDefaultFloat("double")
+testFunc<-function(ind,A,B){
+  tmp=subRef(A,ind,)
+  C=tmp%*%B
+  return(C)
 }
-n=10
-m=20
-k=30
+n=2000
+m=10000
+k=2000
 A=matrix(runif(n*m),n,m)
 B=matrix(runif(m*k),m,k)
-#.gpuResourcesManager$setMaxMemLimit(6*10^9)
 tic()
-res3=gpuSapply(1:k,test3,A,B)
+res3=gpuSapply(1:n,testFunc,A,B)
 toc()
 tic()
 res2=A%*%B
 toc()
 
-range(res2-res3)
+range(res2-t(res3))
+
 
 code=compileGPUCode(1:k,test3,A,B)
 code$Exp

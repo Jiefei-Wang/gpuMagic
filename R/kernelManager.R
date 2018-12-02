@@ -12,17 +12,38 @@
   codePack=readCode(file,src)
   src=codePack$src
   
-  sig=paste0(flag,codePack$timeSig,signature)
   
   device=getCurDeviceIndex()
+  dataType=c()
   for(i in seq_len(length(parms))){
-    if(class(parms[[i]])=="list")
+    if(class(parms[[i]])=="list"){
+      dataType[i]=parms[[i]]$type
       next
-    if(class(parms[[i]])!="gpuMatrix")
+    }
+    if(class(parms[[i]])!="gpuMatrix"){
       parms[[i]]=gpuMatrix(parms[[i]])
+    }
+    dataType[i]=.type(parms[[i]])
     if(parms[[i]]@gpuAddress$getDevice()!=device)
       stop("The data is not in the same device!")
   }
+  
+  
+  
+  #Create the signature for the kernel function
+  sig=paste0(codePack$timeSig,flag,signature)
+  
+  #Create the data type macros
+  if(autoType&&length(dataType)!=0){
+    gAUTO=paste0("#define gAuto",1:length(dataType)," global ",dataType,"\n",collapse = "")
+    lAUTO=paste0("#define lAuto",1:length(dataType)," local ",dataType,"\n",collapse = "")
+    pAUTO=paste0("#define auto",1:length(dataType)," ",dataType,"\n",collapse = "")
+    
+    
+    src=paste0(gAUTO,lAUTO,pAUTO,src)
+    sig=c(sig,paste0(dataType,collapse = ""))
+  }
+  
   
   if(!hasKernel(sig,kernel)){
     if(verbose)

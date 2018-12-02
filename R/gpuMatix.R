@@ -1,7 +1,7 @@
 
 .gpuMatrix=setClass(
   Class="gpuMatrix",
-  slots = c(data="matrix",dimension="vector",type="character",gpuAddress="ANY")
+  slots = c(data="ANY",dimension="vector",type="character",gpuAddress="ANY")
 )
 #' @export
 gpuMatrix<-function(data,type="auto"){
@@ -59,6 +59,20 @@ gpuEmptMatrix<-function(row=1,col=1,type="auto"){
 .nrow<-function(obj)obj@dimension[1]
 .ncol<-function(obj)obj@dimension[2]
 .length<-function(obj) obj@dimension[1]*obj@dimension[2]
+
+".dim<-"<-function(obj,value) {
+  obj@dimension=value
+  obj
+}
+".nrow<-"<-function(obj,value){
+  obj@dimension[1]=value
+  obj
+}
+".ncol<-"<-function(obj,value){
+  obj@dimension[2]=value
+  obj
+}
+
 
 
 .type<-function(obj) obj@type

@@ -65,7 +65,7 @@
       
       return(gpuInd)
     },
-    gpuMalloc<-function(len,type){
+    gpuMalloc=function(len,type){
       ##Check if the data is larger than the available memory size and get the memory index
       size=getTypeSize(type)*len
       gpuInd=getGPUmemInd(size)

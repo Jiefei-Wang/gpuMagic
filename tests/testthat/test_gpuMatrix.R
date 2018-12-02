@@ -1,4 +1,4 @@
-
+context("gpuMatrix operation")
 
 test_that("Matrix upload and download",{
   

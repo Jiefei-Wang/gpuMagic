@@ -1,19 +1,14 @@
-a=matrix(1:9,3,3)
-a_dev=gpuMatrix(a)
-a_dev[1]<-10
-a_dev[1,]<-10
-a_dev[,1]<-10
+n=20000
+A=runif(n)
+B=runif(n)
+dev_C=gpuEmptMatrix(n,1)
+fileName<- 'inst/script/c_code.R'
 
-a[1]
-a[1,]
-a[,1]
+.kernel(file=fileName,kernel="vectorAdd",parms=list(A,B,dev_C))
 
 
-a[]<-10
+dev_C=download(dev_C)
 
-b=as.list(a[1,])
+C=as.matrix(dev_C)
 
-
-"["<-function(...){
-  match.call()
-}
+range(C-A-B)
