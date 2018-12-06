@@ -33,8 +33,6 @@ createNewVar<-function(tmpMeta,parsedExp){
   tmpMeta=getTmpVar(tmpMeta)
   curName=tmpMeta$varName
   curCode=c()
-  if(is.call(parsedExp)&&parsedExp[[1]]=="(")
-    parsedExp=parsedExp[[2]]
   if(length(parsedExp)>1){
     for(i in seq(2,length(parsedExp))){
       #If the argument is also a function call
@@ -44,19 +42,72 @@ createNewVar<-function(tmpMeta,parsedExp){
         res=createNewVar(tmpMeta,curArg)
         tmpMeta=res$tmpMeta
         #change the argument to a parameter
-        parsedExp[[i]]=as.symbol(tmpMeta$varName)
+        parsedExp[[i]]=as.symbol(res$targetName)
         curCode=c(curCode,res$code)
       }
     }
   }
+  
+  replaceCode=parse(text=paste0(curName,"=",deparse(parsedExp)))[[1]]
+  if(parsedExp[[1]]=="["){
+    subsetArgs=matchBracketFunc(parsedExp)
+    if(is.null(subsetArgs$j)){
+      replaceCode=parse(text=paste0(curName,"=subRef(",parsedExp[[2]],",",subsetArgs$i,")"))[[1]]
+    }else{
+      replaceCode=parse(text=paste0(curName,"=subRef(",parsedExp[[2]],",",subsetArgs$i,",",subsetArgs$j,")"))[[1]]
+    }
+  }
+  
+  
   curCode=c(
     curCode,
-    parse(text=paste0(curName,"=",deparse(parsedExp,backtick=F)))
+    replaceCode
   )
-  tmpMeta$varName=curName
-  return(list(tmpMeta=tmpMeta,code=curCode))
+  #tmpMeta$varName=curName
+  return(list(targetName=curName,tmpMeta=tmpMeta,code=curCode))
 }
 
+#Exp=quote(a[1,])
+#This function will return a list of the arguments of the [] function, all the argments are expressed in character
+#example: 
+#a[1]     ==>i="1",drop="TRUE"
+#a[1,]    ==>i="1",b="",drop="TRUE"
+matchBracketFunc<-function(Exp){
+  res=list(drop="TRUE")
+  argName=names(Exp)
+  argList=c("i","j","drop")
+  
+  if(is.null(argName)){
+    if(length(Exp)<3)
+      stop("Unexpected expression:", deparse(Exp))
+    for(i in 3:length(Exp)){
+      res[[argList[i-2]]]=deparse(Exp[[i]])
+    }
+    return(res)
+  }
+  for(i in 3:length(argName)){
+    if(argName[i]!=""){
+      res[[argName[i]]]=deparse(Exp[[i]])
+    }else{
+      for(k in 1:3){
+        if(!(argList[k]%in%names(res))){
+          res[[argList[k]]]=deparse(Exp[[i]])
+          break
+        }
+      }
+    }
+  }
+  if(res[["drop"]]=="T")
+    res[["drop"]]="TRUE"
+  res
+}
+
+#Remove the useless parenthesis, eg. ((a))
+cleanExp<-function(Exp){
+  if(is.call(Exp)&&Exp[[1]]=="(")
+    return(cleanExp(EXp[[2]]))
+  return(Exp)
+}
 
 getTmpVar<-function(tmpMeta){
   count=tmpMeta$count

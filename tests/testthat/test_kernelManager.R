@@ -6,11 +6,12 @@ test_that("vector add",{
   B=runif(N_size)
   dev_C=gpuEmptMatrix(N_size,1)
   
+  #fileName="tests/testthat/opencl_code.c"
   fileName<- 'opencl_code.c'
   option=kernel.getOption()
+  option$insufficientThreadNumWarning=F
   
-  
-  .kernel(file=fileName,kernel="vectorAdd",parms=list(A,B,dev_C),.option=option)
+  .kernel(file=fileName,kernel="vectorAdd",parms=list(A,B,dev_C),.options=option)
   
   dev_C=download(dev_C)
   C=as.vector(dev_C)

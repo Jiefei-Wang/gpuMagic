@@ -39,6 +39,26 @@ R_processSub<-function(varInfo,sub,length,name){
   }
 }
 
+#Expression should be a variable
+R_oneIndex_exp_sub<-function(varInfo,Exp,k,k_C=FALSE){
+  if(k_C){
+    k_C_ind=k
+  }else{
+    k_C_ind=R_expression_sub(varInfo,k,1)
+  }
+  
+  i_C_ind=paste0(k_C_ind,"-",R_nrow(varInfo,Exp),"*gpu_oneSub_tmp")
+  j_C_ind="gpu_oneSub_tmp+1"
+  
+  
+    res=list(
+      tmpVar=paste0(GPUVar$default_index_type," gpu_oneSub_tmp=floor((",k_C_ind,"-1)/",R_nrow(varInfo,Exp),");"),
+      result=R_expression_sub(varInfo,Exp,i=i_C_ind,j=j_C_ind,i_C=TRUE,j_C=TRUE)
+      )
+   return(res)
+}
+
+
 #get the i,jth element from the expression, 
 #the expression can be a variable, a matrix subset or a number
 #i,j can be interpreted as an R object or a C object, it is determined by i_C and j_C
@@ -47,16 +67,16 @@ R_processSub<-function(varInfo,sub,length,name){
 #Exp can be a value, then the value will be returned
 #Exp can be a scaler, then the value will be returned
 R_expression_sub<-function(varInfo,Exp,i,j=1,opt=FALSE,optCode=list(),i_C=FALSE,j_C=FALSE,base=1){
+  
+  i=paste0(i,"+",1-base)
+  j=paste0(j,"+",1-base)
+  base=1
+  
   if(Exp==""){
-    if(j==base){
       if(i_C)
-        return(paste0(i,"+",1-base))
+        return(i)
       else
-        return(Simplify(paste0(i,"+",1-base)))
-      
-    }
-    
-    stop("Unexpected subset value")
+        return(Simplify(i))
   }
   if(is.character(Exp))
     Exp=parse(text=Exp)[[1]]
@@ -70,8 +90,8 @@ R_expression_sub<-function(varInfo,Exp,i,j=1,opt=FALSE,optCode=list(),i_C=FALSE,
       ref_i=deparse(refExp[[3]])
       ref_j=deparse(refExp[[4]])
       
-      ref_i_C=R_expression_sub(varInfo,ref_i,i=i,j=base,i_C=i_C,base=base)
-      ref_j_C=R_expression_sub(varInfo,ref_j,i=j,j=base,j_C=j_C,base=base)
+      ref_i_C=R_expression_sub(varInfo,ref_i,i=i,j=base,i_C=i_C)
+      ref_j_C=R_expression_sub(varInfo,ref_j,i=j,j=base,j_C=j_C)
       res=R_expression_sub(varInfo,refExp[[2]],i=ref_i_C,j=ref_j_C,i_C=TRUE,j_C=TRUE)
       return(res)
     }
@@ -81,17 +101,17 @@ R_expression_sub<-function(varInfo,Exp,i,j=1,opt=FALSE,optCode=list(),i_C=FALSE,
     if(dataType==T_matrix){
       if(!i_C){
         sub1=parse(text=i)[[1]]
-        i_C_ind=R_expression_sub(varInfo,sub1,i=0,j=0,i_C=TRUE,base=0)
+        i_C_ind=R_expression_sub(varInfo,sub1,i=1,i_C=TRUE)
       }else{
-        i_C_ind=paste0(i,"+",1-base)
+        i_C_ind=i
       }
       if(!j_C){
         sub2=parse(text=j)[[1]]
-        j_C_ind=R_expression_sub(varInfo,sub2,i=0,j=0,i_C=TRUE,base=0)
+        j_C_ind=R_expression_sub(varInfo,sub2,i=1,i_C=TRUE)
       }else{
-        j_C_ind=paste0(j,"+",1-base)
+        j_C_ind=j
       }
-      res=R_getVarSub(varInfo,Exp,i_C_ind,j_C_ind,opt)
+      res=R_getVarSub(varInfo,Exp,i_C_ind,j_C_ind,opt,optCode)
       return(res)
     }
     stop("unrecognized code: ",deparse(Exp))
@@ -111,9 +131,9 @@ R_expression_sub<-function(varInfo,Exp,i,j=1,opt=FALSE,optCode=list(),i_C=FALSE,
       else
         sub2=Exp[[4]]
     }
-    i_C_ind=R_expression_sub(varInfo,sub1,i=i,j=base,i_C=i_C,base=base)
-    j_C_ind=R_expression_sub(varInfo,sub2,i=j,j=base,i_C=j_C,base=base)
-    res=R_getVarSub(varInfo,curVar,i_C_ind,j_C_ind,opt)
+    i_C_ind=R_expression_sub(varInfo,sub1,i=i,i_C=i_C)
+    j_C_ind=R_expression_sub(varInfo,sub2,i=j,i_C=j_C)
+    res=R_getVarSub(varInfo,curVar,i_C_ind,j_C_ind,opt,optCode)
     return(res)
   }
   stop("unrecognized code: ",deparse(Exp))

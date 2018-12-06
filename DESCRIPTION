@@ -29,12 +29,14 @@ Collate:
     'RProfilerSupportFunc.R'
     'RRecompiler.R'
     'gpuApply.R'
-    'gpuApplyOPT.R'
+    'gpuApply_Funcs.R'
     'gpuFunctions.R'
     'gpuMatix.R'
     'gpuRefAddress.R'
+    'kernelCompiler.R'
     'kernelManager.R'
     'pkgSetting.R'
     'predefinedFunc.R'
     'varInfoManager.R'
 VignetteBuilder: knitr
+Encoding: UTF-8

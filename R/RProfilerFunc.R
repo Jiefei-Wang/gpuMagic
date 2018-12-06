@@ -101,17 +101,21 @@ profile_symbol_left<-function(level,codeMetaInfo,varInfo,curExp){
 
 
 profile_size<-function(varInfo,Exp){
-  ExpInfo=getEmpyTable(T_scale)
-  ExpInfo$precisionType=GPUVar$default_index_type
   if(Exp[[1]]=="nrow"){
+    ExpInfo=getEmpyTable(T_scale)
+    ExpInfo$precisionType=GPUVar$default_index_type
     ExpInfo$value=getVarProperty(varInfo,Exp[[2]],"size1")
     ExpInfo$compileValue=getVarProperty(varInfo,Exp[[2]],"compileSize1")
   }
   if(Exp[[1]]=="ncol"){
+    ExpInfo=getEmpyTable(T_scale)
+    ExpInfo$precisionType=GPUVar$default_index_type
     ExpInfo$value=getVarProperty(varInfo,Exp[[2]],"size2")
     ExpInfo$compileValue=getVarProperty(varInfo,Exp[[2]],"compileSize2")
     }
   if(Exp[[1]]=="length"){
+    ExpInfo=getEmpyTable(T_matrix)
+    ExpInfo$precisionType=GPUVar$default_index_type
     ExpInfo$compileValue=getVarProperty(varInfo,Exp[[2]],"compileSize1")&&getVarProperty(varInfo,Exp[[2]],"compileSize2")
     if(ExpInfo$compileValue){
       Exp$value=Simplify2(paste0(getVarProperty(varInfo,Exp[[2]],"size1"),"*",getVarProperty(varInfo,Exp[[2]],"size2")))
@@ -183,8 +187,8 @@ profile_matrix<-function(varInfo,Exp){
     ExpInfo$size2=colNum
     ExpInfo$compileSize1=TRUE
     ExpInfo$compileSize2=TRUE
-    ExpInfo$compileValue=TRUE
-    ExpInfo$value=paste0("matrix(",data,",",rowNum,",",colNum,")")
+    ExpInfo$compileValue=FALSE
+    #ExpInfo$value=paste0("matrix(",data,",",rowNum,",",colNum,")")
     return(ExpInfo)
   }
   if(!is.numeric(data)){
@@ -272,7 +276,10 @@ profile_matrixMult<-function(varInfo,Exp){
   ExpInfo
 }
 
-
+#i: indicate the subset index number
+#NA: one value subset
+#1: first index
+#2: second index
 getSubInfo<-function(varInfo,curInfo,sub_var,i=NA){
   sub=list()
   if(sub_var==""){
@@ -332,7 +339,7 @@ profile_subset<-function(varInfo,Exp){
       ExpInfo$dataType=T_scale
     }
     
-    if(ExpInfo$dataType==T_matrix&&sub1$compileValue&&sub2$compileValue&&curInfo$compileValue){
+    if(sub1$compileValue&&sub2$compileValue&&curInfo$compileValue){
       ExpInfo$value=Simplify(paste0("(",curInfo$value,"[",sub1$value,",",sub2$value,"])"))
       ExpInfo$compileValue=TRUE
     }
@@ -349,7 +356,7 @@ profile_subset<-function(varInfo,Exp){
     if(sub1$type==T_scale){
       ExpInfo$dataType=T_scale
     }
-    if(ExpInfo$dataType==T_matrix&&sub1$compileValue&&curInfo$compileValue){
+    if(sub1$compileValue&&curInfo$compileValue){
       ExpInfo$value=Simplify(paste0("(",curInfo$value,"[",sub1$value,"])"))
       ExpInfo$compileValue=TRUE
     }

@@ -5,7 +5,7 @@
 
 
 
-mydata=rep(1,10000000)
+mydata=rep(1,10)
 mydata1=gpuMatrix(mydata,"char")
 mydata1[]=0
 mydata1=download(mydata1)

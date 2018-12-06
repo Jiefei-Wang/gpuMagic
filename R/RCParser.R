@@ -156,7 +156,7 @@ RCcompilerLevel1<-function(profileMeta3){
   
   #gpu_code=c(gpu_code,paste0(getTypeCXXStr(T_DEFAULT_float)," ",profileMeta3$workerData,";"))
   #gpu_code=c(gpu_code,paste0(profileMeta3$workerData,"=",GPUVar$gpu_worker_data,"[",gpu_global_id,"];"))
-  #gpu_code=c(gpu_code,RCTranslation(varInfo,parsedExp))
+  gpu_code=c(gpu_code,"//RCParser1 end")
              
   GPUExp1=profileMeta3
   GPUExp1$tmpMeta=tmpMeta
@@ -225,12 +225,18 @@ RCTranslation<-function(varInfo,parsedExp){
     
     #If the code starts with opencl_
     code_char=deparse(curExp)[1]
-    if(substr(code_char,1,7)==GPUVar$openclCode){
+    if(substr(code_char,1,nchar(GPUVar$openclCode))==GPUVar$openclCode){
       code_char=deparse(curExp)
-      curCode=paste0(substr(code_char,8,nchar(code_char)),";")
+      curCode=paste0(substr(code_char,nchar(GPUVar$openclCode)+1,nchar(code_char)),";")
       gpu_code=c(gpu_code,curCode)
       next
     }
+    if(substr(code_char,1,nchar(GPUVar$openclFuncCall))==GPUVar$openclFuncCall){
+      code_char=curExp[[2]]
+      gpu_code=c(gpu_code,code_char)
+      next
+    }
+    
     #if the code format exactly match the template
     formattedExp=formatCall(curExp,generalType=FALSE)
     formattedExp_char=gsub(" ", "",deparse(formattedExp), fixed = TRUE)

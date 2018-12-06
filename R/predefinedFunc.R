@@ -9,8 +9,16 @@ resize<-function(data,nrow,ncol){
   return(matrix(data,nrow,ncol))
 }
 subRef<-function(variable,i="",j=""){
-  stop("subset reference is not allowed in R")
+  if(i==""&&j=="")
+    return(variable[,,drop=F])
+  if(i=="")
+    return(variable[,j,drop=F])
+  if(j=="")
+    return(variable[i,,drop=F])
+    return(variable[i,j,drop=F])
 }
+
+
 
 #Exp=parse(text="gMatrix()")[[1]]
 #matchFunArg(gMatrix,Exp)

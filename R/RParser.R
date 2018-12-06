@@ -34,7 +34,9 @@ RLevel1_parserFunc<-function(level,codeMetaInfo,curExp){
   
   
   code_char=deparse(curExp)[1]
-  if(substr(code_char,1,7)==GPUVar$openclCode){
+  #If the function is the opencl code, pass it
+  if(substr(code_char,1,nchar(GPUVar$openclCode))==GPUVar$openclCode||
+     substr(code_char,1,nchar(GPUVar$openclFuncCall))==GPUVar$openclFuncCall){
     result$Exp=curExp
     result$tmpMeta=tmpMeta
     return(result)
@@ -42,37 +44,73 @@ RLevel1_parserFunc<-function(level,codeMetaInfo,curExp){
   
   if(!is.symbol(curExp)){
     if(curExp[[1]]=="="||curExp[[1]]=="=="){
-      for(j in 2:3){
-        oneSideExp=curExp[[j]]
-        if(length(oneSideExp)>=2){
-          for(i in seq(2,length(oneSideExp))){
-            if(is.call(oneSideExp[[i]])){
-              res=createNewVar(tmpMeta,oneSideExp[[i]])
-              tmpMeta=res$tmpMeta
-              result$extCode=c(result$extCode,res$code)
-              curExp[[j]][[i]]=as.symbol(tmpMeta$varName)
+      leftExp=cleanExp(curExp[[2]])
+      rightExp=cleanExp(curExp[[3]])
+      #Left expression
+      #Check if it is a function call
+      if(is.call(leftExp)){
+        #If the left expression is a matrix subset, replace it with a new variable
+        #Otherwise only replace the function argument if needed
+        if(leftExp[[1]]=="["){
+          res=createNewVar(tmpMeta,leftExp)
+          tmpMeta=res$tmpMeta
+          result$extCode=c(result$extCode,res$code)
+          leftExp=as.symbol(res$targetName)
+        }else{
+          #If the function has an argument which also is a function, replace it with a variable 
+          if(length(leftExp)>=2){
+            for(i in seq(2,length(leftExp))){
+              if(is.call(leftExp[[i]])){
+                res=createNewVar(tmpMeta,leftExp[[i]])
+                tmpMeta=res$tmpMeta
+                result$extCode=c(result$extCode,res$code)
+                leftExp[[i]]=as.symbol(res$targetName)
+              }
             }
           }
+        }
+      }
+      #For the right expression
+      #If the function has an argument which also is a function, replace it with a variable 
+      if(length(rightExp)>=2){
+        for(i in seq(2,length(rightExp))){
+          if(is.call(rightExp[[i]])){
+            res=createNewVar(tmpMeta,rightExp[[i]])
+            tmpMeta=res$tmpMeta
+            result$extCode=c(result$extCode,res$code)
+            rightExp[[i]]=as.symbol(res$targetName)
+          }
+        }
+      }
+      curExp[[2]]=leftExp
+      curExp[[3]]=rightExp
+      result$Exp=curExp
+      result$tmpMeta=tmpMeta
+      return(result)
+    }
+    #General strategy for all functions call that do not appear above. E.g. f(a,g())
+    if(length(curExp)>1){
+      for(i in 2:length(curExp)){
+        if(deparse(curExp[[i]])!=""&&is.call(curExp[[i]])){
+          res=createNewVar(tmpMeta,curExp[[i]])
+          tmpMeta=res$tmpMeta
+          result$extCode=c(result$extCode,res$code)
+          curExp[[i]]=as.symbol(res$targetName)
         }
       }
       result$Exp=curExp
       result$tmpMeta=tmpMeta
       return(result)
     }
-    #General strategy for all functions that do not appear above
-    if(length(curExp)>1)
-      for(i in 2:length(curExp)){
-        if(deparse(curExp[[i]])!=""&&is.call(curExp[[i]])){
-          res=createNewVar(tmpMeta,curExp[[i]])
-          tmpMeta=res$tmpMeta
-          result$extCode=c(result$extCode,res$code)
-          curExp[[i]]=as.symbol(tmpMeta$varName)
-        }
-      }
   }else{
-    if(curExp!="break"||curExp!="next")
-      curExp=NULL
+    result$Exp=NULL
+    result$tmpMeta=tmpMeta
+    return(result)
   }
+  
+  
+  #Default return value
+  stop("You should not be here!")
   result$Exp=curExp
   result$tmpMeta=tmpMeta
   return(result)
@@ -117,7 +155,7 @@ RLevel2_parserFunc<-function(level,codeMetaInfo,curExp){
         res=createNewVar(tmpMeta,rightExp)
         tmpMeta=res$tmpMeta
         result$extCode=c(result$extCode,res$code)
-        curExp[[3]]=as.symbol(tmpMeta$varName)
+        curExp[[3]]=as.symbol(res$targetName)
       }
       result$Exp=curExp
       result$tmpMeta=tmpMeta
@@ -133,7 +171,7 @@ RLevel2_parserFunc<-function(level,codeMetaInfo,curExp){
           res=createNewVar(tmpMeta,oneSideExp)
           tmpMeta=res$tmpMeta
           result$extCode=c(result$extCode,res$code)
-          curExp[[i]]=as.symbol(tmpMeta$varName)
+          curExp[[i]]=as.symbol(res$targetName)
         }
       }
       result$Exp=curExp

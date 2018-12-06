@@ -1,14 +1,18 @@
 
 #' @export
 .kernel<-function(file="",kernel,parms,
-                  globalThreadNum="length(FirstArg)",.options=kernel.getOption(),
+                  .globalThreadNum="length(FirstArg)",.options=kernel.getOption(),
                   src=""){
   autoType=.options$autoType
   localThreadNum=.options$localThreadNum
   signature=.options$signature
   verbose=.options$verbose
   flag=.options$flag
-  #message(globalThreadNum)
+  
+  
+  if(verbose) 
+    message("======kelnel compilation=========")
+  #Read the opencl code
   codePack=readCode(file,src)
   src=codePack$src
   
@@ -33,44 +37,54 @@
   #Create the signature for the kernel function
   sig=paste0(codePack$timeSig,flag,signature)
   
+  
   #Create the data type macros
+  #Add the signature if needed
   if(autoType&&length(dataType)!=0){
     gAUTO=paste0("#define gAuto",1:length(dataType)," global ",dataType,"\n",collapse = "")
     lAUTO=paste0("#define lAuto",1:length(dataType)," local ",dataType,"\n",collapse = "")
     pAUTO=paste0("#define auto",1:length(dataType)," ",dataType,"\n",collapse = "")
     
-    
     src=paste0(gAUTO,lAUTO,pAUTO,src)
     sig=c(sig,paste0(dataType,collapse = ""))
   }
   
+  sig_hash=digest(sig)
   
-  if(!hasKernel(sig,kernel)){
-    if(verbose)
-      message("The given kernel does not exist and will be created")
-    #src=gsub("([^a-zA-Z0-9_])(AUTO)([0-9]+[^a-zA-Z0-9_])","\\1double\\3",src)
-    #message(src)
-    .C("createKernel",sig,kernel,src,flag)
+  if(!hasKernel(sig_hash,kernel)){
+    if(verbose||.options$openclCompilationMsg)
+      message("OpenCL compiler message: The kernel does not exist and will be created")
+    .C("createKernel",sig_hash,kernel,src,flag)
   }
+  #Compute the usage of the shared memory and global memory
+  #upload the parameters
+  global_memory=0
   share_memory=0
   for(i in seq_len(length(parms))){
     if(class(parms[[i]])=="list"){
-      .C("loadSharedParameter",sig,kernel,
-         as.integer(parms[[i]]$size),as.integer(i-1))
       share_memory=share_memory+parms[[i]]$size
+      
+      .C("loadSharedParameter",sig_hash,kernel,
+         as.integer(parms[[i]]$size),as.integer(i-1))
     }else{
-      .C("loadParameter",sig,kernel,.getAddress(parms[[i]]),
+      global_memory=global_memory+getSize(parms[[i]])
+      #message(getSize(parms[[i]]))
+      .C("loadParameter",sig_hash,kernel,.getAddress(parms[[i]]),
          as.integer(i-1))
     }
   }
-  if(verbose)
-    message("Memory usage:\nShared memory: ",share_memory)
-  if(globalThreadNum=="length(FirstArg)"){
-    globalThreadNum=length(parms[[1]])
+  if(verbose||.options$openclMemoryUsageMsg){
+    message("OpenCL memory usage report:")
+    message("Global memory: ",format_memory_size_output(global_memory))
+    message("Shared memory: ",format_memory_size_output(share_memory))
+  }
+  
+  if(.globalThreadNum=="length(FirstArg)"){
+    .globalThreadNum=length(parms[[1]])
   }
   minBlock=16
   if(localThreadNum=="Auto"){
-    Block=globalThreadNum
+    Block=.globalThreadNum
     localThreadNum=1
     repeat{
       if(Block%%2==0&&localThreadNum<64&&Block>=minBlock*2){
@@ -81,23 +95,35 @@
       }
     }
   }
-  if(localThreadNum<=32&&Block>=minBlock&&verbose){
+  if(localThreadNum<=32&&Block>=minBlock&&(verbose||.options$insufficientThreadNumWarning)){
     warning(paste0("The current thread number is ",localThreadNum,". This may have negative effect on the performance. Please consider to increase the thread number"))
   }
-  if(verbose){
-    message(paste0("Total thread number: ",globalThreadNum))
-    message(paste0("Block number: ",globalThreadNum/localThreadNum))
+  if(verbose||.options$openclThreadNumMsg){
+    message("OpenCL thread Number report:")
+    message(paste0("Total thread number: ",.globalThreadNum))
+    message(paste0("Block number: ",.globalThreadNum/localThreadNum))
     message(paste0("Thread number per block: ",localThreadNum))
   }
   
-  .C("launchKernel",sig,kernel,as.integer(globalThreadNum),as.integer(localThreadNum))
+  .C("launchKernel",sig_hash,kernel,as.integer(.globalThreadNum),as.integer(localThreadNum))
   invisible()
 }
 #' @export
 
 kernel.getOption<-function(){
-  list(autoType=TRUE,localThreadNum="Auto",
-       signature="",verbose=FALSE,flag="")
+  curOp=list()
+  curOp$autoType=TRUE
+  curOp$localThreadNum="Auto"
+  curOp$signature=""
+  curOp$verbose=FALSE
+  curOp$flag=""
+  curOp$openclCompilationMsg=F
+  curOp$openclMemoryUsageMsg=F
+  curOp$openclThreadNumMsg=F
+  curOp$insufficientThreadNumWarning=T
+  
+  
+  curOp
 }
 
 kernel.getSharedMem<-function(length,type){

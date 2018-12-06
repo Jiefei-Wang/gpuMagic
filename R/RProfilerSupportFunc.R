@@ -2,9 +2,9 @@
 #===========================profiler 1========================
 
 #Profile a parameter and give the profile table back
-profileVar<-function(parms,argInfo){
+profileVar<-function(parms,macroParms){
   varInfo=getEmpVarInfoTbl()
-  varInfo$parmsName="parms"
+  varInfo$parmsTblName="parms"
   varInfo$requiredVar=c()
   
   if(length(parms)==0) return(varInfo)
@@ -20,24 +20,29 @@ profileVar<-function(parms,argInfo){
     info=getEmpyTable()
     info$var=varName[i]
     
+    
     info$precisionType=curPrecision
     info$shared=TRUE
-    info$constVal=TRUE
+    info$constVal=varName[i]%in%macroParms
+    info$compileValue=info$constVal
     info$compileSize1=TRUE
     info$compileSize2=TRUE
     info$require=TRUE
     info$initialization=FALSE
     
+    
+    if(info$compileValue){
+      info$value=paste0("(",varInfo$parmsTblName,"[[",i,"]])")
+    }
+    
     if(curDim[1]==1&&curDim[2]==1){
       info$dataType=T_scale
       info$size1=1
       info$size2=1
-      info$value=paste0("(",varInfo$parmsName,"[[",i,"]])")
-      info$compileData=TRUE
     }else{
       info$dataType=T_matrix
-      info$size1=paste0("(nrow(",varInfo$parmsName,"[[",i,"]]))")
-      info$size2=paste0("(ncol(",varInfo$parmsName,"[[",i,"]]))")
+      info$size1=paste0("(nrow(",varInfo$parmsTblName,"[[",i,"]]))")
+      info$size2=paste0("(ncol(",varInfo$parmsTblName,"[[",i,"]]))")
     }
     
     

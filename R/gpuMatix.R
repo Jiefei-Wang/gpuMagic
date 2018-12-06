@@ -8,7 +8,7 @@ gpuMatrix<-function(data,type="auto"){
   data=as.matrix(data)
   
   if(type=="auto"){
-    type=gpuMagic.option$getDefaultType()
+    type=gpuMagic.option$getDefaultFloat()
   }
    
   checkTypeSupport(type)
@@ -23,7 +23,7 @@ gpuMatrix<-function(data,type="auto"){
 #' @export
 gpuEmptMatrix<-function(row=1,col=1,type="auto"){
   if(type=="auto"){
-    type=gpuMagic.option$getDefaultType()
+    type=gpuMagic.option$getDefaultFloat()
   }
   
   checkTypeSupport(type)
@@ -236,3 +236,15 @@ setMethod("[<-",
             return(x)
               
           })
+
+
+setGeneric(name="getSize",def=function(obj) standardGeneric("getSize"))
+
+#' @export
+setMethod(
+  f="getSize",
+  signature = "gpuMatrix",
+  definition = function(obj){
+    .nrow(obj)*.ncol(obj)*getTypeSize(.type(obj))
+  }
+)

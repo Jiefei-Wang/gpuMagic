@@ -1,6 +1,7 @@
 #' @importFrom pryr standardise_call
 #' @importFrom Deriv Simplify
 #' @importFrom Rcpp sourceCpp
+#' @importFrom digest digest
 #' @import hash
 #' @useDynLib gpuMagic
 
@@ -142,7 +143,8 @@ GPUVar<-local({
   GPUVar_env$size_info="gpu_sizeInfo"
   
   GPUVar_env$preservedFuncPrefix="compiler."
-  GPUVar_env$openclCode="opencl_"
+  GPUVar_env$openclCode=".opencl_"
+  GPUVar_env$openclFuncCall=".opencl("
   
   #This variable is for doing the matrix optimization
   GPUVar_env$private_var_space="gpu_private_spcae"

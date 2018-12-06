@@ -128,18 +128,9 @@
       invisible()
     },
     getGPUusage=function(){
-      if(e$totalMemory>10^7){
-      message(paste0("Max GPU memory: ",ceiling((e$totalMemory)/1024/1024),"MB"))
-      message(paste0("Current GPU usage: ",ceiling((e$memoryUsage)/1024/1024),"MB(",ceiling(e$memoryUsage/e$totalMemory*100),"%)"))
-      }else{
-        if(e$totalMemory>10^4){
-        message(paste0("Max GPU memory: ",ceiling((e$totalMemory)/1024),"KB"))
-        message(paste0("Current GPU usage: ",ceiling((e$memoryUsage)/1024),"KB(",ceiling(e$memoryUsage/e$totalMemory*100),"%)"))
-        }else{
-          message(paste0("Max GPU memory: ",e$totalMemory,"Byte"))
-          message(paste0("Current GPU usage: ",e$memoryUsage,"Byte(",ceiling(e$memoryUsage/e$totalMemory*100),"%)"))
-        }
-      }
+      message(paste0("Max GPU memory: ",format_memory_size_output(e$totalMemory)))
+      message(paste0("Current GPU usage: ",format_memory_size_output(e$memoryUsage),"(",ceiling(e$memoryUsage/e$totalMemory*100),"%)"))
+      
       message(paste0("Max Memory container length: ",e$maxAddressNum))
       message(paste0("Current container length: ",length(e$addressList)))  
     },
@@ -157,6 +148,18 @@
 })
 
 
-
+#A tiny function that can make the output more compact
+#Auto convert the unit between byte, kb, mb, and gb
+#The input is the memory size in byte
+format_memory_size_output<-function(x){
+  if(x>10^9)
+    return(paste0(ceiling((x)/1024^3*100)/100," GB"))
+  if(x>10^7)
+    return(paste0(ceiling((x)/1024^2*100)/100," MB"))
+  if(x>10^4)
+    return(paste0(ceiling((x)/1024*100)/100," KB"))
+  
+  return(paste0(x," Byte"))
+}
 
 

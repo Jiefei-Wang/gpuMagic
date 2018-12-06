@@ -2,30 +2,41 @@
 library("microbenchmark")
 library("tictoc")
 
+
 getDeviceList()
 setDevice(2)
 #gpuMagic.option$setDefaultFloat("double")
 testFunc<-function(ind,A,B){
   tmp=subRef(A,ind,)
+  #tmp=A[ind,]
   C=tmp%*%B
   return(C)
 }
-n=2000
-m=10000
-k=2000
+n=200
+m=100
+k=200
+
 A=matrix(runif(n*m),n,m)
 B=matrix(runif(m*k),m,k)
 tic()
-res3=gpuSapply(1:n,testFunc,A,B)
+res_cpu=sapply(1:n,testFunc,A,B)
+toc()
+
+
+#options=gpuSapply.getOption()
+tic()
+res_gpu=gpuSapply(1:n,testFunc,A,B)
 toc()
 tic()
-res2=A%*%B
+res_internel=A%*%B
 toc()
 
-range(res2-t(res3))
+
+range(res_internel-t(res_gpu))
+range(res_cpu-res_gpu)
 
 
-code=compileGPUCode(1:k,test3,A,B)
+code=compileGPUCode(1:k,testFunc,A,B)
 code$Exp
 cat(code$gpu_code)
 
