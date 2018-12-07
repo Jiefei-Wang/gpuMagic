@@ -32,7 +32,6 @@ RLevel1_parserFunc<-function(level,codeMetaInfo,curExp){
   result=list()
   tmpMeta=codeMetaInfo$tmpMeta
   
-  
   code_char=deparse(curExp)[1]
   #If the function is the opencl code, pass it
   if(substr(code_char,1,nchar(GPUVar$openclCode))==GPUVar$openclCode||
@@ -42,7 +41,7 @@ RLevel1_parserFunc<-function(level,codeMetaInfo,curExp){
     return(result)
   }
   
-  if(!is.symbol(curExp)){
+  if(is.call(curExp)){
     if(curExp[[1]]=="="||curExp[[1]]=="=="){
       leftExp=cleanExp(curExp[[2]])
       rightExp=cleanExp(curExp[[3]])
@@ -88,7 +87,7 @@ RLevel1_parserFunc<-function(level,codeMetaInfo,curExp){
       result$tmpMeta=tmpMeta
       return(result)
     }
-    #General strategy for all functions call that do not appear above. E.g. f(a,g())
+    #General strategy for all functions call that do not appear above. E.g. f(g())
     if(length(curExp)>1){
       for(i in 2:length(curExp)){
         if(deparse(curExp[[i]])!=""&&is.call(curExp[[i]])){
@@ -125,75 +124,6 @@ RLevel1_updateFunc<-function(type,level,codeMetaInfo,parsedExp,code,i,res){
   result$codeMetaInfo$tmpMeta=res$tmpMeta
   result
 }
-
-
-
-
-#Level2 compiler
-#Functions:
-#1.For "=" sign: If the left side symbol is subsetted, 
-#the right side symbol should be a symbol,
-#if not, create a temporary function to replace it
-RParser2<-function(codeMetaInfo1){
-  codeMetaInfo2=parserFrame(RLevel2_parserFunc,RLevel2_checkFunc,
-                            RLevel2_updateFunc,codeMetaInfo1)
-  codeMetaInfo2
-}
-
-
-
-RLevel2_parserFunc<-function(level,codeMetaInfo,curExp){
-  result=list()
-  tmpMeta=codeMetaInfo$tmpMeta
-  
-  if(!is.symbol(curExp)){
-    if(curExp[[1]]=="="){
-      leftExp=curExp[[2]]
-      rightExp=curExp[[3]]
-      if(is.call(leftExp)&&is.call(rightExp))
-      {
-        res=createNewVar(tmpMeta,rightExp)
-        tmpMeta=res$tmpMeta
-        result$extCode=c(result$extCode,res$code)
-        curExp[[3]]=as.symbol(res$targetName)
-      }
-      result$Exp=curExp
-      result$tmpMeta=tmpMeta
-      return(result)
-    }
-    
-    
-    if(curExp[[1]]=="=="){
-      for(i in 2:3){
-        oneSideExp=curExp[[i]]
-        if(is.call(oneSideExp))
-        {
-          res=createNewVar(tmpMeta,oneSideExp)
-          tmpMeta=res$tmpMeta
-          result$extCode=c(result$extCode,res$code)
-          curExp[[i]]=as.symbol(res$targetName)
-        }
-      }
-      result$Exp=curExp
-      result$tmpMeta=tmpMeta
-      return(result)
-    }
-  }
-  result$Exp=curExp
-  result$tmpMeta=tmpMeta
-  return(result)
-}
-
-RLevel2_checkFunc<-function(curExp){
-  return(TRUE)
-}
-
-RLevel2_updateFunc<-function(type,level,codeMetaInfo,parsedExp,code,i,res){
-  result=general_updateFunc(codeMetaInfo,parsedExp,code)
-  result$codeMetaInfo$tmpMeta=res$tmpMeta
-  result
-}
-
 
 
 

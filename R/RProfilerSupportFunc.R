@@ -260,11 +260,15 @@ formatCall<-function(Exp,generalType=FALSE){
   }
   Exp
 }
-#Test is a character is a number
-isNumeric<-function(char){
-  if(char=="")
+#Test if an input is a number
+#x can be a character or an expression
+isNumeric<-function(x){
+  if(x=="")
     return(FALSE)
-  return(!grepl("\\D", char))
+  res=!grepl("\\D", x)
+  if(length(res)>1)
+    return(FALSE)
+  return(res)
 }
 
 toCharacter<-function(charOrSym){
@@ -272,6 +276,7 @@ toCharacter<-function(charOrSym){
     charOrSym=deparse(charOrSym)
   charOrSym
 }
+#This function simplify the R code and make it ready to put in the varInfo table
 Simplify2<-function(Exp){
   res=Simplify(Exp)
   if(isNumeric(res))

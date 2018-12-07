@@ -91,6 +91,7 @@ RProfile2_parserFunc<-function(level,codeMetaInfo,curExp){
   }
   #stop when the code is like A=B%*%A, 
   #it is unsafe to do the operation and assign back the result to the original matrix
+  ###############THIS NEEDS TO BE MOVED TO PARSER####################
   if(formattedExp_char=="var=var%*%var"){
     if(curExp[[2]]==curExp[[3]][[3]]){
       stop("The the left variable cannot be the same as the right variable:\n",deparse(curExp))

@@ -40,7 +40,6 @@ profile_symbol_left<-function(level,codeMetaInfo,varInfo,curExp){
       stop("The left expression is a constant, changing the number of the left expression is not allowed:\n:",deparse(curExp))
     
     
-    
     rightInfo=getExpInfo(varInfo,rightExp)
     checkInfo=checkVarType(leftInfo,rightInfo)
     #Resize function is not working now, it needs some optimization
@@ -258,6 +257,7 @@ profile_arithmetic<-function(varInfo,Exp){
   return(ExpInfo)
 }
 
+#%*%
 profile_matrixMult<-function(varInfo,Exp){
   ExpInfo=getEmpyTable(T_matrix)
   leftExp=Exp[[2]]
@@ -271,7 +271,8 @@ profile_matrixMult<-function(varInfo,Exp){
   ExpInfo$size1=leftInfo$size1
   ExpInfo$size2=rightInfo$size2
   if(leftInfo$compileSize1&&rightInfo$compileSize2){
-    ExpInfo$compileSize=TRUE
+    ExpInfo$compileSize1=TRUE
+    ExpInfo$compileSize2=TRUE
   }
   ExpInfo
 }
@@ -458,6 +459,7 @@ profile_subRef<-function(varInfo,Exp){
   code_char=paste0(args$variable,"[",args$i,",",args$j,"]")
   code=parse(text=code_char)[[1]]
   refInfo=profile_subset(varInfo,code)
+  refInfo$initialization=FALSE
   refInfo$lazyRef=TRUE
   refInfo$ref=code_char
   refInfo

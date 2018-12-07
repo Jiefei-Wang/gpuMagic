@@ -52,30 +52,35 @@ DEBUG=TRUE
 
 #' @include RCParserFunc.R
 .cFuncs=list()
-.cFuncs$"["=C_subset
-.cFuncs$"gType=gType+gType"=C_arithmaticOP
-.cFuncs$"gType=gType-gType"=C_arithmaticOP
-.cFuncs$"gType=gType*gType"=C_arithmaticOP
-.cFuncs$"gType=gType/gType"=C_arithmaticOP
-.cFuncs$length= C_length 
-.cFuncs$nrow= C_nrow
-.cFuncs$ncol= C_ncol
-.cFuncs[["floor"]]=C_floor
-.cFuncs[["ceiling"]]=C_ceil
+.cFuncs[["<-+"]]=C_arithmaticOP_right
+.cFuncs[["<--"]]=C_arithmaticOP_right
+.cFuncs[["<-*"]]=C_arithmaticOP_right
+.cFuncs[["<-/"]]=C_arithmaticOP_right
+.cFuncs[["<-matrix"]]=C_matrix_right
+.cFuncs[["<-length"]]= C_length_left_right
+.cFuncs[["<-nrow"]]= C_nrow_left_right
+.cFuncs[["<-ncol"]]= C_ncol_left_right
+.cFuncs[["<-["]]=C_subset_right
+.cFuncs[["<-floor"]]=C_floor_right
+.cFuncs[["<-ceiling"]]=C_ceil_right
+.cFuncs[["<-gMatrix"]]=C_NULL
+.cFuncs[["<-gNumber"]]=C_NULL
+.cFuncs[["<-resize"]]=C_NULL
+.cFuncs[["<-subRef"]]=C_NULL
+.cFuncs[["<-%*%"]]=C_matMul_right
+
+
 .cFuncs[["return"]]=C_return
 .cFuncs[["break"]]=C_break
 .cFuncs[["next"]]=C_next
-.cFuncs$matrix=C_NULL
-.cFuncs$gMatrix=C_NULL
-.cFuncs$gNumber=C_NULL
-.cFuncs$resize=C_NULL
-.cFuncs[["subRef"]]=C_NULL
-.cFuncs[["message(var)"]]=C_message
-.cFuncs[["setVersion(var,num)"]]=C_setVersion
-.cFuncs[["var=var[var]"]]=C_oneSub
-.cFuncs[["gType=gType[gType,gType]"]]=C_twoSub
-.cFuncs[["gType=gType%*%gType"]]=C_matMul
+.cFuncs[["message"]]=C_message
+.cFuncs[["setVersion"]]=C_setVersion
 
+
+
+.cFuncs[["length<-"]]= C_length_left_right
+.cFuncs[["nrow<-"]]= C_nrow_left_right
+.cFuncs[["ncol<-"]]= C_ncol_left_right
 
 
 
@@ -131,9 +136,21 @@ GPUVar<-local({
   #It is not an argument
   GPUVar_env$worker_offset="gpu_worker_offset"
   
-  #parameters
+  #parameters for creating the function
   GPUVar_env$functionCount=0
   GPUVar_env$functionName="gpu_kernel"
+  
+  #This number can be reset to 0 in the beggining of the parser
+  #The parser can call it when it needs a new variable
+  GPUVar_env$tempVarInd=0
+  GPUVar_env$getTmpVar<-function(){
+    GPUVar_env$tempVarInd=GPUVar_env$tempVarInd+1
+    return(paste0("gpu_temp_var",GPUVar_env$tempVarInd))
+  }
+  GPUVar_env$resetTmpCount<-function(){
+    GPUVar_env$tempVarInd=0
+  }
+  
   GPUVar_env$default_index_type="uint"
   
   #The for loop index

@@ -56,6 +56,7 @@ getTableVarProperty<-function(){
 #Check if a variable is in the table
 hasVar<-function(varInfo,varName,version="all"){
   var_char=toCharacter(varName)
+  if(length(version)==0) return(FALSE)
   if(version=="all")
     return(has.key(var_char,varInfo$varVersion))
   if(is.numeric(version)){
@@ -76,7 +77,7 @@ getVarInfo<-function(varInfo,varName,version="auto"){
   
   #Check if the symbol does not exist in the table
   if(!hasVar(varInfo,var_char,version))
-    stop(paste0("The given variable is not found: ",var_char))
+    stop(paste0("The variable is not found: ",var_char))
   
   var_char=paste0(var_char,"+",version)
   var_ind=varInfo$varIndex[[var_char]]

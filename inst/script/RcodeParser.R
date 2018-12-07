@@ -1,30 +1,30 @@
 
 #The return size still has bug
 testFunc<-function(col_ind,A,B){
-  A[1,]=10+5+44
-  
-  C=A[1,]%*%B*O
+  tmp1=subRef(A,1,)
+  tmp2=tmp1[4]
+  return(tmp1)
 }
 n=3
 m=4
 A=matrix(runif(n*m),n,m)
 B=matrix(runif(n*m),n,m)
 parms=matchParms(1:m,list(A,B),testFunc)
-macroParms=c("A")
+macroParms=NULL
 codeMetaInfo=list()
 codeMetaInfo$Exp=funcToExp(testFunc)$code
 codeMetaInfo$parms=parms
 codeMetaInfo$macroParms=macroParms
 codeMetaInfo0=codePreprocessing(codeMetaInfo)
 codeMetaInfo1=RParser1(codeMetaInfo0)
-codeMetaInfo2=RParser2(codeMetaInfo1)
-profileMeta1=RProfile1(codeMetaInfo2)
+profileMeta1=RProfile1(codeMetaInfo1)
 profileMeta2=RProfile2(profileMeta1)
-profileMeta3=RRecompiler(profileMeta2)
-GPUExp1=RCcompilerLevel1(profileMeta3)
+GPUExp1=RCcompilerLevel1(profileMeta2)
 GPUExp2=RCcompilerLevel2(GPUExp1)
 GPUcode=completeProfileTbl(GPUExp2)
 GPUcode1=completeGPUcode(GPUcode)
+
+printVarInfo(profileMeta2$varInfo)
 
 
 Exp=quote(gpu_loop_data[opencl_tmp_1])

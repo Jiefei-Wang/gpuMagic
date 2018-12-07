@@ -156,7 +156,7 @@ RCcompilerLevel1<-function(profileMeta3){
   
   #gpu_code=c(gpu_code,paste0(getTypeCXXStr(T_DEFAULT_float)," ",profileMeta3$workerData,";"))
   #gpu_code=c(gpu_code,paste0(profileMeta3$workerData,"=",GPUVar$gpu_worker_data,"[",gpu_global_id,"];"))
-  gpu_code=c(gpu_code,"//RCParser1 end")
+  gpu_code=c(gpu_code,"//RCParser1 end\n")
              
   GPUExp1=profileMeta3
   GPUExp1$tmpMeta=tmpMeta
@@ -256,13 +256,15 @@ RCTranslation<-function(varInfo,parsedExp){
       gpu_code=c(gpu_code,curCode)
       next
     }
+    
+    
     #if the code does not exactly match the template but has an equal sign, partially match is used
-    if(switch(deparse(curExp[[1]]),"="=T,"=="=T,F)){
-      curCode=C_call_assign(varInfo,curExp)
+    if(curExp[[1]]=="="){
+      curCode=C_assignment_dispatch(varInfo,curExp)
       gpu_code=c(gpu_code,curCode)
       next
     }
-    
+    #If not the case above, dispatch the code according to the function
     func=.cFuncs[[deparse(curExp[[1]])]]
     if(!is.null(func)){
       curCode=func(varInfo,curExp)
