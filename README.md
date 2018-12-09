@@ -7,7 +7,7 @@ Before you start to use the package, please make sure you have the CUDA toolkit 
 
 After installed the package, here is an example about how to use gpu to compute the matrix multiplication:
 
-``
+```
 #C=A%*%B
 MatMul<-function(ind,A,B){
   tmp=B[,ind]
@@ -32,7 +32,7 @@ res_gpu_genius=gpuSapply(1:n,MatMul,A,B)
 #compute the error
 range(res_gpu_genius-res_cpu_stupid)
 range(res_gpu_genius-res_cpu_clever)
-``
+```
 
 Using the GPU compute, you can expect around 3-6X speedup compared with the optimal CPU counterpart function(e.g %*%). However, since it is not easy to find the optimal CPU code when you are developing your own algorithm, it is more common that you have to use sapply function to loop your code, therefore you will get much more benefit by using this package.
 
