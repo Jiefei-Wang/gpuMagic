@@ -23,7 +23,7 @@ A=matrix(runif(n*m),n,m)
 B=matrix(runif(m*k),m,k)
 
 #The traditional way to compute the matrix multiplication
-res_cpu_stupid=sapply(1:n,MatMul,A,B)
+res_cpu_stupid=sapply(1:k,MatMul,A,B)
 res_cpu_clever=A%*%B
 
 #Use the GPU to run the code
