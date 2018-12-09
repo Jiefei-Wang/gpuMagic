@@ -33,13 +33,16 @@ createSapplySignature<-function(parms,FUN,.macroParms,.options){
   #Default variable type
   sig=c(sig,paste(gpuMagic.option$getDefaultFloat(),gpuMagic.option$getDefaultInt(),gpuMagic.option$getDefaultIndexType(),sep=","))
   #gpuSapply options
+  .options$sapplyMsg=NULL
+  .options$kernelMsg=NULL
+  .options$verbose=NULL
   sig=c(sig,digest(FUN),digest(.macroParms),digest(.options))
   sig
 }
 
 
 
-fillGPUdata<-function(GPUcode1,.options=gpuSapply.getOption()){
+fillGPUdata<-function(GPUcode1,.options){
   parms=GPUcode1$parms
   varInfo=GPUcode1$varInfo
   

@@ -30,6 +30,7 @@ renameControlCode<-function(parsedExp){
 #parsedExp=parse(text="(tmp + tmp1) * tmp")[[1]]
 #Create a new variable to represent a function call
 createNewVar<-function(tmpMeta,parsedExp){
+  parsedExp=cleanExp(parsedExp)
   tmpMeta=getTmpVar(tmpMeta)
   curName=tmpMeta$varName
   curCode=c()
@@ -105,7 +106,7 @@ matchBracketFunc<-function(Exp){
 #Remove the useless parenthesis, eg. ((a))
 cleanExp<-function(Exp){
   if(is.call(Exp)&&Exp[[1]]=="(")
-    return(cleanExp(EXp[[2]]))
+    return(cleanExp(Exp[[2]]))
   return(Exp)
 }
 

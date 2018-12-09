@@ -156,7 +156,7 @@ RCcompilerLevel1<-function(profileMeta3){
   
   #gpu_code=c(gpu_code,paste0(getTypeCXXStr(T_DEFAULT_float)," ",profileMeta3$workerData,";"))
   #gpu_code=c(gpu_code,paste0(profileMeta3$workerData,"=",GPUVar$gpu_worker_data,"[",gpu_global_id,"];"))
-  gpu_code=c(gpu_code,"//RCParser1 end\n")
+  gpu_code=c(gpu_code,"//RCParser1 end","\n")
              
   GPUExp1=profileMeta3
   GPUExp1$tmpMeta=tmpMeta
@@ -212,13 +212,23 @@ RCTranslation<-function(varInfo,parsedExp){
     }
     if(curExp[[1]]=="if"){
       curCode=RCTranslation(varInfo,curExp[[3]])
-      ifFunc=paste0("if(",deparse(curExp[[2]]),"){\n",paste0(curCode,collapse = "\n"),"}")
-      elseFunc=""
+      condition=curExp[[2]]
+      condition_left=R_expression_sub(varInfo,condition[[2]],1)
+      condition_right=R_expression_sub(varInfo,condition[[3]],1)
+      
+      ifFunc=c(
+        "{",
+        condition_left$extCode,
+        condition_right$extCode,
+        paste0("if(",condition_left$value,deparse(condition[[1]]),condition_right$value,"){\n"),
+        paste0(curCode,collapse = "\n"),
+        "}")
+      elseFunc=NULL
       if(length(curExp)==4){
       curCode=RCTranslation(varInfo,curExp[[4]])
       elseFunc=paste0("else{",paste0(curCode,collapse = "\n"),"}")
       }
-      ifstate=paste0(ifFunc,elseFunc)
+      ifstate=c(ifFunc,elseFunc,"}\n")
       gpu_code=c(gpu_code,ifstate)
       next
     }

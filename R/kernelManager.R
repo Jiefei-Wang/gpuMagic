@@ -3,14 +3,11 @@
 .kernel<-function(file="",kernel,parms,
                   .globalThreadNum="length(FirstArg)",.options=kernel.getOption(),
                   src=""){
-  autoType=.options$autoType
-  localThreadNum=.options$localThreadNum
-  signature=.options$signature
   verbose=.options$verbose
-  flag=.options$flag
-  
-  
-  if(verbose) 
+  kernelMsg=.options$kernelMsg
+  kernelOption=.options$kernelOption
+    
+  if(verbose||sum(as.matrix(kernelMsg[,-grep("warning",colnames(kernelMsg))]))!=0) 
     message("======kelnel compilation=========")
   #Read the opencl code
   codePack=readCode(file,src)
@@ -35,12 +32,12 @@
   
   
   #Create the signature for the kernel function
-  sig=paste0(codePack$timeSig,flag,signature)
+  sig=paste0(codePack$timeSig,kernelOption$flag,kernelOption$signature)
   
   
   #Create the data type macros
   #Add the signature if needed
-  if(autoType&&length(dataType)!=0){
+  if(kernelOption$autoType&&length(dataType)!=0){
     gAUTO=paste0("#define gAuto",1:length(dataType)," global ",dataType,"\n",collapse = "")
     lAUTO=paste0("#define lAuto",1:length(dataType)," local ",dataType,"\n",collapse = "")
     pAUTO=paste0("#define auto",1:length(dataType)," ",dataType,"\n",collapse = "")
@@ -52,9 +49,9 @@
   sig_hash=digest(sig)
   
   if(!hasKernel(sig_hash,kernel)){
-    if(verbose||.options$openclCompilationMsg)
+    if(verbose||kernelMsg$compilation.msg)
       message("OpenCL compiler message: The kernel does not exist and will be created")
-    .C("createKernel",sig_hash,kernel,src,flag)
+    .C("createKernel",sig_hash,kernel,src,kernelOption$flag)
   }
   #Compute the usage of the shared memory and global memory
   #upload the parameters
@@ -73,7 +70,7 @@
          as.integer(i-1))
     }
   }
-  if(verbose||.options$openclMemoryUsageMsg){
+  if(verbose||kernelMsg$memory.usage.msg){
     message("OpenCL memory usage report:")
     message("Global memory: ",format_memory_size_output(global_memory))
     message("Shared memory: ",format_memory_size_output(share_memory))
@@ -83,7 +80,7 @@
     .globalThreadNum=length(parms[[1]])
   }
   minBlock=16
-  if(localThreadNum=="Auto"){
+  if(kernelOption$localThreadNum=="Auto"){
     Block=.globalThreadNum
     localThreadNum=1
     repeat{
@@ -94,11 +91,15 @@
         break
       }
     }
+  }else{
+    localThreadNum=kernelOption$localThreadNum
   }
-  if(localThreadNum<=32&&Block>=minBlock&&(verbose||.options$insufficientThreadNumWarning)){
+  if(localThreadNum<=32&&Block>=minBlock&&
+     (verbose||kernelMsg$insufficient.thread.num.warning)){
     warning(paste0("The current thread number is ",localThreadNum,". This may have negative effect on the performance. Please consider to increase the thread number"))
   }
-  if(verbose||.options$openclThreadNumMsg){
+  
+  if(verbose||kernelMsg$thread.num.msg){
     message("OpenCL thread Number report:")
     message(paste0("Total thread number: ",.globalThreadNum))
     message(paste0("Block number: ",.globalThreadNum/localThreadNum))
@@ -112,16 +113,20 @@
 
 kernel.getOption<-function(){
   curOp=list()
-  curOp$autoType=TRUE
-  curOp$localThreadNum="Auto"
-  curOp$signature=""
   curOp$verbose=FALSE
-  curOp$flag=""
-  curOp$openclCompilationMsg=F
-  curOp$openclMemoryUsageMsg=F
-  curOp$openclThreadNumMsg=F
-  curOp$insufficientThreadNumWarning=T
   
+  curOp$kernelMsg=data.frame(
+    compilation.msg=F,
+    memory.usage.msg=F,
+    thread.num.msg=F,
+    insufficient.thread.num.warning=T)
+  
+  curOp$kernelOption=data.frame(
+    localThreadNum="Auto",
+    signature="",
+    flag="",
+    autoType=TRUE,
+    stringsAsFactors=F)
   
   curOp
 }

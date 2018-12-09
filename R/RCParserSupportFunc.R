@@ -3,15 +3,8 @@
 
 
 CSimplify<-function(Exp,C=TRUE){
-  if(is.expression(Exp)){
-    code=deparse(Exp)
-  }else{
-    if(!is.character(Exp)){
-      code=as.character(Exp)
-    }else{
-      code=Exp
-    }
-  }
+  code=toExpression(Exp)$char
+  
   if(code=="") return(code)
   if(C)
     code=gsub("\\((float|double|uint|int|long|ulong)\\)","gpu_cast_\\1",code)
@@ -38,6 +31,23 @@ gpu_cast_long<-function(x){
 gpu_cast_ulong<-function(x){
   trunc(x)
 }
+
+#Convert an non-expression to the expression and return both
+#expression and characters
+toExpression<-function(var){
+  if(is.language(var)){
+    var_char=deparse(var)
+  }else{
+    if(is.character(var))
+      var_char=var
+    else{
+      var_char=as.character(var)
+    }
+    var=parse(text=var_char)[[1]]
+  }
+  return(list(expression=var,char=var_char))
+}
+
 
 
 
@@ -101,7 +111,7 @@ C_general_scalar_assignment<-function(varInfo,Exp,funcName,func){
 }
 #This function is for the general matrix assignment
 #The left and right variable should be able to be directly processed by the oneIndex_sub function
-#at the final stage, func will be called with two parameters: value_left and value_right
+#at the final stage, a func will be called with two parameters: value_left and value_right
 #to do some special treatment for each element
 C_general_matrix_assignment<-function(varInfo,leftVar,rightVar,func=matrix_assignment_func_doNothing,rightBound=NULL){
   leftDataType=getVarProperty(varInfo,leftVar,"dataType")

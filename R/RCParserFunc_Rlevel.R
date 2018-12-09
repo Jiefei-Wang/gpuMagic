@@ -1,45 +1,4 @@
-
-#Generate subset function, used for matrix subsetting
-#example B=A[sub1]
-#sub:The index of the matrix, eg.sub1
-#length: the dimension of the matrix, in case of the row index,it is nrow(A)
-#name: the variable name to be used as the c variable index
-#gpu_name__value_left and gpu_name_value will be used to index B[gpu_name__value_left] and A[gpu_name_value]
-#The final result would be:
-#for(gpu_name_value=something;gpu_name_value<something;gpu_name_value++){  <----res[[1]]
-#gpu_name_value_left=f(gpu_name_value);                                   <----res[[2]]
-#B[gpu_name_value_left] = A[gpu_name_value];
-#}                                                                         <----res[[3]]
-
-R_processSub<-function(varInfo,sub,length,name){
-  if(isNumeric(sub)){
-    forLoopStart=""
-    subVal=c(paste0(GPUVar$default_index_type," gpu_",name,"_value=",sub,";"),
-             paste0(GPUVar$default_index_type," gpu_",name,"_value_left=1;"))
-    forLoopEnd=""
-    return(list(forLoopStart,subVal,forLoopEnd))
-  }
-  if(sub==""){
-    if(is.null(length))
-      stop()
-    forLoopStart=paste0("for(",GPUVar$default_index_type," gpu_",name,"_value=1;gpu_",name,"_value<=",length,";gpu_",name,"_value++){")
-    subVal=paste0(GPUVar$default_index_type," gpu_",name,"_value_left=gpu_",name,"_value;")
-    forLoopEnd="}"
-    return(list(forLoopStart,subVal,forLoopEnd))
-  }
-  subInfo=getVarInfo(varInfo,sub,1)
-  if(subInfo$dataType==T_scale){
-    forLoopStart=""
-    subVal=c(paste0(GPUVar$default_index_type," gpu_",name,"_value=",subInfo$address,";"),
-             paste0(GPUVar$default_index_type," gpu_",name,"_value_left=1;"))
-    forLoopEnd=""
-    return(list(forLoopStart,subVal,forLoopEnd))
-  }else{
-    stop("Matrix subset by a vector is not supported")
-  }
-}
-
-#Expression should be a variable
+#Expression should be a variable or a matrix subset
 #R_oneIndex_exp_sub(varInfo,quote(A[tmp1]),3)
 R_oneIndex_exp_sub<-function(varInfo,Exp,k,k_C=FALSE,opt=FALSE,optCode=list(),base=1){
   k=paste0(k,"+",1-base)
@@ -66,8 +25,7 @@ R_oneIndex_exp_sub<-function(varInfo,Exp,k,k_C=FALSE,opt=FALSE,optCode=list(),ba
     return(list(value=as.character(Exp)))
   }
   #Convert the character to the expression
-  if(is.character(Exp))
-    Exp=parse(text=Exp)[[1]]
+  Exp=toExpression(Exp)$expression
   
   #If the expression is a variable
   if(is.symbol(Exp)){
@@ -88,25 +46,28 @@ R_oneIndex_exp_sub<-function(varInfo,Exp,k,k_C=FALSE,opt=FALSE,optCode=list(),ba
       res$extCode=c(k_C_ind$extCode,res$extCode)
       return(res)
     }else{
-      size=R_length(varInfo,args$i)
-      res=oneIndex_to_twoIndex(varInfo,Exp,k_C_ind,rowNum=size
+      size=R_nrow(varInfo,Exp)
+      res=oneIndex_to_twoIndex(varInfo,Exp,k_C_ind$value,rowNum=size
                                 ,opt=opt,optCode=optCode)
+      res$extCode=c(k_C_ind$extCode,res$extCode)
       return(res)
       
     }
   }
   stop("unrecognized code: ",deparse(Exp))
 }
-oneIndex_to_twoIndex<-function(varInfo,Exp,k_C_ind,rowNum,opt=opt,optCode=optCode){
+oneIndex_to_twoIndex<-function(varInfo,Exp,k_C_value,rowNum,opt=opt,optCode=optCode){
   tmpVar=GPUVar$getTmpVar()
-  tmpVar_value=CSimplify(paste0("floor((",k_C_ind$value,"-1)/",rowNum,")"))
+  tmpVar_value=CSimplify(paste0("(",GPUVar$default_index_type,")((",k_C_value,"-1)/",rowNum,")"))
+  #if the temporary variable is a constant, it will be plug into the code
+  #Otherwise, create the temporary variable
   if(isNumeric(tmpVar_value)){
     tmpVar=tmpVar_value
     extCode=NULL
   }else{
     extCode=paste0(GPUVar$default_index_type," ",tmpVar,"=",tmpVar_value,";")
   }
-  i_C_ind=paste0(k_C_ind$value,"-",rowNum,"*",tmpVar)
+  i_C_ind=paste0(k_C_value,"-",rowNum,"*",tmpVar)
   j_C_ind=paste0(tmpVar,"+1")
   
   res=R_expression_sub(varInfo,Exp,i=i_C_ind,j=j_C_ind,i_C=TRUE,j_C=TRUE,opt=opt,optCode=optCode)
@@ -114,7 +75,7 @@ oneIndex_to_twoIndex<-function(varInfo,Exp,k_C_ind,rowNum,opt=opt,optCode=optCod
   if(length(grep(tmpVar,res$value,fixed = TRUE))==0){
     extCode=NULL
   }
-  res$extCode=c(k_C_ind$extCode,extCode,res$extCode)
+  res$extCode=c(extCode,res$extCode)
   return(res)
 }
 
@@ -155,8 +116,8 @@ R_expression_sub<-function(varInfo,Exp,i,j=1,opt=FALSE,optCode=list(),i_C=FALSE,
     return(list(value=as.character(Exp)))
   }
   #Convert the character to the expression
-  if(is.character(Exp))
-    Exp=parse(text=Exp)[[1]]
+  Exp=toExpression(Exp)$expression
+  
   #if the expression contains only one element
   if(length(Exp)==1){
     curVar=deparse(Exp)
@@ -301,10 +262,14 @@ R_C_Sub<-function(var,offset,simplification=FALSE){
 
 #Get the number of rows for a matrix in C format
 R_nrow<-function(varInfo,var){
-  if(!is.character(var))
-    var=deparse(var)
-  if(isNumeric(var))
+  varExp=toExpression(var)
+  var=varExp$expression
+  var_char=varExp$char
+  if(isNumeric(var_char))
     return(1)
+  if(is.call(var))
+    return(R_getVarSize1(varInfo,var))
+  
   curInfo=getVarInfo(varInfo,var,1)
   ifelse(curInfo$transpose,
          R_getVarSize2(varInfo,var),
@@ -313,10 +278,14 @@ R_nrow<-function(varInfo,var){
 }
 #Get the number of rows for a matrix in C format
 R_ncol<-function(varInfo,var){
-  if(!is.character(var))
-    var=deparse(var)
-  if(isNumeric(var))
+  varExp=toExpression(var)
+  var=varExp$expression
+  var_char=varExp$char
+  if(isNumeric(var_char))
     return(1)
+  if(is.call(var))
+    return(R_getVarSize2(varInfo,var))
+  
   curInfo=getVarInfo(varInfo,var,1)
   ifelse(curInfo$transpose,
          R_getVarSize1(varInfo,var),
@@ -331,36 +300,55 @@ R_length<-function(varInfo,var){
 
 
 R_getVarSize<-function(varInfo,var,ind){
-  if(!is.character(var))
-    var=deparse(var)
-  curInfo=getVarInfo(varInfo,var,1)
-  if(curInfo$dataType==T_scale) return(1)
-  if(curInfo$lazyRef){
-    refCode=parse(text=curInfo$ref)[[1]]
-    refVar=refCode[[2]]
+  varExp=toExpression(var)
+  var=varExp$expression
+  var_char=varExp$char
+  
+  #Detect if the variable is a subset of a matrix
+  #Or a lazy reference
+  Exp=NULL
+  if(is.call(var)&&var[[1]]=="["){
+    Exp=var
+  }else{
+    curInfo=getVarInfo(varInfo,var,1)
+    if(curInfo$lazyRef){
+      Exp=parse(text=curInfo$ref)[[1]]
+    }
+  }
+  
+  #If the variable is a subset of a matrix
+  if(!is.null(Exp)){
+    args=matchBracketFunc(Exp)
+    refVar=Exp[[2]]
     if(ind==1){
-      if(refCode[[3]]=="")
+      if(!is.null(args$i)&&args$i=="")
         return(R_nrow(varInfo,refVar))
       
-      sub1=refCode[[3]]
+      sub1=args$i
       if(isNumeric(sub1))
         return(1)
       
       return(R_length(varInfo,sub1))
     }
     if(ind==2){
-      if(refCode[[4]]=="")
+      if(!is.null(args$j)&&args$j=="")
         return(R_ncol(varInfo,refVar))
       
-      sub2=refCode[[4]]
-      if(isNumeric(sub2))
+      subs=args$j
+      if(isNumeric(subs))
         return(1)
       
-      return(R_length(varInfo,sub2))
+      return(R_length(varInfo,subs))
     }
   }
   
-  var_ind=varInfo$matrixInd[[var]]
+  
+  #If the variable is just a variable and is not a lazy reference
+  #curInfo is obtained above
+  #curInfo=getVarInfo(varInfo,var,1)
+  if(curInfo$dataType==T_scale) return(1)
+  
+  var_ind=varInfo$matrixInd[[var_char]]
   if(var_ind==""||is.na(var_ind))
     stop("Error in finding the matrix size") 
   loc=NA

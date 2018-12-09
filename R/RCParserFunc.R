@@ -171,7 +171,7 @@ C_ncol_left_right<-function(varInfo,Exp){
 #assigning the matrix subset to a variable
 ###############I NEED A DIMENSION CHECK####################
 #tmp1=subRef(A,1,)
-#Exp=parse(text="A=B[tmp1,]")[[1]]
+#Exp=parse(text="tmp=A[ind,]")[[1]]
 C_subset_right<-function(varInfo,Exp){
   leftVar=Exp[[2]]
   rightExp=Exp[[3]]
@@ -184,7 +184,7 @@ C_subset_right<-function(varInfo,Exp){
 #Exp=parse(text="A=floor(B)")[[1]]
 C_floor_right<-function(varInfo,Exp){
   floorFunc<-function(left,right){
-    paste0(left,"=floor(",right,")")
+    paste0(left,"=floor((",gpuMagic.option$getDefaultFloat(),")(",right,"))")
   }
   leftVar=Exp[[2]]
   rightVar=Exp[[3]][[2]]
@@ -194,7 +194,7 @@ C_floor_right<-function(varInfo,Exp){
 }
 C_ceil_right<-function(varInfo,Exp){
   floorFunc<-function(left,right){
-    paste0(left,"=ceil(",right,")")
+    paste0(left,"=ceil((",gpuMagic.option$getDefaultFloat(),")(",right,"))")
   }
   leftVar=Exp[[2]]
   rightVar=Exp[[3]][[2]]
@@ -248,14 +248,14 @@ C_message<-function(varInfo,Exp){
   
     size1=R_nrow(varInfo,varName)
     size2=R_ncol(varInfo,varName)
-    subsetCode=R_expression_sub(varInfo,returnVar,"gpu_msg_i","gpu_msg_j",i_C =T,j_C=T,base=0)
+    subsetCode=R_expression_sub(varInfo,varName,"gpu_msg_i","gpu_msg_j",i_C =T,j_C=T,base=0)
 
     code=c(paste0("for(uint gpu_msg_i=0;gpu_msg_i<",size1,";gpu_msg_i++){"),
            paste0("for(uint gpu_msg_j=0;gpu_msg_j<",size2,";gpu_msg_j++){"),
            subsetCode$extCode,
-           paste0("printf(\"",printType,"  \",",subsetCode$value,");"),
+           paste0('printf("',printType,'  ",',subsetCode$value,');'),
            "}",
-           "printf(\"\\n\");",
+           'printf("\\n");',
            "}"
     )
     
@@ -306,7 +306,7 @@ C_matMul1<-function(varInfo,Exp){
   code
 }
 
-
+#Store the row of A
 C_matMul_right<-function(varInfo,Exp){
     leftVar=Exp[[2]]
     rightExp=Exp[[3]]

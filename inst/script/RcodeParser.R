@@ -1,8 +1,8 @@
 
 #The return size still has bug
 testFunc<-function(col_ind,A,B){
-  tmp1=subRef(A,1,)
-  tmp2=tmp1[4]
+  tmp1=subRef(A,ind,)
+  
   return(tmp1)
 }
 n=3

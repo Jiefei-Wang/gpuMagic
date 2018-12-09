@@ -1,6 +1,7 @@
 #1.Rename the first function argument and add the looped variable in a code format
 #2.special treatment for the break and next
 codePreprocessing<-function(codeMetaInfo){
+  GPUVar$resetTmpCount()
   loopVar=names(codeMetaInfo$parms)[[1]]
   names(codeMetaInfo$parms)[[1]]=GPUVar$gpu_loop_data
   #insert the preserved data reading code
