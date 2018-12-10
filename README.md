@@ -3,7 +3,7 @@ An R interface to write OpenCL functions
 
 This package provide an easy way to access the power of the GPU using the familar R language. Since it is still under development, I can promise you that a lot of bugs is hidden somewhere and waiting to surprise someone.
 
-Before you start to use the package, please make sure you have the CUDA toolkit installed. Even though the package using openCL as the background language, the current makevars only support CUDA path. If you have the other openCL platform, you need to customize the makevars to compile the files.
+Before you start to use the package, please make sure you have the CUDA toolkit installed. Even though the package using openCL as the background language, the current makevars only support CUDA path. If you have another openCL platform, you need to customize the makevars to compile the files.
 
 After installed the package, here is an example about how to use gpu to compute the matrix multiplication:
 
@@ -34,6 +34,6 @@ range(res_gpu_genius-res_cpu_stupid)
 range(res_gpu_genius-res_cpu_clever)
 ```
 
-Using the GPU compute, you can expect around 3-6X speedup compared with the optimal CPU counterpart function(e.g %*%). However, since it is not easy to find the optimal CPU code when you are developing your own algorithm, it is more common that you have to rely on sapply function to loop your code, therefore you will get much more benefit by using this package.
+Using the GPU compute, you can expect around 3-6X speedup compared with the optimal CPU counterpart function(e.g %*%). However, since it is not easy to find the optimal CPU code when you are developing your own algorithm, it is more common that you have to rely on the sapply function to loop your code, therefore you will get much more benefit by using this package.
 
 
