@@ -317,10 +317,82 @@ formatParms<-function(parms){
 }
 
 #=========================optimization functions==============================
-opt_workerNumber<-function(varInfo,code){
-  targetCode=paste0("//RCParser1 end\n")
-  insertedCode=paste0("if(",GPUVar$gpu_global_id,"<",R_length(varInfo,GPUVar$gpu_loop_data),"){\n")
-  code=sub(targetCode,paste0(targetCode,insertedCode),code,fixed = T)
-  code=paste0(code,"\n}")
+opt_workerNumber<-function(varInfo,code,.options){
+  targetCode=paste0("//Thread number optimization\n")
+  
+  if(!grepl(targetCode,code,fixed = T)){
+    stop("Unable to find the location of the thread number optimization code\n",
+         "This error should never be happened\n",
+         "Please contact the author")
+  }
+  
+  if(.options$sapplyOptimization$thread.number){
+    insertedCode=paste0("if(",GPUVar$gpu_global_id,"<",R_length(varInfo,GPUVar$gpu_loop_data),"){\n")
+    insertedCode=paste0(targetCode,insertedCode)
+    endCode="\n}"
+  }else{
+    insertedCode=""
+    endCode=""
+  }
+  code=sub(targetCode,insertedCode,code,fixed = T)
+  code=paste0(code,endCode)
   code
 }
+
+opt_matrixDim<-function(varInfo,code,.options){
+  targetCode=paste0("//Matrix dimension optimization\n")
+  
+  if(!grepl(targetCode,code,fixed = T)){
+    stop("Unable to find the location of the thread number optimization code\n",
+         "This error should never be happened\n",
+         "Please contact the author")
+  }
+  if(!.options$sapplyOptimization$matrix.dim){
+    code=sub(targetCode,"",code,fixed = T)
+    return(code)
+  }
+  
+  match.info=regexpr(targetCode,code,fixed = T)
+  opt_code=substring(code,match.info+attr(match.info,"match.length"))
+  
+  opt_target_space=c("gp","gs","lp","ls")
+  opt_target=c(
+    paste0("gpu_",opt_target_space,"_size1"),
+    paste0("gpu_",opt_target_space,"_size2")
+  )
+  variable_definition=c()
+  for(i in 1:length(opt_target)){
+    res=opt_matrixDim_hidden(opt_code,opt_target[i])
+    variable_definition=c(variable_definition,res$variable_definition)
+    opt_code=res$code_optimization
+  }
+  variable_definition=paste0(variable_definition,collapse = "")
+  code=paste0(
+    substr(code,1,match.info),
+    targetCode,
+    variable_definition,
+    opt_code
+  )
+  
+  code
+}
+#opt.target=opt_target[i]
+
+opt_matrixDim_hidden<-function(code,opt.target){
+  target.reg=paste0(opt.target,"\\[([0-9]+)\\]")
+  target.replace=paste0(opt.target,"_\\1")
+  
+  variable=str_match_all(code,target.reg)[[1]][,1]
+  if(length(variable)==0)
+    return(list(code_optimization=code))
+  
+  variable=unique(variable)
+  variable_opt=gsub(target.reg,target.replace,variable)
+  
+  variable_definition=paste0(GPUVar$default_index_type," ",variable_opt,"=",variable,";\n")
+  variable_definition=paste0(variable_definition,collapse = "")
+  code_optimization=gsub(target.reg,target.replace,code)
+  
+  return(list(variable_definition=variable_definition,code_optimization=code_optimization))
+}
+

@@ -9,7 +9,7 @@ test_that("vector add",{
   #fileName="tests/testthat/opencl_code.c"
   fileName<- 'opencl_code.c'
   option=kernel.getOption()
-  option$insufficientThreadNumWarning=F
+  option$kernelMsg$insufficient.thread.num.warning=F
   
   .kernel(file=fileName,kernel="vectorAdd",parms=list(A,B,dev_C),.options=option)
   

@@ -29,10 +29,9 @@ renameControlCode<-function(parsedExp){
 
 #parsedExp=parse(text="(tmp + tmp1) * tmp")[[1]]
 #Create a new variable to represent a function call
-createNewVar<-function(tmpMeta,parsedExp){
+createNewVar<-function(parsedExp){
   parsedExp=cleanExp(parsedExp)
-  tmpMeta=getTmpVar(tmpMeta)
-  curName=tmpMeta$varName
+  varName=GPUVar$getTmpVar()
   curCode=c()
   if(length(parsedExp)>1){
     for(i in seq(2,length(parsedExp))){
@@ -40,24 +39,23 @@ createNewVar<-function(tmpMeta,parsedExp){
       curArg=parsedExp[[i]]
       curArg_char=deparse(parsedExp[[i]])
       if(curArg_char!=""&&is.call(curArg)){
-        res=createNewVar(tmpMeta,curArg)
-        tmpMeta=res$tmpMeta
+        res=createNewVar(curArg)
         #change the argument to a parameter
-        parsedExp[[i]]=as.symbol(res$targetName)
+        parsedExp[[i]]=as.symbol(res$varName)
         curCode=c(curCode,res$code)
       }
     }
   }
   
-  replaceCode=parse(text=paste0(curName,"=",deparse(parsedExp)))[[1]]
   if(parsedExp[[1]]=="["){
     subsetArgs=matchBracketFunc(parsedExp)
     if(is.null(subsetArgs$j)){
-      replaceCode=parse(text=paste0(curName,"=subRef(",parsedExp[[2]],",",subsetArgs$i,")"))[[1]]
+      replaceCode=parse(text=paste0(varName,"=subRef(",parsedExp[[2]],",",subsetArgs$i,")"))[[1]]
     }else{
-      replaceCode=parse(text=paste0(curName,"=subRef(",parsedExp[[2]],",",subsetArgs$i,",",subsetArgs$j,")"))[[1]]
+      replaceCode=parse(text=paste0(varName,"=subRef(",parsedExp[[2]],",",subsetArgs$i,",",subsetArgs$j,")"))[[1]]
     }
   }
+  replaceCode=parse(text=paste0(varName,"=",deparse(parsedExp)))[[1]]
   
   
   curCode=c(
@@ -65,7 +63,7 @@ createNewVar<-function(tmpMeta,parsedExp){
     replaceCode
   )
   #tmpMeta$varName=curName
-  return(list(targetName=curName,tmpMeta=tmpMeta,code=curCode))
+  return(list(varName=varName,code=curCode))
 }
 
 #Exp=quote(a[1,])
@@ -110,10 +108,6 @@ cleanExp<-function(Exp){
   return(Exp)
 }
 
-getTmpVar<-function(tmpMeta){
-  count=tmpMeta$count
-  return(list(count=count+1,varName=paste0("gpu_tmp_",count)))
-}
 
 compressCodeChunk<-function(Exp){
   code=c()

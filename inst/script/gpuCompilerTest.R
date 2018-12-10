@@ -7,13 +7,11 @@ getDeviceList()
 setDevice(2)
 #gpuMagic.option$setDefaultFloat("double")
 testFunc<-function(ind,A,B){
-  #tmp=subRef(A,ind,)
-  #.opencl_printf("%d,%d\n",gpu_gp_size1[0],gpu_gp_size2[0])
-  tmp=A[ind,]
-  #message(tmp)
+  tmp=subRef(A,ind,)
   C=tmp%*%B
   return(C)
 }
+
 n=1024
 m=10000
 k=1024
@@ -22,8 +20,8 @@ A=matrix(runif(n*m),n,m)
 B=matrix(runif(m*k),m,k)
 
 options=gpuSapply.getOption()
-options$verbose=F
-options$sapplyMsg$timing.R.code.compilation=T
+#options$verbose=F
+#options$sapplyMsg$timing.R.code.compilation=T
 #fileName="inst/script/debugCode.txt"
 #options$debugCode=readChar(fileName,file.info(fileName)$size)
 tic()
@@ -38,7 +36,6 @@ microbenchmark(gpuSapply(1:n,testFunc,A,B),times = 10)
 
 range(res_internel-t(res_gpu))
 range(res_cpu-res_gpu)
-
 
 code=compileGPUCode(1:m,testFunc,A,B)
 code$Exp

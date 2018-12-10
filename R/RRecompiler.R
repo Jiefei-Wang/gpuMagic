@@ -11,13 +11,12 @@ RRecompiler<-function(profileMeta2){
                           RRE_updateFunc,profileMeta3)
   
   
-  tmpMeta=profileMeta3$tmpMeta
   codeMetaInfo=list()
   codeMetaInfo$Exp=profileMeta3$Exp
   codeMetaInfo$parms=profileMeta3$parms
   codeMetaInfo$staticParms=profileMeta3$staticParms
   codeMetaInfo1=RParser1(codeMetaInfo,tmpMeta)
-  codeMetaInfo2=RParser2(codeMetaInfo1)
+  #codeMetaInfo2=RParser2(codeMetaInfo1)
   profileMeta1=RProfile1(codeMetaInfo2)
   profileMeta2=RProfile2(profileMeta1)
   

@@ -1,6 +1,6 @@
 
 #The return size still has bug
-testFunc<-function(col_ind,A,B){
+testFunc<-function(ind,A,B){
   tmp1=subRef(A,ind,)
   
   return(tmp1)

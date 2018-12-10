@@ -50,11 +50,9 @@ RProfile2<-function(profileMeta1){
 
 RProfile2_parserFunc<-function(level,codeMetaInfo,curExp){
   result=list(Exp=curExp)
-  tmpMeta=codeMetaInfo$tmpMeta
   varInfo=codeMetaInfo$varInfo
   renameList=c()
   result$Exp=curExp
-  result$tmpMeta=tmpMeta
   result$varInfo=varInfo
   
   
@@ -120,7 +118,6 @@ RProfile2_parserFunc<-function(level,codeMetaInfo,curExp){
   }
   
   result$Exp=curExp
-  result$tmpMeta=tmpMeta
   result$renameList=renameList
   result$varInfo=varInfo
   return(result)
@@ -142,7 +139,6 @@ RProfile2_checkFunc<-function(curExp){
 
 RProfile2_updateFunc<-function(type,level,codeMetaInfo,parsedExp,code,i,res){
   result=general_updateFunc(codeMetaInfo,parsedExp,code)
-  result$codeMetaInfo$tmpMeta=res$tmpMeta
   result$codeMetaInfo$varInfo=res$varInfo
   result
 }

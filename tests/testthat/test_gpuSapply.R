@@ -1,7 +1,7 @@
 context("Basic sapply function")
 
-N_size=1000
-M_size=2000
+N_size=100
+M_size=200
 
 test_that("Matrix subset",{
   testFunc<-function(ind,A){

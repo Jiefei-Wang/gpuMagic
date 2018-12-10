@@ -77,11 +77,17 @@ gpuSapply<-function(X,FUN,...,.macroParms=NULL,.options=gpuSapply.getOption()){
 gpuSapply.getOption<-function(){
   curOp=kernel.getOption()
   curOp$kernelOption$autoType=FALSE
-  curOp$sapplyMsg=data.frame(
-    "R.code.compiler.msg"=F,
-    "timing.R.code.compilation"=F)
+  curOp$sapplyMsg=
+    data.frame(
+      R.code.compiler.msg=F,
+      timing.R.code.compilation=F
+      )
   
-  curOp$sapplyOptimization=data.frame("thread.number"=T)
+  curOp$sapplyOptimization=
+    data.frame(
+      thread.number=T,
+      matrix.dim=T
+      )
   
   curOp$sapplyOption=data.frame(debugCode="")
   
@@ -117,9 +123,10 @@ compileGPUCode<-function(X,FUN,...,.macroParms=NULL,.options=gpuSapply.getOption
   
   GPUcode1=completeGPUcode(GPUExp2)
   
-  if(.options$sapplyOptimization$thread.number==TRUE){
-    GPUcode1$gpu_code=opt_workerNumber(GPUcode1$varInfo,GPUcode1$gpu_code)
-  }
+  #optimization
+  GPUcode1$gpu_code=opt_workerNumber(GPUcode1$varInfo,GPUcode1$gpu_code,.options)
+  GPUcode1$gpu_code=opt_matrixDim(GPUcode1$varInfo,GPUcode1$gpu_code,.options)
+  
   
   GPUcode1
 }

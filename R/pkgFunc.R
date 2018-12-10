@@ -2,6 +2,7 @@
 #' @importFrom Deriv Simplify
 #' @importFrom Rcpp sourceCpp
 #' @importFrom digest digest
+#' @importFrom stringr str_match_all
 #' @import hash
 #' @useDynLib gpuMagic
 

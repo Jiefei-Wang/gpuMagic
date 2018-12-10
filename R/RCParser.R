@@ -4,7 +4,6 @@ RCcompilerLevel1<-function(profileMeta3){
   if(DEBUG){
     profileMeta3$varInfo=copyVarInfoTbl(profileMeta3$varInfo)
   }
-  tmpMeta=profileMeta3$tmpMeta
   parsedExp=profileMeta3$Exp
   varInfo=profileMeta3$varInfo
   profile=varInfo$profile
@@ -48,6 +47,7 @@ RCcompilerLevel1<-function(profileMeta3){
   gpu_worker_offset=GPUVar$worker_offset
   
   gpu_code=c(
+    "//Function data preparation",
     paste0(GPUVar$default_index_type," ",gpu_global_id,"=get_global_id(0);"),
     paste0(GPUVar$default_index_type," ", gpu_gp_totalSize,"=",gpu_sizeInfo,"[0];"),
     paste0(GPUVar$default_index_type," ", gpu_gp_matrixNum,"=",gpu_sizeInfo,"[1];"),
@@ -57,6 +57,9 @@ RCcompilerLevel1<-function(profileMeta3){
     paste0(GPUVar$default_index_type," ", gpu_returnSize,"=",gpu_sizeInfo,"[2];")
   )
   
+  
+  gpu_code=c(gpu_code,
+             "//Function variable definition")
   gpu_gp_num=-1
   gpu_gs_num=-1
   gpu_lp_num=-1
@@ -69,26 +72,29 @@ RCcompilerLevel1<-function(profileMeta3){
   varInfo$matrix_ls=c()
   
   for(curVar in keys(varInfo$varVersion)){
-    curInfo=getVarInfo(varInfo,curVar,1)
-    #if(curInfo$dataType==T_matrix)
-    #  gpu_matrix_num=gpu_matrix_num+1
-    if(curInfo$lazyRef){
+    if(varInfo$varVersion[[curVar]]!=1)
       next
-    }
+    curInfo=getVarInfo(varInfo,curVar,1)
+    
     
     if(curInfo$location!="local"||curInfo$shared)
       curInfo$dataType=T_matrix
     
+    #If the variable does not need to be initialized
+    #Case 1: the variable is the function argument
+    #Case 2: the variable is a lazy reference
     if(!curInfo$initialization){
-      curInfo$address=curInfo$var
+      #If the variable is the function argument
       if(curInfo$require){
+        curInfo$address=curInfo$var
         gpu_gs_num=gpu_gs_num+1
         varInfo$matrixInd[[curVar]]=gpu_gs_num
         varInfo$matrix_gs=c(varInfo$matrix_gs,curVar)
+        varInfo=setVarInfo(varInfo,curInfo)
       }
-      varInfo=setVarInfo(varInfo,curInfo)
       next
     }
+    
     if(curInfo$dataType==T_scale){
       CXXtype=curInfo$precisionType
       curCode=paste0(CXXtype," ",curInfo$var,";")
@@ -153,13 +159,12 @@ RCcompilerLevel1<-function(profileMeta3){
   }
   
   
-  
-  #gpu_code=c(gpu_code,paste0(getTypeCXXStr(T_DEFAULT_float)," ",profileMeta3$workerData,";"))
-  #gpu_code=c(gpu_code,paste0(profileMeta3$workerData,"=",GPUVar$gpu_worker_data,"[",gpu_global_id,"];"))
-  gpu_code=c(gpu_code,"//RCParser1 end","\n")
+  gpu_code=c(gpu_code,
+             "//End of the stage 1 compilation",
+             "//Thread number optimization",
+             "//Matrix dimension optimization")
              
   GPUExp1=profileMeta3
-  GPUExp1$tmpMeta=tmpMeta
   GPUExp1$Exp=parsedExp
   GPUExp1$varInfo=varInfo
   GPUExp1$gpu_code=gpu_code
@@ -179,7 +184,9 @@ RCcompilerLevel2<-function(GPUExp1){
   parsedExp=GPUExp1$Exp
   varInfo=GPUExp1$varInfo
   gpu_code=GPUExp1$gpu_code
-  gpu_code=c(gpu_code,RCTranslation(varInfo,parsedExp))
+  gpu_code=c(gpu_code,
+             "//Start of the GPU code",
+             RCTranslation(varInfo,parsedExp))
   
   GPUExp2=GPUExp1
   GPUExp2$gpu_code=gpu_code
@@ -232,13 +239,14 @@ RCTranslation<-function(varInfo,parsedExp){
       gpu_code=c(gpu_code,ifstate)
       next
     }
-    
+    #Add the code tracker
+    gpu_code=c(gpu_code,paste0("//",deparse(curExp)))
     #If the code starts with opencl_
     code_char=deparse(curExp)[1]
     if(substr(code_char,1,nchar(GPUVar$openclCode))==GPUVar$openclCode){
       code_char=deparse(curExp)
       curCode=paste0(substr(code_char,nchar(GPUVar$openclCode)+1,nchar(code_char)),";")
-      gpu_code=c(gpu_code,curCode)
+      gpu_code=c(gpu_code,code_char)
       next
     }
     if(substr(code_char,1,nchar(GPUVar$openclFuncCall))==GPUVar$openclFuncCall){
