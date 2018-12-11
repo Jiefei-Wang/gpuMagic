@@ -86,19 +86,19 @@ RLevel1_parserFunc<-function(level,codeMetaInfo,curExp){
           curExp[[i]]=as.symbol(res$varName)
         }
       }
-      result$Exp=curExp
-      return(result)
     }
+    result$Exp=curExp
+    return(result)
   }else{
-    result$Exp=NULL
+    #if(curExp%in%c("next","break"))
+    #warning("An unexpected code has been found: ",deparse(curExp))
+    result$Exp=curExp
     return(result)
   }
   
   
   #Default return value
   stop("You should not be here!")
-  result$Exp=curExp
-  return(result)
 }
 
 RLevel1_checkFunc<-function(curExp){

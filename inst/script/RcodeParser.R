@@ -1,8 +1,16 @@
 
 #The return size still has bug
 testFunc<-function(ind,A,B){
-  tmp=subRef(A,ind,)
-  C=tmp%*%B
+  #tmp=subRef(A,ind,)
+  #C=tmp%*%B
+  res=0
+  for(i in 1:nrow(A)){
+    if(A[i,ind]>0.5)
+      next
+    res=res+A[i,ind]
+  }
+  return(res)
+    
   return(C)
 }
 n=3

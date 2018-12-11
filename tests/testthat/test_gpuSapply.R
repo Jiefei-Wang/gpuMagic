@@ -119,6 +119,43 @@ test_that("Lazy reference, matrix subsetting and Arithmatic operation",{
   expect_equal(sum(abs(error)),0)
 })
 
+#========================for loop====================
+test_that("for loop iteration",{
+  testFunc<-function(ind,A){
+    res=0
+    for(i in 1:nrow(A)){
+      res=res+A[i,ind]
+    }
+    return(res)
+  }
+  n=N_size
+  m=M_size
+  A=matrix(runif(n*m),n,m)
+  res_gpu=gpuSapply(1:m,testFunc,A)
+  res_cpu=colSums(A)
+  error=range(res_gpu-res_cpu)
+  expect_equal(sum(abs(error)),0)
+})
+
+test_that("for loop control code, if condition",{
+  testFunc<-function(ind,A){
+    res=0
+    for(i in 1:nrow(A)){
+      if(A[i,ind]>0.5)
+        next
+      res=res+A[i,ind]
+    }
+    return(res)
+  }
+  n=N_size
+  m=M_size
+  A=matrix(runif(n*m),n,m)
+  res_gpu=gpuSapply(1:m,testFunc,A)
+  res_cpu=sapply(1:m,testFunc,A)
+  error=range(res_gpu-res_cpu)
+  expect_equal(sum(abs(error)),0)
+})
+
 
 
 

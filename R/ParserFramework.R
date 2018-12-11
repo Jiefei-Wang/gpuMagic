@@ -13,10 +13,10 @@ parserFrame<-function(parserFunc,checkFunc,updateFunc,codeMetaInfo,level=c("top"
   for(i in seq(length(parsedExp))){
     #if(i==3) stop()
     curExp=parsedExp[[i]]
-    if(curExp=="{"){
+    if(curExp=="{"&&length(curExp)!=1){
       next
       }
-    if(!is.symbol(curExp)){
+    if(!is.symbol(curExp)&&!isNumeric(curExp)){
       if(curExp[[1]]=="for"){
         loopIndExp=curExp[[3]]
         curLevel=c(level,"for")
@@ -74,6 +74,19 @@ parserFrame<-function(parserFunc,checkFunc,updateFunc,codeMetaInfo,level=c("top"
         next
       }
     }
+    
+    #I don't know who will use double bracket
+    #But I add it for making sure it works
+    if(length(curExp)>1&&curExp[[1]]=="{"){
+      curLevel=c(level,"{")
+      res=ProcessCodeChunk(parserFunc,checkFunc,updateFunc,
+                           curCodeMetaInfo,curLevel,parsedExp,code,i,curExp)
+      curCodeMetaInfo=res$codeMetaInfo
+      parsedExp=res$parsedExp
+      code=res$code
+      curExp=res$ExpChunk
+    }
+    
     if(checkFunc(curExp)){
       res=ProcessCodeSingle(parserFunc,updateFunc,
                             curCodeMetaInfo,level,parsedExp,code,i,curExp)
@@ -89,6 +102,10 @@ parserFrame<-function(parserFunc,checkFunc,updateFunc,codeMetaInfo,level=c("top"
 #inside the for and if loop
 ProcessCodeChunk<-function(parserFunc,checkFunc,updateFunc,codeMetaInfo,curLevel,parsedExp,code,i,ExpChunk){
   curMetaInfo=codeMetaInfo
+  #Add a curly bracket when the loop does not have it
+  if(is.symbol(ExpChunk)||isNumeric(ExpChunk)||ExpChunk[[1]]!="{"){
+    ExpChunk=as.call(c(as.symbol("{"),ExpChunk))
+  }
   curMetaInfo$Exp=ExpChunk
   curMetaInfo$renameList=NULL
   res=parserFrame(parserFunc,checkFunc,updateFunc,curMetaInfo,curLevel)
@@ -103,8 +120,8 @@ ProcessCodeChunk<-function(parserFunc,checkFunc,updateFunc,codeMetaInfo,curLevel
     parsedExp=res1$parsedExp
   if("code" %in% names(res1))
     code=res1$code
+  ExpChunk=res$Exp
   ExpChunk=compressCodeChunk(res$Exp)
-  
   list(codeMetaInfo=codeMetaInfo,parsedExp=parsedExp,code=code,ExpChunk=ExpChunk)
 }
 #For a single line code

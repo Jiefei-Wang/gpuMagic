@@ -1,30 +1,3 @@
-#==============================preprocess==========================
-renameControlCode<-function(parsedExp){
-  for(i in 1:length(parsedExp)){
-    curExp=parsedExp[[i]]
-    if(is.call(curExp)){
-      if(curExp=="break")
-        parsedExp[[i]]=quote(opencl_break)
-      if(curExp=="next")
-        parsedExp[[i]]=quote(opencl_next)
-    }else{
-      next
-    }
-    if(curExp[[1]]=="for"){
-      curExp[[4]]=renameControlCode(curExp[[4]])
-      parsedExp[[i]]=curExp
-    }
-    if(curExp[[1]]=="if"){
-      curExp[[3]]=renameControlCode(curExp[[3]])
-      if(length(curExp)==4){
-        curExp[[4]]=renameControlCode(curExp[[4]])
-      }
-      parsedExp[[i]]=curExp
-    }
-  }
-  return(parsedExp)
-}
-
 #==============================parser 1==========================
 
 #parsedExp=parse(text="(tmp + tmp1) * tmp")[[1]]
@@ -111,8 +84,11 @@ cleanExp<-function(Exp){
 
 compressCodeChunk<-function(Exp){
   code=c()
-  for(i in 1:length(Exp))
+  for(i in 1:length(Exp)){
+    if(i==1&&Exp[[i]]=="{")
+      next
     code=c(code,deparse(Exp[[i]]))
+  }
   code=c("{",code,"}")
   code=paste0(code,collapse = "\n")
   return(parse(text=code)[[1]])

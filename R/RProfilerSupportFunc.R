@@ -140,8 +140,12 @@ getExpInfo<-function(varInfo,Exp){
   if(is.call(Exp)&&(deparse(Exp[[1]])%in% .profileVarDefine))
     return(ExpInfo)
   #Some optimization
-  if(ExpInfo$compileSize1&&ExpInfo$compileSize2&&ExpInfo$size1=="1"&&ExpInfo$size2=="1")
+  if(ExpInfo$compileSize1&&ExpInfo$compileSize2&&
+     Simplify(ExpInfo$size1)=="1"&&Simplify(ExpInfo$size2)=="1"){
     ExpInfo$dataType=T_scale
+    ExpInfo$size1=1
+    ExpInfo$size2=1
+  }
   if(ExpInfo$dataType==T_scale)
     ExpInfo$location="local"
   
@@ -232,7 +236,6 @@ copyVarInfo<-function(info,fullCopy=FALSE){
     return(info)
   
   info$shared=FALSE
-  info$location="global"
   
   info$require=FALSE
   info$constVal=FALSE
@@ -269,11 +272,14 @@ formatCall<-function(Exp,generalType=FALSE){
 #Test if an input is a number
 #x can be a character or an expression
 isNumeric<-function(x){
-  if(x=="")
+  if(length(x)>1)
     return(FALSE)
-  res=!grepl("\\D", x)
-  if(length(res)>1)
+  
+  x_char=NULL
+  try({x_char=toExpression(x)$expression},silent = T)
+  if(is.null(x_char)) 
     return(FALSE)
+  res=is.numeric(x_char)
   return(res)
 }
 

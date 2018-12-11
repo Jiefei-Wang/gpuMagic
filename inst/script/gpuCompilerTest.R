@@ -7,9 +7,11 @@ getDeviceList()
 setDevice(2)
 #gpuMagic.option$setDefaultFloat("double")
 testFunc<-function(ind,A,B){
-  tmp=subRef(A,ind,)
-  C=tmp%*%B
-  return(C)
+  #tmp=subRef(A,ind,)
+  #C=tmp%*%B
+  break
+  next
+  #return(C)
 }
 
 n=1024
