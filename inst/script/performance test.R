@@ -1,5 +1,5 @@
 library("microbenchmark")
-.gpuResourcesManager$setMaxMemLimit(5*10^9)
+.gpuResourcesManager$setMaxMemLimit(7*10^8)
 testFunc_A<-function(ind,A,B){
   tmp=A[ind,]
   C=tmp%*%B
@@ -41,7 +41,8 @@ microbenchmark(
   gpuSapply(1:k,testFunc_B,A,B),
   gpuSapply(1:k,testFunc_B_subRef,A,B),
   check=my_check,
-  times = 10)
+  times = 10,
+  control=list(warmup=0))
 
 
 
@@ -58,3 +59,6 @@ microbenchmark(
 #testFunc_A_subRef:  2.19
 #testFunc_B:         3.62
 #testFunc_B_subRef:  3.09
+
+
+

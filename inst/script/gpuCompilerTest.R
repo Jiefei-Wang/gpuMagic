@@ -7,10 +7,14 @@ getDeviceList()
 setDevice(2)
 #gpuMagic.option$setDefaultFloat("double")
 testFunc<-function(ind,A,B){
-  #tmp=subRef(A,ind,)
-  #C=tmp%*%B
-  break
-  next
+  tmp=A[ind,]
+  C=tmp%*%B
+  A[a,]=A[b,]
+  tmp=A[b,]
+  A[a,]=tmp
+  
+  #break
+  #next
   #return(C)
 }
 
@@ -39,7 +43,7 @@ microbenchmark(gpuSapply(1:n,testFunc,A,B),times = 10)
 range(res_internel-t(res_gpu))
 range(res_cpu-res_gpu)
 
-code=compileGPUCode(1:m,testFunc,A)
+code=compileGPUCode(1:m,testFunc,A,B)
 code$Exp
 cat(code$gpu_code)
 

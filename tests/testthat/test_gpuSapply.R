@@ -157,7 +157,7 @@ test_that("for loop control code, if condition",{
 })
 
 
-test_that("Unnecessary bracket",{
+test_that("Self assignment, Unnecessary bracket",{
   testFunc<-function(ind,A){
     {{
     A[,ind]=A[,ind]+1

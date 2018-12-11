@@ -1,9 +1,9 @@
 
 #The return size still has bug
 testFunc<-function(ind,A,B){
-  {{
-    A[,ind]=A[,ind]+1
-  }}
+  if(TRUE)
+    A=A+1
+  
   return(A[,ind])
 }
 n=3

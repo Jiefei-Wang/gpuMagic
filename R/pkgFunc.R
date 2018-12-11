@@ -168,7 +168,7 @@ GPUVar<-local({
   
   #This variable is for doing the matrix optimization
   GPUVar_env$private_var_space="gpu_private_spcae"
-  GPUVar_env$private_size=10
+  GPUVar_env$private_size=32
   
   
   return(GPUVar_env)
