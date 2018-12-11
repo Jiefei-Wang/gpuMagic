@@ -13,7 +13,7 @@ testFunc<-function(ind,A,B){
 }
 
 n=1024
-m=10000
+m=100
 k=1024
 
 A=matrix(runif(n*m),n,m)
@@ -37,7 +37,7 @@ microbenchmark(gpuSapply(1:n,testFunc,A,B),times = 10)
 range(res_internel-t(res_gpu))
 range(res_cpu-res_gpu)
 
-code=compileGPUCode(1:m,testFunc,A,B)
+code=compileGPUCode(1:m,testFunc,A)
 code$Exp
 cat(code$gpu_code)
 

@@ -37,10 +37,16 @@ parms=list(A,B,dev_C,dim(A),dim(B),dim(C))
 parseProgram(codePack,kernel="matrix_product",parms)$src
 
 
+.gpuResourcesManager$setMaxMemLimit(7*10^9)
 
-
-
-
-
-
+microbenchmark({
+mydata=rep(0,10^8)
+mydata1=gpuMatrix(mydata)
+mydata1=download(mydata1)
+},
+{
+mydata2=gpuEmptMatrix(10^8)
+mydata2=download(mydata2)
+}
+)
 

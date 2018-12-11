@@ -278,6 +278,21 @@ completeProfileTbl<-function(GPUExp2){
   GPUExp2
   
 }
+CheckCodeError<-function(GPUcode,parms){
+  errorCheckInfo=GPUcode$varInfo$errorCheck
+  for(i in keys(errorCheckInfo)){
+    if(!isNumeric(i)) next
+    info=errorCheckInfo[[i]]
+    error=eval(parse(text=info$check))
+    if(error){
+      if(info$level=="warning"){
+        warning(info$msg,": \n",info$code)
+      }else{
+        stop(info$msg,": \n",info$code)
+      }
+    }
+  }
+}
 
 matchParms<-function(X,parms,FUN){
   

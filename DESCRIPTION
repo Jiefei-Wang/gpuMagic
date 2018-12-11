@@ -23,6 +23,7 @@ Collate:
     'pkgFunc.R'
     'RCParser.R'
     'RCParserFunc_Rlevel.R'
+    'RCParserSupportFunc.R'
     'RParser.R'
     'RParserSupportFunc.R'
     'RProfiler.R'

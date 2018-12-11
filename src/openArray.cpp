@@ -119,7 +119,6 @@ void openArray::gpuAlloc(void * hostData,size_t length, dtype type)
 	cl_context context = kernelManager::getContext(getDeviceId());
 	cl_int error;
 	data = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, length*typesize(type), hostData, &error);
-	
 	if (error != CL_SUCCESS) {
 		string errorInfo = string("Fail to allocate ") +
 			to_string(length*typesize(type) / 1024 / 1024) +

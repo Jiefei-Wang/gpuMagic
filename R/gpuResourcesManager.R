@@ -9,7 +9,7 @@
   e$unload=FALSE
   e$totalMemory=10^9
   #e$totalMemory=12
-  e$memoryUsage=0
+  e$memoryUsage=as.double(0)
   e$maxAddressNum=.Machine$integer.max
   #e$maxAddressNum=10
   e$addressList=hash()
@@ -52,7 +52,7 @@
   list(
     upload=function(data,type){
       ##Check if the data is larger than the available memory size and get the memory index
-      size=getTypeSize(type)*length(data)
+      size=as.double(getTypeSize(type))*length(data)
       gpuInd=getGPUmemInd(size)
       
         res=.C(

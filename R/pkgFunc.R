@@ -23,6 +23,8 @@ DEBUG=TRUE
 
 
 #' @include RProfilerFunc.R
+.profileVarDefine=c("gMatrix","gNumber","subRef")
+
 .profileFuncs=list()
 .profileFuncs$nrow=profile_size
 .profileFuncs$ncol=profile_size

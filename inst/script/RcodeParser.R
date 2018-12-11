@@ -1,9 +1,9 @@
 
 #The return size still has bug
 testFunc<-function(ind,A,B){
-  tmp1=subRef(A,ind,)
-  
-  return(tmp1)
+  tmp=subRef(A,ind,)
+  C=tmp%*%B
+  return(C)
 }
 n=3
 m=4

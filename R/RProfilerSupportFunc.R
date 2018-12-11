@@ -135,8 +135,21 @@ matchFunArg<-function(fun,Exp){
 }
 #Get the right expression profile
 getExpInfo<-function(varInfo,Exp){
+  ExpInfo=getExpInfo_hidden(varInfo,Exp)
+  #If the variable is explicit definition
+  if(is.call(Exp)&&(deparse(Exp[[1]])%in% .profileVarDefine))
+    return(ExpInfo)
+  #Some optimization
+  if(ExpInfo$compileSize1&&ExpInfo$compileSize2&&ExpInfo$size1=="1"&&ExpInfo$size2=="1")
+    ExpInfo$dataType=T_scale
+  if(ExpInfo$dataType==T_scale)
+    ExpInfo$location="local"
+  
+  return(ExpInfo)
+}
+getExpInfo_hidden<-function(varInfo,Exp){
   ExpInfo=NULL
-  if(is.numeric(Exp)){
+  if(isNumeric(Exp)){
     ExpInfo=profile_numeric(Exp)
     return(ExpInfo)
   }
@@ -155,33 +168,26 @@ getExpInfo<-function(varInfo,Exp){
     ExpInfo=profile_symbol(varInfo,Exp)
     return(ExpInfo)
   }
+  
+  
   if(is.null(ExpInfo))
     stop("Unknow code: ",deparse(Exp))
   
   return(ExpInfo)
 }
 
+
 checkVarType<-function(leftInfo,rightInfo){
-  needReassign=FALSE
-  needResize=FALSE
-  needRetype=FALSE
-  if(typeInherit(leftInfo$precisionType,rightInfo$precisionType)!=leftInfo$precisionType)
-    needRetype=TRUE
   if(leftInfo$dataType!=rightInfo$dataType)
     return(list(needReassign=TRUE))
-  
   if(leftInfo$size1!=rightInfo$size1||rightInfo$size2!=rightInfo$size2){
-    len1=paste0(leftInfo$size1,"*",leftInfo$size2)
-    len2=paste0(rightInfo$size1,"*",rightInfo$size2)
-    if(Simplify(len1)!=Simplify(len2)||
-       rightInfo$size1=="NA"||rightInfo$size2=="NA"||
-       leftInfo$shared){
-      return(list(needReassign=TRUE))
-    }else{
-        return(list(needRetype=needRetype,needReassign=FALSE,needResize=TRUE,size1=rightInfo$size1,size2=rightInfo$size2))
-    }
+    return(list(needReassign=TRUE))
   }
-  return(list(needRetype=needRetype,needReassign=FALSE,needResize=FALSE))
+  if(typeInherit(leftInfo$precisionType,rightInfo$precisionType)!=leftInfo$precisionType)
+    return(list(needReassign=FALSE,needRetype=TRUE,valueUpdate=TRUE))
+  if(leftInfo$value!=rightInfo$value||leftInfo$compileValue!=rightInfo$compileValue)
+    return(list(needReassign=FALSE,needRetype=FALSE,valueUpdate=TRUE))
+  
 }
 
 #Determine which type can preserve the information 
@@ -219,10 +225,14 @@ is.preservedFunc<-function(func){
   length(grep(GPUVar$preservedFuncPrefix,func,fixed = T))!=0
 }
 #This function determine when the variable is defined, which property can be inherit from the right expression
-copyVarInfo<-function(info){
+copyVarInfo<-function(info,fullCopy=FALSE){
+  
+  info$version=1
+  if(fullCopy)
+    return(info)
+  
   info$shared=FALSE
   info$location="global"
-  info$version=1
   
   info$require=FALSE
   info$constVal=FALSE
@@ -231,11 +241,7 @@ copyVarInfo<-function(info){
   info$initialization=TRUE
   info$changed=FALSE
   info$used=FALSE
-  #Some optimization
-  if(info$compileSize1&&info$compileSize2&&info$size1=="1"&&info$size2=="1")
-    info$dataType=T_scale
-  if(info$dataType==T_scale)
-    info$location="local"
+  
   
   info
 }
@@ -284,5 +290,20 @@ Simplify2<-function(Exp){
   else
     return(paste0("(",res,")"))
 }
-
-
+#get the version bump code
+#var: the variable name
+#version: the version that should be bumped to
+getVersionBumpCode<-function(var,version){
+  varExp=toExpression(var)
+  parse(text=paste0(GPUVar$preservedFuncPrefix,"setVersion(",varExp$char,",",version,")"))[[1]]
+}
+#Add the error check into the varInfo
+#level: the error level: warning, error
+#code: The code that generate this error check
+#check: the condition that will throw the error(check=TRUE will throw the error)
+#msg: the message that will be post when the error occurs
+addErrorCheck<-function(varInfo,level,code,check,msg=""){
+  checkNum=varInfo$errorCheck[[".checkNumber"]]+1
+  varInfo$errorCheck[[as.character(checkNum)]]=
+    data.frame(level=level,code=code,check=check,msg=msg,stringsAsFactors=FALSE)
+}

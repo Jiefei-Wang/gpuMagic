@@ -84,14 +84,15 @@ RCcompilerLevel1<-function(profileMeta3){
     #Case 1: the variable is the function argument
     #Case 2: the variable is a lazy reference
     if(!curInfo$initialization){
+      #Don't touch it, its for the gpu_global_id
+      curInfo$address=curInfo$var
       #If the variable is the function argument
       if(curInfo$require){
-        curInfo$address=curInfo$var
         gpu_gs_num=gpu_gs_num+1
         varInfo$matrixInd[[curVar]]=gpu_gs_num
         varInfo$matrix_gs=c(varInfo$matrix_gs,curVar)
-        varInfo=setVarInfo(varInfo,curInfo)
       }
+      varInfo=setVarInfo(varInfo,curInfo)
       next
     }
     

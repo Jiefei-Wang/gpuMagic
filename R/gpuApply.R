@@ -46,7 +46,9 @@ gpuSapply<-function(X,FUN,...,.macroParms=NULL,.options=gpuSapply.getOption()){
   
   #Complete the profile table and fill the GPU data
   GPUcode1=completeProfileTbl(GPUcode1)
+  CheckCodeError(GPUcode1,parms)
   GPUcode2=fillGPUdata(GPUcode1,.options=.options)
+  
   
   if(optimization$thread.number==TRUE){
     .globalThreadNum=ceiling(length(X)/64)*64

@@ -3,30 +3,13 @@ profile_symbol_left<-function(level,codeMetaInfo,varInfo,curExp){
   rightExp=curExp[[3]]
   leftVar_char=deparse(leftExp)
   
-  if(is.call(rightExp)&&
-     (rightExp[[1]]=="gMatrix"||
-      rightExp[[1]]=="gNumber"||
-      rightExp[[1]]=="subRef")){
-    if(hasVar(varInfo,leftVar_char)){
-      tmpMeta=codeMetaInfo$tmpMeta
-      tmpMeta=getTmpVar(tmpMeta)
-      newName=tmpMeta$varName
-      curExp[[2]]=as.symbol(newName)
-      renameList=matrix(c(leftVar_char,newName),1)
-      
-      curInfo=getExpInfo(varInfo,rightExp)
-      curInfo$var=leftVar_char
-      varInfo=addVarInfo(varInfo,curInfo)
-      return(list(Exp=curExp,varInfo=varInfo,renameList=renameList,tmpMeta=tmpMeta))
-    }else{
-      curInfo=getExpInfo(varInfo,rightExp)
-      curInfo$var=leftVar_char
-      varInfo=addVarInfo(varInfo,curInfo)
-      return(list(Exp=curExp,varInfo=varInfo))
-    }
+  #Determine if the right expression is explicitly define a variable
+  varDefine=FALSE
+  if(is.call(rightExp)){
+    varDefine=deparse(rightExp[[1]])%in% .profileVarDefine
   }
   
-  
+  rightInfo=getExpInfo(varInfo,rightExp)
   
   if(hasVar(varInfo,leftVar_char)){
     leftInfo=getVarInfo(varInfo,leftVar_char)
@@ -38,45 +21,31 @@ profile_symbol_left<-function(level,codeMetaInfo,varInfo,curExp){
       return(list())
     if(leftInfo$constVal)
       stop("The left expression is a constant, changing the number of the left expression is not allowed:\n:",deparse(curExp))
+    if(!rightInfo$compileSize1||!rightInfo$compileSize2)
+      stop("Unable to determine the matrix size: ",deparse(curExp))
     
     
-    rightInfo=getExpInfo(varInfo,rightExp)
     checkInfo=checkVarType(leftInfo,rightInfo)
-    #Resize function is not working now, it needs some optimization
-    if(checkInfo$needReassign){
+    #If the variable need to be redefined, or user explicitly define the variable
+    if(checkInfo$needReassign||varDefine){
       if("for" %in% level || "if" %in% level)
         stop("Type conversion inside the for or if body is not allowed, please assign the variable before it:\n:",
              paste0("TraceBack:",paste0(level,collapse = "->"),"\n"),
              deparse(curExp))
-      tmpMeta=codeMetaInfo$tmpMeta
-      tmpMeta=getTmpVar(tmpMeta)
-      newName=tmpMeta$varName
+      newName=GPUVar$getTmpVar()
       curExp[[2]]=as.symbol(newName)
       renameList=matrix(c(leftVar_char,newName),1)
-      leftInfo=copyVarInfo(rightInfo)
+      if(varDefine){
+        leftInfo=copyVarInfo(rightInfo,fullCopy=TRUE)
+      }else{
+        leftInfo=copyVarInfo(rightInfo)
+      }
       leftInfo$var=newName
       varInfo=addVarInfo(varInfo,leftInfo)
-      return(list(varInfo=varInfo,renameList=renameList,tmpMeta=tmpMeta))
+      return(list(varInfo=varInfo,renameList=renameList,Exp=curExp))
     }
     
-    if(checkInfo$needResize){
-      leftInfo$value=rightInfo$value
-      leftInfo$precisionType=rightInfo$precisionType
-      leftInfo$size1=rightInfo$size1
-      leftInfo$size2=rightInfo$size2
-      leftInfo$compileSize1=rightInfo$compileSize1
-      leftInfo$compileSize2=rightInfo$compileSize2
-      leftInfo$compileValue=rightInfo$compileValue
-      leftInfo$version=leftInfo$version+1
-      varInfo=addVarInfo(varInfo,leftInfo)
-      #version bump
-      versionBump=parse(text=paste0(GPUVar$preservedFuncPrefix,"setVersion(",leftVar_char,",",leftInfo$version,")"))[[1]]
-      
-      return(list(varInfo=varInfo,extCode=versionBump))
-    }
-    
-    
-    if(checkInfo$needRetype||leftInfo$value!=rightInfo$value||leftInfo$compileValue!=rightInfo$compileValue){
+    if(checkInfo$valueUpdate){
       if(checkInfo$needRetype){
         leftInfo$precisionType=rightInfo$precisionType
       }
@@ -85,13 +54,19 @@ profile_symbol_left<-function(level,codeMetaInfo,varInfo,curExp){
       leftInfo$version=leftInfo$version+1
       varInfo=addVarInfo(varInfo,leftInfo)
       #version bump
-      versionBump=parse(text=paste0(GPUVar$preservedFuncPrefix,"setVersion(",leftVar_char,",",leftInfo$version,")"))[[1]]
+      versionBump=getVersionBumpCode(leftVar_char,leftInfo$version)
       return(list(varInfo=varInfo,extCode=versionBump))
     }
   }else{
-    rightInfo=getExpInfo(varInfo,rightExp)
-    leftInfo=copyVarInfo(rightInfo)
+    if(!rightInfo$compileSize1||!rightInfo$compileSize2)
+      stop("Unable to determine the matrix size: ",deparse(curExp))
+    if(varDefine){
+      leftInfo=copyVarInfo(rightInfo,fullCopy=TRUE)
+    }else{
+      leftInfo=copyVarInfo(rightInfo)
+    }
     leftInfo$var=leftVar_char
+    leftInfo$version=1
     varInfo=addVarInfo(varInfo,leftInfo)
     return(list(varInfo=varInfo))
   }
@@ -204,58 +179,45 @@ profile_matrix<-function(varInfo,Exp){
 
 
 profile_arithmetic<-function(varInfo,Exp){
-  ExpInfo=getEmpyTable()
   leftExp=Exp[[2]]
   rightExp=Exp[[3]]
-  if(is.numeric(leftExp)){
-    leftInfo=getEmpyTable(type=T_scale)
-    leftInfo$compileValue=TRUE
-    leftInfo$value=deparse(leftExp)
+  
+  leftInfo=getExpInfo(varInfo,leftExp)
+  rightInfo=getExpInfo(varInfo,rightExp)
+  
+  
+  if(leftInfo$dataType==T_scale&&rightInfo$dataType==T_scale){
+    ExpInfo=getEmpyTable(type=T_scale)
   }else{
-    leftInfo=getVarInfo(varInfo,leftExp)
-  }
-  if(is.numeric(rightExp)){
-    rightInfo=getEmpyTable(type=T_scale)
-    rightInfo$compileValue=TRUE
-    rightInfo$value=deparse(rightExp)
-  }else{
-    rightInfo=getVarInfo(varInfo,rightExp)
+    ExpInfo=getEmpyTable(type=T_matrix)
   }
   ExpInfo$precisionType=typeInherit(leftInfo$precisionType,rightInfo$precisionType)
+  
   if(leftInfo$compileSize1&&rightInfo$compileSize1&&leftInfo$compileSize2&&rightInfo$compileSize2){
     ExpInfo$compileSize1=TRUE
     ExpInfo$compileSize2=TRUE
-  }else
-    stop("Dynamic matrix allocation is not allowed: ",deparse(Exp))
+  }
+    
   if(leftInfo$compileValue==TRUE&&rightInfo$compileValue==TRUE){
     ExpInfo$compileValue=TRUE
     ExpInfo$value=Simplify(paste0("(",leftInfo$value,deparse(Exp[[1]]),rightInfo$value,")"))
   }
-  if(leftInfo$dataType==T_scale&&rightInfo$dataType==T_scale){
-    ExpInfo$dataType=T_scale
-    ExpInfo$size1=1
-    ExpInfo$size2=1
-    ExpInfo$location="local"
-  }
-  if(leftInfo$dataType==T_scale&&rightInfo$dataType==T_matrix){
-    ExpInfo$dataType=T_matrix
-    ExpInfo$size1=rightInfo$size1
-    ExpInfo$size2=rightInfo$size2
-  }
-  if(leftInfo$dataType==T_matrix&&rightInfo$dataType==T_scale){
-    ExpInfo$dataType=T_matrix
-    ExpInfo$size1=leftInfo$size1
-    ExpInfo$size2=leftInfo$size2
-  }
-  if(leftInfo$dataType==T_matrix&&rightInfo$dataType==T_matrix){
-    #if(leftInfo$size1!=rightInfo$size1||leftInfo$size2!=rightInfo$size2)
-    #  stop("The matrix size does not match: ",deparse(Exp))
-    ExpInfo$dataType=T_matrix
-    ExpInfo$size1=leftInfo$size1
-    ExpInfo$size2=leftInfo$size2
-  }
+  
+  ExpInfo$size1=Simplify(paste0("max(",leftInfo$size1,",",rightInfo$size1,")"))
+  ExpInfo$size2=Simplify(paste0("max(",leftInfo$size2,",",rightInfo$size2,")"))
+  
+  
+  addErrorCheck(varInfo,level="warning",code=deparse(Exp),
+                check=paste0("(",leftInfo$size1,"!=",rightInfo$size1,"||",
+                             leftInfo$size2,"!=",rightInfo$size2,")",
+                             "&&(",leftInfo$size1,"!=1||",leftInfo$size2,"!=1)&&(",
+                             rightInfo$size1,"!=1||",rightInfo$size2,"!=1)"),
+                msg="Possibly uncomfortable matrix dimension has found")
+  
   return(ExpInfo)
 }
+
+
 
 #%*%
 profile_matrixMult<-function(varInfo,Exp){
@@ -264,16 +226,18 @@ profile_matrixMult<-function(varInfo,Exp){
   rightExp=Exp[[3]]
   leftInfo=getVarInfo(varInfo,leftExp)
   rightInfo=getVarInfo(varInfo,rightExp)
-  if(leftInfo$size2!=rightInfo$size1){
-    #warning("Undetermined/Uncomfortable matrix dimension: \n",deparse(Exp),
-    #        "\n If the variables are the function arguments, The result may be still valid")
-  }
+  
   ExpInfo$size1=leftInfo$size1
   ExpInfo$size2=rightInfo$size2
   if(leftInfo$compileSize1&&rightInfo$compileSize2){
     ExpInfo$compileSize1=TRUE
     ExpInfo$compileSize2=TRUE
   }
+  
+  addErrorCheck(varInfo,level="error",code=deparse(Exp),
+                check=paste0(leftInfo$size2,"!=",rightInfo$size1),
+                msg="Uncomfortable matrix dimension has found")
+  
   ExpInfo
 }
 
@@ -283,17 +247,20 @@ profile_matrixMult<-function(varInfo,Exp){
 #2: second index
 getSubInfo<-function(varInfo,curInfo,sub_var,i=NA){
   sub=list()
+  
   if(sub_var==""){
+    #one index sub
     if(is.na(i)){
       sub$compileValue=curInfo$compileSize1&&curInfo$compileSize2
       sub$compileSize=curInfo$compileSize1&&curInfo$compileSize2
       sub$size=Simplify(paste0("(",curInfo$size1,"*",curInfo$size2,")"))
       sub$value=Simplify(paste0("1:(",curInfo$size1,"*",curInfo$size2,")"))
     }else{
+      #two index sub
       sub$compileValue=curInfo[[paste0("compileSize",i)]]
       sub$compileSize=curInfo[[paste0("compileSize",i)]]
       sub$size=curInfo[[paste0("size",i)]]
-      sub$value=Simplify(paste0("1:(",curInfo[[paste0("size",i)]],")"))
+      sub$value=paste0("(",Simplify(paste0("1:(",curInfo[[paste0("size",i)]],")")),")")
     }
     if(sub$size=="1")
       sub$type=T_scale
@@ -308,40 +275,39 @@ getSubInfo<-function(varInfo,curInfo,sub_var,i=NA){
       sub$size=1
       sub$type=T_scale
     }else{
-      subVar=getVarInfo(varInfo,sub_var)
-      sub$compileValue=subVar$compileValue
-      sub$compileSize=subVar$compileSize1&&subVar$compileSize2
-      sub$value=subVar$value
-      sub$size=Simplify(paste0("(",subVar$size1,"*",subVar$size2,")"))
+      subVarInfo=getVarInfo(varInfo,sub_var)
+      sub$compileValue=subVarInfo$compileValue
+      sub$compileSize=subVarInfo$compileSize1&&subVarInfo$compileSize2
+      sub$value=subVarInfo$value
+      sub$size=paste0("(",Simplify(paste0("(",subVarInfo$size1,"*",subVarInfo$size2,")")),")")
       sub$type=ifelse(sub$size=="1",T_scale,T_matrix)
     }
   }
   sub
 }
 
+#Exp=quote(A[,ind,drop=T])
 profile_subset<-function(varInfo,Exp){
   curInfo=getVarInfo(varInfo,Exp[[2]])
+  args=matchBracketFunc(Exp)
+  
   sub1=list()
   sub2=list()
-  if(length(Exp)==3){
-    sub1=getSubInfo(varInfo,curInfo,Exp[[3]])
-  }
   
-  if(length(Exp)==4){
-    sub1=getSubInfo(varInfo,curInfo,Exp[[3]],1)
-    sub2=getSubInfo(varInfo,curInfo,Exp[[4]],2)
+  #Determine the one sub or two sub
+  if(is.null(args$j)){
+    sub1=getSubInfo(varInfo,curInfo,args$i)
+  }else{
+    sub1=getSubInfo(varInfo,curInfo,args$i,1)
+    sub2=getSubInfo(varInfo,curInfo,args$j,2)
   }
   
   
   ExpInfo=getEmpyTable(1)
-  ExpInfo$dataType=T_matrix
-  if(length(Exp)==4){
-    if(sub1$type==T_scale&&sub2$type==T_scale){
-      ExpInfo$dataType=T_scale
-    }
+  if(!is.null(args$j)){
     
     if(sub1$compileValue&&sub2$compileValue&&curInfo$compileValue){
-      ExpInfo$value=Simplify(paste0("(",curInfo$value,"[",sub1$value,",",sub2$value,"])"))
+      ExpInfo$value=paste0("(",Simplify(paste0(curInfo$value,"[",sub1$value,",",sub2$value,"]")),")")
       ExpInfo$compileValue=TRUE
     }
     if(sub1$compileSize&&sub2$compileSize){
@@ -349,16 +315,12 @@ profile_subset<-function(varInfo,Exp){
       ExpInfo$compileSize2=TRUE
       ExpInfo$size1=sub1$size
       ExpInfo$size2=sub2$size
-    }else{
-      stop("undetermined size: ",Exp)
     }
   }
-  if(length(Exp)==3){
-    if(sub1$type==T_scale){
-      ExpInfo$dataType=T_scale
-    }
+  
+  if(is.null(args$j)){
     if(sub1$compileValue&&curInfo$compileValue){
-      ExpInfo$value=Simplify(paste0("(",curInfo$value,"[",sub1$value,"])"))
+      ExpInfo$value=paste0("(",Simplify(paste0(curInfo$value,"[",sub1$value,"]")),")")
       ExpInfo$compileValue=TRUE
     }
     if(sub1$compileSize){
@@ -366,8 +328,6 @@ profile_subset<-function(varInfo,Exp){
       ExpInfo$compileSize2=TRUE
       ExpInfo$size1=sub1$size
       ExpInfo$size2=1
-    }else{
-      stop("undetermined size: ",Exp)
     }
   }
 
@@ -403,11 +363,12 @@ profile_return<-function(varInfo,Exp){
   return(ExpInfo)
 }
 
+#Exp=quote(gMatrix(1,10))
 profile_gMatrix<-function(varInfo,Exp){
   args=matchFunArg(gMatrix,Exp)
   args$nrow=parse(text=args$nrow)[[1]]
   args$ncol=parse(text=args$ncol)[[1]]
-  if(!is.numeric(args$nrow)){
+  if(!isNumeric(args$nrow)){
     varData=getVarInfo(varInfo,args$nrow)
     if(varData$compileValue==FALSE)
       stop("Unable to determine the size of the matrix:\n",deparse(Exp))
@@ -415,7 +376,7 @@ profile_gMatrix<-function(varInfo,Exp){
       stop("Illigel row argument:\n",deparse(Exp))
     args$nrow=Simplify(paste0(varData$value,"[1]"))
   }
-  if(!is.numeric(args$ncol)){
+  if(!isNumeric(args$ncol)){
     varData=getVarInfo(varInfo,args$ncol)
     if(varData$compileValue==FALSE)
       stop("Unable to determine the size of the matrix:\n",deparse(Exp))
@@ -451,12 +412,17 @@ profile_gNumber<-function(varInfo,Exp){
   return(ExpInfo)
 }
 
+#Exp=quote(subRef(A,tmp))
 profile_subRef<-function(varInfo,Exp){
   args=matchFunArg(subRef,Exp)
   if(getVarProperty(varInfo,args$variable,"dataType")!=T_matrix){
     stop("Only matrix is allow to create a reference: ",deparse(Exp))
   }
-  code_char=paste0(args$variable,"[",args$i,",",args$j,"]")
+  if(length(Exp)==3){
+    code_char=paste0(args$variable,"[",args$i,"]")
+  }else{
+    code_char=paste0(args$variable,"[",args$i,",",args$j,"]")
+  }
   code=parse(text=code_char)[[1]]
   refInfo=profile_subset(varInfo,code)
   refInfo$initialization=FALSE
@@ -488,35 +454,6 @@ profile_transpose<-function(varInfo,Exp){
 
 
 
-profile_resize<-function(varInfo,Exp){
-  args=matchFunArg(resize,Exp)
-  if(args$data==""||args$nrow==""||args$ncol=="")
-    stop("The arguments are incomplete:\n",deparse(Exp))
-  args$nrow=parse(text=args$nrow)[[1]]
-  args$ncol=parse(text=args$ncol)[[1]]
-  if(!is.numeric(args$nrow)){
-    varData=getVarInfo(varInfo,args$nrow)
-    if(varData$compileValue==FALSE)
-      stop("Unable to determine the size of the matrix:\n",deparse(Exp))
-    if(varData$size1!=1||varData$size2!=1)
-      stop("Illigel row argument:\n",deparse(Exp))
-    args$nrow=Simplify(paste0(varData$value,"[1]"))
-  }
-  if(!is.numeric(args$ncol)){
-    varData=getVarInfo(varInfo,args$ncol)
-    if(varData$compileValue==FALSE)
-      stop("Unable to determine the size of the matrix:\n",deparse(Exp))
-    if(varData$size1!=1||varData$size2!=1)
-      stop("Illigel column argument:\n",deparse(Exp))
-    args$ncol=Simplify(paste0(varData$value,"[1]"))
-  }
-  
-  ExpInfo=getVarInfo(varInfo,Exp[[1]])
-  ExpInfo$size1=args$nrow
-  ExpInfo$size2=args$ncol
-  ExpInfo$compileSize=TRUE
-  return(ExpInfo)
-}
 
 
 
