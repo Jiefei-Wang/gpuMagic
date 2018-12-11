@@ -13,21 +13,27 @@ CSimplify<-function(Exp,C=TRUE){
     code=gsub("gpu_cast_(float|double|uint|int|long|ulong)","\\(\\1\\)",code)
   return(code)
 }
+#' @export
 gpu_cast_float<-function(x){
   as.double(x)
 }
+#' @export
 gpu_cast_double<-function(x){
   as.double(x)
 }
+#' @export
 gpu_cast_uint<-function(x){
   trunc(x)
 }
+#' @export
 gpu_cast_int<-function(x){
   trunc(x)
 }
+#' @export
 gpu_cast_long<-function(x){
   trunc(x)
 }
+#' @export
 gpu_cast_ulong<-function(x){
   trunc(x)
 }
