@@ -157,5 +157,21 @@ test_that("for loop control code, if condition",{
 })
 
 
+test_that("Unnecessary bracket",{
+  testFunc<-function(ind,A){
+    {{
+    A[,ind]=A[,ind]+1
+    }}
+    return(A[,ind])
+  }
+  n=N_size
+  m=M_size
+  A=matrix(runif(n*m),n,m)
+  expect_warning(res_gpu<-gpuSapply(1:m,testFunc,A))
+  res_cpu=sapply(1:m,testFunc,A)
+  error=range(res_gpu-res_cpu)
+  expect_equal(sum(abs(error)),0)
+})
+
 
 

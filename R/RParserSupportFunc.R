@@ -20,6 +20,7 @@ createNewVar<-function(parsedExp){
     }
   }
   
+  
   if(parsedExp[[1]]=="["){
     subsetArgs=matchBracketFunc(parsedExp)
     if(is.null(subsetArgs$j)){
@@ -27,9 +28,9 @@ createNewVar<-function(parsedExp){
     }else{
       replaceCode=parse(text=paste0(varName,"=subRef(",parsedExp[[2]],",",subsetArgs$i,",",subsetArgs$j,")"))[[1]]
     }
+  }else{
+    replaceCode=parse(text=paste0(varName,"=",deparse(parsedExp)))[[1]]
   }
-  replaceCode=parse(text=paste0(varName,"=",deparse(parsedExp)))[[1]]
-  
   
   curCode=c(
     curCode,
@@ -83,15 +84,12 @@ cleanExp<-function(Exp){
 
 
 compressCodeChunk<-function(Exp){
-  code=c()
-  for(i in 1:length(Exp)){
-    if(i==1&&Exp[[i]]=="{")
-      next
-    code=c(code,deparse(Exp[[i]]))
+  if(is.symbol(Exp)||isNumeric(Exp)||Exp[[1]]!="{"){
+    Exp=as.call(c(as.symbol("{"),Exp))
+  }else{
+    Exp=as.call(Exp)
   }
-  code=c("{",code,"}")
-  code=paste0(code,collapse = "\n")
-  return(parse(text=code)[[1]])
+  return(Exp)
 }
 #convert a function to an expression
 funcToExp<-function(f){

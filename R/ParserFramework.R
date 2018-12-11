@@ -13,7 +13,7 @@ parserFrame<-function(parserFunc,checkFunc,updateFunc,codeMetaInfo,level=c("top"
   for(i in seq(length(parsedExp))){
     #if(i==3) stop()
     curExp=parsedExp[[i]]
-    if(curExp=="{"&&length(curExp)!=1){
+    if(curExp=="{"&&length(curExp)==1){
       next
       }
     if(!is.symbol(curExp)&&!isNumeric(curExp)){
@@ -78,6 +78,7 @@ parserFrame<-function(parserFunc,checkFunc,updateFunc,codeMetaInfo,level=c("top"
     #I don't know who will use double bracket
     #But I add it for making sure it works
     if(length(curExp)>1&&curExp[[1]]=="{"){
+      warning("Unnecessary { has been found: ",deparse(curExp))
       curLevel=c(level,"{")
       res=ProcessCodeChunk(parserFunc,checkFunc,updateFunc,
                            curCodeMetaInfo,curLevel,parsedExp,code,i,curExp)
@@ -85,6 +86,9 @@ parserFrame<-function(parserFunc,checkFunc,updateFunc,codeMetaInfo,level=c("top"
       parsedExp=res$parsedExp
       code=res$code
       curExp=res$ExpChunk
+      curExp[[1]]=NULL
+      code=c(code,curExp)
+      next
     }
     
     if(checkFunc(curExp)){
@@ -106,6 +110,7 @@ ProcessCodeChunk<-function(parserFunc,checkFunc,updateFunc,codeMetaInfo,curLevel
   if(is.symbol(ExpChunk)||isNumeric(ExpChunk)||ExpChunk[[1]]!="{"){
     ExpChunk=as.call(c(as.symbol("{"),ExpChunk))
   }
+  ExpChunk=compressCodeChunk(ExpChunk)
   curMetaInfo$Exp=ExpChunk
   curMetaInfo$renameList=NULL
   res=parserFrame(parserFunc,checkFunc,updateFunc,curMetaInfo,curLevel)
@@ -120,7 +125,6 @@ ProcessCodeChunk<-function(parserFunc,checkFunc,updateFunc,codeMetaInfo,curLevel
     parsedExp=res1$parsedExp
   if("code" %in% names(res1))
     code=res1$code
-  ExpChunk=res$Exp
   ExpChunk=compressCodeChunk(res$Exp)
   list(codeMetaInfo=codeMetaInfo,parsedExp=parsedExp,code=code,ExpChunk=ExpChunk)
 }
