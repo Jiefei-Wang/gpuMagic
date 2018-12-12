@@ -1,5 +1,7 @@
 library("microbenchmark")
-.gpuResourcesManager$setMaxMemLimit(7*10^8)
+setDevice(2)
+.gpuResourcesManager$setMaxMemLimit(90*10^8)
+
 testFunc_A<-function(ind,A,B){
   tmp=A[ind,]
   C=tmp%*%B
@@ -34,15 +36,16 @@ my_check<-function(values){
   all(sapply(values[-1], function(x) identical(values[[1]], x)))
 }
 
-
+gpuMagic.option$setDefaultFloat("float")
 microbenchmark(
   gpuSapply(1:n,testFunc_A,A,B),
   gpuSapply(1:n,testFunc_A_subRef,A,B),
   gpuSapply(1:k,testFunc_B,A,B),
   gpuSapply(1:k,testFunc_B_subRef,A,B),
-  check=my_check,
-  times = 10,
-  control=list(warmup=0))
+  A%*%B,
+  #check=my_check,
+  times = 1,
+  control=list(warmup=1))
 
 
 

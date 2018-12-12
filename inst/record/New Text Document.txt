@@ -1,0 +1,12 @@
+libxml
+
+AC_CHECK_LIB(|openCL|,,AC_ERROR(XXXX))
+
+
+Rhd5lib
+rtracklayer
+
+AC_SUBST
+makevars.in
+AC_OUTPUT
+@X@
