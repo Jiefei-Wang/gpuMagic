@@ -49,19 +49,4 @@ microbenchmark(
 
 
 
-#round1(12/9):
-#Unit: seconds
-#testFunc_A:         2.56
-#testFunc_A_subRef:  2.41
-#testFunc_B:         3.53
-#testFunc_B_subRef:  3.89
-
-#round2(12/9):
-#Unit: seconds
-#testFunc_A:         2.73
-#testFunc_A_subRef:  2.19
-#testFunc_B:         3.62
-#testFunc_B_subRef:  3.09
-
-
 
