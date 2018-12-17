@@ -4,8 +4,7 @@ gpuMagic.option<-local({
   
   e$default.float="double"
   e$default.int="int"
-  e$default.type="double"
-  
+  e$default.threadNum=64
  
   
   list(
@@ -13,6 +12,8 @@ gpuMagic.option<-local({
     getDefaultFloat=function(){e$default.float},
     getDefaultInt=function(){e$default.int},
     getDefaultIndexType=function(){GPUVar$default_index_type},
+    getDefaultThreadNum=function(){e$default.threadNum},
+    
     setDefaultFloat=function(type){
       checkTypeSupport(type)
       e$default.float=type
@@ -24,6 +25,12 @@ gpuMagic.option<-local({
     setDefaultIndexType=function(type){
       checkTypeSupport(type)
       GPUVar$default_index_type=type
+    },
+    setDefaultThreadNum=function(num){
+      if(is.numeric(num))
+        e$default.threadNum=num
+      else
+        stop("The function argument should be a numeric value")
     }
   )
 })

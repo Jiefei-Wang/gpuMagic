@@ -306,59 +306,352 @@ C_matMul1<-function(varInfo,Exp){
   code
 }
 
-#Store the row of A
+
+#Exp=quote({C=tmp%*%B})[[2]]
 C_matMul_right<-function(varInfo,Exp){
-    leftVar=Exp[[2]]
-    rightExp=Exp[[3]]
-    rightVar1=rightExp[[2]]
-    rightVar2=rightExp[[3]]
-    defaultFloat=gpuMagic.option$getDefaultFloat()
-    defaultIndex=GPUVar$default_index_type
-    privateSize=GPUVar$private_size
-    
-    leftSub=R_expression_sub(varInfo,leftVar,"gpu_i","gpu_j",i_C=T,j_C=T,base=0)
-    code_right1_private=R_expression_sub(varInfo,rightVar1,"gpu_i",paste0("gpu_k+gpu_t*",privateSize),i_C=T,j_C=T,base=0)
-    code_right2_multi=R_expression_sub(varInfo,rightVar2,paste0("gpu_k+gpu_t*",privateSize),"gpu_j",i_C=T,j_C=T,base=0)
-    code=c(
-      "{",
-      paste0(defaultIndex," A_row=",R_nrow(varInfo,rightVar1),";"),
-      paste0(defaultIndex," A_col=",R_ncol(varInfo,rightVar1),";"),
-      paste0(defaultIndex," B_col=",R_ncol(varInfo,rightVar2),";"),
-      paste0(defaultFloat," gpu_private_spcae","[",privateSize,"];"),
-      paste0(defaultIndex," gpu_loopNum=ceil((",defaultFloat,")A_col/",privateSize,");"),
-      paste0(defaultIndex," gpu_start=0;"),
-      paste0(defaultIndex," gpu_end=0;"),
-      paste0(defaultIndex, " gpu_length=0;"),
-      paste0("for(",defaultIndex," gpu_t=0;gpu_t<gpu_loopNum;gpu_t++){"),
-      "gpu_start=gpu_end;",
-      paste0("gpu_end=gpu_end+",privateSize,";"),
-      paste0("if(gpu_end>A_col) gpu_end=A_col;"),
-      "gpu_length=gpu_end-gpu_start;",
-      paste0("for(",defaultIndex," gpu_i=0;gpu_i<A_row;gpu_i++){"),
-      paste0("for(",defaultIndex," gpu_k=0;gpu_k<gpu_length;gpu_k++){"),
-      code_right1_private$extCode,
-      paste0("gpu_private_spcae[gpu_k]=",code_right1_private$value,";"),
-      "}",
-      paste0("for(",defaultIndex," gpu_j=0;gpu_j<B_col;gpu_j++){"),
-      paste0(defaultFloat," gpu_tmp=0;"),
-      paste0("for(",defaultIndex," gpu_k=0;gpu_k<gpu_length;gpu_k++){"),
-      code_right2_multi$extCode,
-      paste0("gpu_tmp=gpu_tmp+gpu_private_spcae[gpu_k]*",
-             code_right2_multi$value,";"),
-      "}",
-      "if(gpu_t==0){",
-      leftSub$extCode,
-      paste0(leftSub$value,"=gpu_tmp;"),
-      "}else{",
-      leftSub$extCode,
-      paste0(leftSub$value,"=",leftSub$value,"+gpu_tmp;"),
-      "}",
-      "}",
-      "}",
-      "}",
-      "}"
-    )
+  leftVar=Exp[[2]]
+  rightExp=Exp[[3]]
+  rightVar1=rightExp[[2]]
+  rightVar2=rightExp[[3]]
+  
+  
+  privateSize=GPUVar$private_size
+  vector_size=8
+  vector_length=privateSize/vector_size
+  defaultFloat=gpuMagic.option$getDefaultFloat()
+  defaultFloatV=paste0(gpuMagic.option$getDefaultFloat(),vector_size)
+  defaultIndex=GPUVar$default_index_type
+  
+  #define macro for the matrix dimension
+  dimMacroDef=c(
+    paste0("gpu_A_row ",R_nrow(varInfo,rightVar1)),
+    paste0("gpu_A_col ",R_ncol(varInfo,rightVar1)),
+    paste0("gpu_B_row ",R_nrow(varInfo,rightVar2)),
+    paste0("gpu_B_col ",R_ncol(varInfo,rightVar2)),
+    paste0("gpu_private_size ",privateSize),
+    paste0("gpu_vector_size ",vector_size),
+    paste0("gpu_vector_len ",vector_length)
+  )
+  dimMacroDef=paste0("#define ",dimMacroDef)
+  
+  dimMacroUndef=c("gpu_A_row",
+                  "gpu_A_col",
+                  "gpu_B_row",
+                  "gpu_B_col",
+                  "gpu_private_size",
+                  "gpu_vector_size",
+                  "gpu_vector_len"
+  )
+  dimMacroUndef=paste0("#undef ",dimMacroUndef)
+  
+  #support variable definition
+  supportVarDef=c(
+    paste0(defaultFloat," gpu_private_spcae[gpu_private_size];"),
+    paste0(defaultFloatV,"* gpu_private_spcae_vector=gpu_private_spcae;"),
+    paste0(defaultIndex," gpu_loopNum=ceil((",defaultFloat,")gpu_A_col/gpu_private_size);"),
+    paste0(defaultIndex," gpu_start=0;"),
+    paste0(defaultIndex," gpu_end=0;"),
+    paste0(defaultIndex, " gpu_length=0;")
+  )
+  #C=A%*%B
+  #optimize the left matrix A
+  A_opt_code=C_matMul_right_A(varInfo,Exp)
+  #optimize the right matrix B
+  B_opt_code=C_matMul_right_B(varInfo,Exp)
+  code=c(
+    "{",
+    dimMacroDef,
+    supportVarDef,
+    paste0("if(",R_nrow(varInfo,rightVar1),">",R_ncol(varInfo,rightVar2),"){"),
+    B_opt_code,
+    "}else{",
+    A_opt_code,
+    "}",
+    dimMacroUndef,
+    "}"
+  )
+  code
 }
+
+#Store the row of A
+C_matMul_right_A<-function(varInfo,Exp){
+  leftVar=Exp[[2]]
+  rightExp=Exp[[3]]
+  rightVar1=rightExp[[2]]
+  rightVar2=rightExp[[3]]
+  
+  privateSize=GPUVar$private_size
+  vector_size=8
+  vector_length=privateSize/vector_size
+  defaultFloat=gpuMagic.option$getDefaultFloat()
+  defaultFloatV=paste0(gpuMagic.option$getDefaultFloat(),vector_size)
+  defaultIndex=GPUVar$default_index_type
+  
+  #private assignment
+  A_sub_private_tmp=R_expression_sub(varInfo,rightVar1,"gpu_i",paste0("gpu_start+gpu_k"),i_C=T,j_C=T,base=0,opt = T)
+  A_row_var=GPUVar$getTmpVar()
+  A_row_code=paste(defaultIndex," ",A_row_var,"=",A_sub_private_tmp$rowOffset,";")
+  A_sub_private=R_expression_sub(varInfo,rightVar1,"gpu_i",paste0("gpu_start+gpu_k"),i_C=T,j_C=T,
+                                 base=0,optCode = list(rowVar=A_row_var,colVar=A_sub_private_tmp$colOffset))
+  private_assign=c(
+    "//Read a piece of row of A into the private memory",
+    A_row_code,
+    paste0("for(",defaultIndex," gpu_k=0;gpu_k<gpu_length;gpu_k++){"),
+    A_sub_private$extCode,
+    paste0("gpu_private_spcae[gpu_k]=",A_sub_private$value,";"),
+    "}"
+  )
+  
+  #matrix multiplication in scalar format
+  B_multi_sub_tmp=R_expression_sub(varInfo,rightVar2,"gpu_k+gpu_start","gpu_j",
+                                   i_C=T,j_C=T,base=0,opt = T)
+  B_col_var=GPUVar$getTmpVar()
+  B_col_code=paste(defaultIndex," ",B_col_var,"=",B_multi_sub_tmp$colOffset,";")
+  B_multi_sub=R_expression_sub(varInfo,rightVar2,"gpu_k+gpu_start","gpu_j",
+                               i_C=T,j_C=T,base=0,
+                               optCode = list(rowVar=B_multi_sub_tmp$rowOffset,colVar=B_col_var))
+  
+  matrixMultiScalar=c(
+    "//Element operation to compute the matrix multiplication",
+    paste0(defaultFloat," gpu_tmp=0;"),
+    B_col_code,
+    paste0("for(",defaultIndex," gpu_k=0;gpu_k<gpu_length;gpu_k++){"),
+    B_multi_sub$extCode,
+    paste0("gpu_tmp=gpu_tmp+gpu_private_spcae[gpu_k]*",
+           B_multi_sub$value,";"),
+    "}"
+  )
+  
+  #result writing back in scalar format
+  #result assignment
+  res_leftSub=R_expression_sub(varInfo,leftVar,"gpu_i","gpu_j",i_C=T,j_C=T,base=0)
+  
+  writeBackResScalar=c(
+    "//Write the result back to the matrix",
+    "if(gpu_t==0){",
+    res_leftSub$extCode,
+    paste0(res_leftSub$value,"=gpu_tmp;"),
+    "}else{",
+    res_leftSub$extCode,
+    paste0(res_leftSub$value,"=",res_leftSub$value,"+gpu_tmp;"),
+    "}"
+  )
+  
+  #B_vector
+  B_code_tmp=R_expression_sub(varInfo,rightVar2,paste0("gpu_k*gpu_vector_size+gpu_start"),"gpu_j",
+                              i_C=T,j_C=T,base=0,opt=T)
+  B_col_var=GPUVar$getTmpVar()
+  B_col_code=paste(defaultIndex," ",B_col_var,"=",B_code_tmp$colOffset,";")
+  
+  B_vec=c()
+  B_ext=c()
+  for(i in 1:vector_size){
+    B_code_tmp=R_expression_sub(varInfo,rightVar2,paste0("gpu_k*gpu_vector_size+gpu_start+",i-1),"gpu_j",
+                                i_C=T,j_C=T,base=0,opt=T)
+    B_code=R_expression_sub(varInfo,rightVar2,paste0("gpu_k*gpu_vector_size+gpu_start+",i-1),"gpu_j",
+                            i_C=T,j_C=T,base=0,
+                            optCode=list(rowVar=B_code_tmp$rowOffset,colVar=B_col_var))
+    B_vec=c(B_vec,B_code$value)
+    B_ext=c(B_ext,B_code$extCode)
+  }
+  B_vector_code=paste0(defaultFloatV," gpu_B_vector=(",defaultFloatV,")(",
+                       paste0(B_vec,collapse = ","),");")
+  
+  
+  #matrix multiplication in vector format
+  matrixMultiVector=c(
+    paste0(defaultFloatV," gpu_tmp=0;"),
+    B_col_code,
+    paste0("for(",defaultIndex," gpu_k=0;gpu_k<gpu_vector_len;gpu_k++){"),
+    B_ext,
+    B_vector_code,
+    paste0("gpu_tmp=gpu_tmp+gpu_private_spcae_vector[gpu_k]*gpu_B_vector;"),
+    "}"
+  )
+  
+  
+  
+  #temp vector Sum
+  temp_vector_sum=paste0(paste0("gpu_tmp.s",0:(vector_size-1)),collapse = "+")
+  
+  #result writing back in vector format
+  writeBackResVector=c(
+    "//Write the result back to the matrix",
+    "if(gpu_t==0){",
+    res_leftSub$extCode,
+    paste0(res_leftSub$value,"=",temp_vector_sum,";"),
+    "}else{",
+    res_leftSub$extCode,
+    paste0(res_leftSub$value,"=",res_leftSub$value,"+",temp_vector_sum,";"),
+    "}"
+  )
+  
+  
+  code_right2_multi=R_expression_sub(varInfo,rightVar2,paste0("gpu_k+gpu_t*",privateSize),"gpu_j",i_C=T,j_C=T,base=0)
+  code=c(
+    paste0("for(",defaultIndex," gpu_t=0;gpu_t<gpu_loopNum;gpu_t++){"),
+    "gpu_start=gpu_end;",
+    paste0("gpu_end=gpu_end+gpu_private_size;"),
+    paste0("if(gpu_end>gpu_A_col) gpu_end=gpu_A_col;"),
+    "gpu_length=gpu_end-gpu_start;",
+    paste0("for(",defaultIndex," gpu_i=0;gpu_i<gpu_A_row;gpu_i++){"),
+    private_assign,
+    paste0("if(gpu_length!=gpu_private_size){"),
+    paste0("for(",defaultIndex," gpu_j=0;gpu_j<gpu_B_col;gpu_j++){"),
+    matrixMultiScalar,
+    writeBackResScalar,
+    "}",
+    "}else{",
+    paste0("for(",defaultIndex," gpu_j=0;gpu_j<gpu_B_col;gpu_j++){"),
+    matrixMultiVector,
+    writeBackResVector,
+    "}",
+    "}",
+    "}",
+    "}"
+  )
+  code
+}
+
+
+#Store the column of B
+C_matMul_right_B<-function(varInfo,Exp){
+  leftVar=Exp[[2]]
+  rightExp=Exp[[3]]
+  rightVar1=rightExp[[2]]
+  rightVar2=rightExp[[3]]
+  
+  privateSize=GPUVar$private_size
+  vector_size=8
+  vector_length=privateSize/vector_size
+  defaultFloat=gpuMagic.option$getDefaultFloat()
+  defaultFloatV=paste0(gpuMagic.option$getDefaultFloat(),vector_size)
+  defaultIndex=GPUVar$default_index_type
+  
+  #private assignment
+  B_sub_private_tmp=R_expression_sub(varInfo,rightVar2,paste0("gpu_start+gpu_k"),"gpu_j",i_C=T,j_C=T,base=0,opt = T)
+  B_col_var=GPUVar$getTmpVar()
+  B_col_code=paste(defaultIndex," ",B_col_var,"=",B_sub_private_tmp$colOffset,";")
+  B_sub_private=R_expression_sub(varInfo,rightVar2,paste0("gpu_start+gpu_k"),"gpu_j",i_C=T,j_C=T,
+                                 base=0,optCode = list(rowVar=B_sub_private_tmp$rowOffset,colVar=B_col_var))
+  private_assign=c(
+    "//Read a piece of column of B into the private memory",
+    B_col_code,
+    paste0("for(",defaultIndex," gpu_k=0;gpu_k<gpu_length;gpu_k++){"),
+    B_sub_private$extCode,
+    paste0("gpu_private_spcae[gpu_k]=",B_sub_private$value,";"),
+    "}"
+  )
+  
+  #matrix multiplication in scalar format
+  A_multi_sub_tmp=R_expression_sub(varInfo,rightVar1,"gpu_i","gpu_k+gpu_start",
+                                   i_C=T,j_C=T,base=0,opt = T)
+  A_row_var=GPUVar$getTmpVar()
+  A_row_code=paste(defaultIndex," ",A_row_var,"=",A_multi_sub_tmp$rowOffset,";")
+  A_multi_sub=R_expression_sub(varInfo,rightVar1,"gpu_i","gpu_k+gpu_start",
+                               i_C=T,j_C=T,base=0,
+                               optCode = list(rowVar=A_row_var,colVar=A_multi_sub_tmp$colOffset))
+  
+  matrixMultiScalar=c(
+    "//Element operation to compute the matrix multiplication",
+    paste0(defaultFloat," gpu_tmp=0;"),
+    A_row_code,
+    paste0("for(",defaultIndex," gpu_k=0;gpu_k<gpu_length;gpu_k++){"),
+    A_multi_sub$extCode,
+    paste0("gpu_tmp=gpu_tmp+gpu_private_spcae[gpu_k]*",
+           A_multi_sub$value,";"),
+    "}"
+  )
+  
+  #result writing back in scalar format
+  #result assignment
+  res_leftSub=R_expression_sub(varInfo,leftVar,"gpu_i","gpu_j",i_C=T,j_C=T,base=0)
+  
+  writeBackResScalar=c(
+    "//Write the result back to the matrix",
+    "if(gpu_t==0){",
+    res_leftSub$extCode,
+    paste0(res_leftSub$value,"=gpu_tmp;"),
+    "}else{",
+    res_leftSub$extCode,
+    paste0(res_leftSub$value,"=",res_leftSub$value,"+gpu_tmp;"),
+    "}"
+  )
+  
+  #A_vector
+  A_code_tmp=R_expression_sub(varInfo,rightVar1,"gpu_i",paste0("gpu_k*gpu_vector_size+gpu_start"),
+                              i_C=T,j_C=T,base=0,opt=T)
+  A_row_var=GPUVar$getTmpVar()
+  A_row_code=paste(defaultIndex," ",A_row_var,"=",A_code_tmp$rowOffset,";")
+  
+  A_vec=c()
+  A_ext=c()
+  for(j in 1:vector_size){
+    A_code_tmp=R_expression_sub(varInfo,rightVar1,"gpu_i",paste0("gpu_k*gpu_vector_size+gpu_start+",j-1),
+                                i_C=T,j_C=T,base=0,opt=T)
+    A_code=R_expression_sub(varInfo,rightVar1,"gpu_i",paste0("gpu_k*gpu_vector_size+gpu_start+",j-1),
+                            i_C=T,j_C=T,base=0,
+                            optCode=list(rowVar=A_row_var,colVar=A_code_tmp$colOffset))
+    A_vec=c(A_vec,A_code$value)
+    A_ext=c(A_ext,A_code$extCode)
+  }
+  A_vector_code=paste0(defaultFloatV," gpu_A_vector=(",defaultFloatV,")(",
+                       paste0(A_vec,collapse = ","),");")
+  
+  
+  #matrix multiplication in vector format
+  matrixMultiVector=c(
+    paste0(defaultFloatV," gpu_tmp=0;"),
+    A_row_code,
+    paste0("for(",defaultIndex," gpu_k=0;gpu_k<gpu_vector_len;gpu_k++){"),
+    A_ext,
+    A_vector_code,
+    paste0("gpu_tmp=gpu_tmp+gpu_private_spcae_vector[gpu_k]*gpu_A_vector;"),
+    "}"
+  )
+  
+  
+  
+  #temp vector Sum
+  temp_vector_sum=paste0(paste0("gpu_tmp.s",0:(vector_size-1)),collapse = "+")
+  
+  #result writing back in vector format
+  writeBackResVector=c(
+    "//Write the result back to the matrix",
+    "if(gpu_t==0){",
+    res_leftSub$extCode,
+    paste0(res_leftSub$value,"=",temp_vector_sum,";"),
+    "}else{",
+    res_leftSub$extCode,
+    paste0(res_leftSub$value,"=",res_leftSub$value,"+",temp_vector_sum,";"),
+    "}"
+  )
+  
+  code=c(
+    paste0("for(",defaultIndex," gpu_t=0;gpu_t<gpu_loopNum;gpu_t++){"),
+    "gpu_start=gpu_end;",
+    paste0("gpu_end=gpu_end+gpu_private_size;"),
+    paste0("if(gpu_end>gpu_A_col) gpu_end=gpu_A_col;"),
+    "gpu_length=gpu_end-gpu_start;",
+    paste0("for(",defaultIndex," gpu_j=0;gpu_j<gpu_B_col;gpu_j++){"),
+    private_assign,
+    paste0("if(gpu_length!=gpu_private_size){"),
+    paste0("for(",defaultIndex," gpu_i=0;gpu_i<gpu_A_row;gpu_i++){"),
+    matrixMultiScalar,
+    writeBackResScalar,
+    "}",
+    "}else{",
+    paste0("for(",defaultIndex," gpu_i=0;gpu_i<gpu_A_row;gpu_i++){"),
+    matrixMultiVector,
+    writeBackResVector,
+    "}",
+    "}",
+    "}",
+    "}"
+  )
+  code
+}
+
 
 
 

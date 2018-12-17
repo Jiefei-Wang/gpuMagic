@@ -191,7 +191,7 @@ checkVarType<-function(leftInfo,rightInfo){
     return(list(needReassign=FALSE,needRetype=TRUE,valueUpdate=TRUE))
   if(leftInfo$value!=rightInfo$value||leftInfo$compileValue!=rightInfo$compileValue)
     return(list(needReassign=FALSE,needRetype=FALSE,valueUpdate=TRUE))
-  
+  return(list(needReassign=FALSE,needRetype=FALSE,valueUpdate=FALSE))
 }
 
 #Determine which type can preserve the information 

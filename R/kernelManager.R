@@ -42,7 +42,9 @@
     lAUTO=paste0("#define lAuto",1:length(dataType)," local ",dataType,"\n",collapse = "")
     pAUTO=paste0("#define auto",1:length(dataType)," ",dataType,"\n",collapse = "")
     
-    src=paste0(gAUTO,lAUTO,pAUTO,src)
+    AUTOVector=paste0("#define auto",1:length(dataType),"_v4 ",dataType,"4","\n",collapse = "")
+    
+    src=paste0(gAUTO,lAUTO,pAUTO,AUTOVector,src)
     sig=c(sig,paste0(dataType,collapse = ""))
   }
   

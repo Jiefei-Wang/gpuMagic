@@ -51,8 +51,13 @@ gpuSapply<-function(X,FUN,...,.macroParms=NULL,.options=gpuSapply.getOption()){
   
   
   if(optimization$thread.number==TRUE){
-    .globalThreadNum=ceiling(length(X)/64)*64
-    .options$kernelOption$localThreadNum=64
+    if(.options$kernelOption$localThreadNum=="Auto")
+      kernelNum=gpuMagic.option$getDefaultThreadNum()
+    else
+      kernelNum=.options$kernelOption$localThreadNum
+    
+    .globalThreadNum=ceiling(length(X)/kernelNum)*kernelNum
+    .options$kernelOption$localThreadNum=kernelNum
   }else{
     .globalThreadNum=length(X)
   }

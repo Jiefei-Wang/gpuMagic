@@ -236,7 +236,8 @@ R_getVarSub<-function(varInfo,var,i,j=1,opt=FALSE,optCode=list(),base=1){
     else
       colOffset=paste0("(",sub2,")*",size1)
   }
-  
+  rowOffset=CSimplify(rowOffset,TRUE)
+  colOffset=CSimplify(colOffset,TRUE)
   if(!is.null(optCode[["rowVar"]]))
     rowOffset=optCode[["rowVar"]]
   if(!is.null(optCode[["colVar"]]))

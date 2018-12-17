@@ -225,12 +225,19 @@ completeGPUcode<-function(GPUcode){
     code=c(code,curCode)
   }
   
+  
+  
   code=paste0(code,collapse = ",\n")
   
   
   
   #add the kernel function definition
   code=paste0(code,"){\n",paste0(GPUcode$gpu_code,collapse = "\n"),"}")
+  
+  #Add the double vector support if appliable
+  if(gpuMagic.option$getDefaultFloat()=="double")
+    code=paste0("#pragma OPENCL EXTENSION cl_khr_fp64：enable\n",code)
+  
   GPUcode$gpu_code=code
   GPUcode$kernel=kernelName
   

@@ -4,26 +4,23 @@ library("tictoc")
 
 
 getDeviceList()
-setDevice(2)
+#setDevice(0)
 #gpuMagic.option$setDefaultFloat("double")
 testFunc<-function(ind,A,B){
-  tmp=A[ind,]
-  C=tmp%*%B
-  A[a,]=A[b,]
-  tmp=A[b,]
-  A[a,]=tmp
-  
+  #tmp=A[ind,]
+  tmp=subRef(B,,ind)
+  C=A%*%tmp
   #break
   #next
-  #return(C)
+  return(C)
 }
 
 n=1024
-m=100
+m=10000
 k=1024
 
 A=matrix(runif(n*m),n,m)
-B=matrix(runif(m*k),m,k)
+B=matrix(runif(k*m),m,k)
 
 options=gpuSapply.getOption()
 #options$verbose=F
@@ -31,26 +28,31 @@ options=gpuSapply.getOption()
 #fileName="inst/script/debugCode.txt"
 #options$debugCode=readChar(fileName,file.info(fileName)$size)
 tic()
-res_gpu=gpuSapply(1:n,testFunc,A,B,.options = options)
+res_gpu=gpuSapply(1:k,testFunc,A,B,.options = options)
 toc()
 tic()
 res_internel=A%*%B
 toc()
+range(res_internel-res_gpu)
+
+range(res_internel-t(res_gpu))
+
+range(res_cpu-res_gpu)
 
 microbenchmark(gpuSapply(1:n,testFunc,A,B),times = 10)
 
-
-range(res_internel-t(res_gpu))
-range(res_cpu-res_gpu)
 
 code=compileGPUCode(1:m,testFunc,A,B)
 code$Exp
 cat(code$gpu_code)
 
-file="inst/script/debugCode.txt"
+#file="inst/script/debugCode.txt"
 src=readChar(file, file.info(file)$size)
-opt=gpuSapply.getOption()
-opt$debugCode=src
+options$sapplyOption$debugCode=src
+options$verbose=T
+res_gpu=gpuSapply(1:n,testFunc,A,B,.options = options)
+
+
 
 tic()
 for(i in 1:10)
