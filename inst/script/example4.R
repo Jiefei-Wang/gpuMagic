@@ -1,23 +1,3 @@
-testFunc<-function(ind,A,B){
-  #C=A[ind,]%*%B
-  C=subRef(A,ind,)%*%B
-  return(C)
-}
-n=2000
-m=10000
-k=2000
-A=matrix(runif(n*m),n,m)
-B=matrix(runif(m*k),m,k)
-tic()
-res_gpu=gpuSapply(1:n,testFunc,A,B)
-toc()
-tic()
-res_cpu=A%*%B
-toc()
-
-range(res_cpu-t(res_gpu))
-
-
 library(tictoc)
 
 testFunc2<-function(col_ind,A){
@@ -46,7 +26,7 @@ n=10000
 m=10000
 A=matrix(runif(max=1000,n*m),n,m)*10
 
-#setDevice(1)
+#setDevice(3)
 #gpuMagic.option$setDefaultFloat("float")
 tic()
 res_gpu=gpuSapply(1:m,testFunc2,A)

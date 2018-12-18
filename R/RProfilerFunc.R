@@ -3,7 +3,7 @@ profile_symbol_left<-function(level,codeMetaInfo,varInfo,curExp){
   rightExp=curExp[[3]]
   leftVar_char=deparse(leftExp)
   
-  #Determine if the right expression is explicitly define a variable
+  #Determine if the right expression explicitly define a variable
   varDefine=FALSE
   if(is.call(rightExp)){
     varDefine=deparse(rightExp[[1]])%in% .profileVarDefine
