@@ -18,7 +18,7 @@ toc()
 range(res_cpu-t(res_gpu))
 
 
-
+library(tictoc)
 
 testFunc2<-function(col_ind,A){
   largest=0
@@ -38,6 +38,7 @@ testFunc2<-function(col_ind,A){
         second_largest_ind=i
       }
     }
+   
   }
   return(second_largest_ind)
 }
@@ -45,8 +46,8 @@ n=10000
 m=10000
 A=matrix(runif(max=1000,n*m),n,m)*10
 
-setDevice(1)
-
+#setDevice(1)
+#gpuMagic.option$setDefaultFloat("float")
 tic()
 res_gpu=gpuSapply(1:m,testFunc2,A)
 toc()
@@ -62,30 +63,5 @@ range(res_cpu-res_gpu)
 
 
 
-gpuMagic.option$setDefaultFloat("float")
-tic()
-res_gpu=gpuSapply(1:m,testFunc2,A)
-toc()
-gpuMagic.option$setDefaultFloat("double")
 
 
-
-
-code=compileGPUCode(1:m,testFunc2,A)
-cat(code$gpu_code)
-
-
-
-
-
-
-
-
-
-
-
-min(which(res_cpu-res_gpu!=0))
-col=1679
-A[res_cpu[col],col]
-A[res_gpu[col],col]
-max(A[,col])
