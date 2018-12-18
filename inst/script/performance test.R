@@ -1,6 +1,6 @@
 library("microbenchmark")
 getDeviceList()
-#setDevice(2)
+#setDevice(1)
 .gpuResourcesManager$setMaxMemLimit(7*10^8)
 
 testFunc_A<-function(ind,A,B){
@@ -39,7 +39,7 @@ my_check<-function(values){
 
 opt=gpuSapply.getOption()
 #opt$kernelOption$localThreadNum=128
-gpuMagic.option$setDefaultFloat("float")
+#gpuMagic.option$setDefaultFloat("float")
 microbenchmark(
   gpuSapply(1:n,testFunc_A,A,B,.options = opt),
   gpuSapply(1:n,testFunc_A_subRef,A,B,.options = opt),
@@ -47,6 +47,7 @@ microbenchmark(
   gpuSapply(1:k,testFunc_B_subRef,A,B,.options = opt),
   #A%*%B,
   #check=my_check,
-  times = 10,
+  times = 1,
   control=list(warmup=1))
+
 
