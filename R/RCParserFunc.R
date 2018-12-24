@@ -8,7 +8,7 @@ C_assignment_dispatch<-function(varInfo,Exp){
   
   #If the left expression is a function call
   #The right expression must be a symbol
-  if(is.call(leftExp)){
+  if(is.call(leftExp)&&!isNumeric(leftExp)){
     funcName=deparse(leftExp[[1]])
     funcName=paste0(funcName,"<-")
     func=.cFuncs[[funcName]]
@@ -21,7 +21,7 @@ C_assignment_dispatch<-function(varInfo,Exp){
   }
   #If the right expression is a function call
   #The left expression must be a symbol
-  if(is.call(rightExp)){
+  if(is.call(rightExp)&&!isNumeric(rightExp)){
     funcName=deparse(rightExp[[1]])
     funcName=paste0("<-",funcName)
     func=.cFuncs[[funcName]]
@@ -32,10 +32,7 @@ C_assignment_dispatch<-function(varInfo,Exp){
       stop("Unsupported function: ",deparse(Exp))
     }
   }
-  #If the left expression is not a symbol, throw an error
-  if(!is.symbol(leftExp)){
-    stop("Unsupported function: ",deparse(Exp))
-  }
+  
   #call the assignment function
   #Both side should be either a symbol or a number
   code=C_assignment_symbols(varInfo,Exp)
@@ -268,43 +265,52 @@ C_setVersion<-function(varInfo,Exp){
   return("")
 }
 
-C_matMul1<-function(varInfo,Exp){
+
+C_seq_right<-function(varInfo,Exp){
+  seq<-function(from,to,by=1){}
   leftVar=Exp[[2]]
   rightExp=Exp[[3]]
-  rightVar1=rightExp[[2]]
-  rightVar2=rightExp[[3]]
-
-  code=c(
-    "{",
-    paste0(gpuMagic.option$getDefaultFloat()," gpu_matMul_tmp;"),
-    paste0("for(",GPUVar$default_index_type,
-           " gpu_matMul_i=1;gpu_matMul_i<=",R_nrow(varInfo,rightVar1),
-           ";gpu_matMul_i++){"),
-    paste0("for(",GPUVar$default_index_type,
-           " gpu_matMul_j=1;gpu_matMul_j<=",R_ncol(varInfo,rightVar2),
-           ";gpu_matMul_j++){"),
-    paste0("gpu_matMul_tmp=0;"),
-    paste0("for(",GPUVar$default_index_type,
-           " gpu_matMul_k=1;gpu_matMul_k<=",R_ncol(varInfo,rightVar1),
-           ";gpu_matMul_k++){"),
-    paste0("gpu_matMul_tmp=gpu_matMul_tmp+",
-           R_expression_sub(varInfo,rightVar1,"gpu_matMul_i","gpu_matMul_k",i_C=TRUE,j_C=TRUE),
-           "*",
-           R_expression_sub(varInfo,rightVar2,"gpu_matMul_k","gpu_matMul_j",i_C=TRUE,j_C=TRUE),
-           ";"),
-    "}",
-    paste0(R_expression_sub(varInfo,leftVar,"gpu_matMul_i","gpu_matMul_j",i_C=TRUE,j_C=TRUE),
-           "=",
-           "gpu_matMul_tmp;"),
-    "}",
-    "}",
-    "}"
-  )
+  
+  leftInfo=getVarInfo(varInfo,leftVar)
+  if(leftInfo$isSeq)
+    return("")
+  
+  args=matchFunArg(seq,rightExp)
+  size1=R_nrow(varInfo,leftVar)
+  subsetCode=R_oneIndex_exp_sub(varInfo,leftVar,k="gpu_seq_i",k_C =T,base=0)
   
   
+  from=args$from
+  by=args$by
+    
+  from_C=R_oneIndex_exp_sub(varInfo,from,k=1,k_C=TRUE)
+  by_C=R_oneIndex_exp_sub(varInfo,by,k=1,k_C=TRUE)
   
+  rightExtCode=c(from_C$extCode,by_C$extCode)
+  rightValue=Simplify(paste0(from_C$value,"+","(gpu_seq_i-1)*",by_C$value))
+  
+  code=NULL
+  if(!getVarProperty(varInfo,leftVar,"isRef",version=0)){
+    code=c(
+      paste0("for(",GPUVar$default_index_type,
+             " gpu_seq_i=1;gpu_seq_i<=",size1,
+             ";gpu_seq_i++){"),
+      subsetCode$extCode,
+      paste0(subsetCode$value,"=",rightValue,";"),
+      "}"
+    )
+  }
   code
 }
+C_oneStepSeq_right<-function(varInfo,Exp){
+  leftVar=Exp[[2]]
+  rightExp=Exp[[3]]
+  from=rightExp[[2]]
+  to=rightExp[[3]]
+  code=parse(text=paste0(deparse(leftVar),"=seq(",deparse(from),",",deparse(to),")"))[[1]]
+  C_seq_right(varInfo,code)
+  }
+
 
 
 #Exp=quote({C=tmp%*%B})[[2]]

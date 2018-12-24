@@ -1,7 +1,6 @@
 #' @include pkgFunc.R
 #Functions:
-#1.rename the loop variable
-#2.Profile the function argument and loop variable
+#1.Profile the function argument
 
 RProfile1<-function(codeMetaInfo2){
   profileMeta1=codeMetaInfo2
@@ -18,16 +17,8 @@ RProfile1<-function(codeMetaInfo2){
   gpuIndex$precisionType=GPUVar$default_index_type
   gpuIndex$initialization=FALSE
   varInfo=addVarInfo(varInfo,gpuIndex)
-  profileMeta1$varInfo=varInfo
   
-  #Rename the loop var
-  parsedExp=profileMeta1$Exp
-  res=renameLoopVar(parsedExp)
-  parsedExp=res$parsedExp
-  #Profile the loop variable
-  newVarInfo=profileLoopVar(varInfo,parsedExp)
-  profileMeta1$varInfo=newVarInfo
-  profileMeta1$Exp=parsedExp
+  profileMeta1$varInfo=varInfo
   
   profileMeta1
 }
@@ -68,7 +59,7 @@ RProfile2_parserFunc<-function(level,codeMetaInfo,curExp){
       if(getVarProperty(varInfo,curVar,"constVal")){
         stop("The const value cannot be changed",deparse(curExp))
       }
-      if(getVarProperty(varInfo,curVar,"lazyRef")){
+      if(getVarProperty(varInfo,curVar,"isRef")){
         stop("Cannot transpose the laze expression",deparse(curExp))
       }
       
@@ -104,7 +95,7 @@ RProfile2_parserFunc<-function(level,codeMetaInfo,curExp){
     leftExp=curExp[[2]]
     if(is.symbol(leftExp)){
       #profile the left symbol
-      res=profile_symbol_left(level,codeMetaInfo,varInfo,curExp)
+      res=profiler_assignment_dispatch(level,varInfo,curExp)
       for(i in names(res)){
         result[[i]]=res[[i]]
       }
@@ -142,6 +133,6 @@ RProfile2_checkFunc<-function(curExp){
 RProfile2_updateFunc<-function(type,level,codeMetaInfo,parsedExp,code,i,res){
   result=general_updateFunc(codeMetaInfo,parsedExp,code)
   result$codeMetaInfo$varInfo=res$varInfo
-  result$codeMetaInfo$errorCheck=res$errorCheck
+  #result$codeMetaInfo$errorCheck=res$errorCheck
   result
 }

@@ -23,18 +23,23 @@ DEBUG=TRUE
 
 
 #' @include RProfilerFunc.R
-.profileVarDefine=c("gMatrix","gNumber","subRef")
+.profileExplicitDefine=c("gMatrix","gNumber","subRef",":","seq")
 
 .profileFuncs=list()
-.profileFuncs$nrow=profile_size
-.profileFuncs$ncol=profile_size
-.profileFuncs$length=profile_size
-.profileFuncs$matrix=profile_matrix
-.profileFuncs$"+"=profile_arithmetic
-.profileFuncs$"-"=profile_arithmetic
-.profileFuncs$"*"=profile_arithmetic
-.profileFuncs$"/"=profile_arithmetic
-.profileFuncs$"["=profile_subset
+.profileFuncs[["nrow"]]=profile_size
+.profileFuncs[["ncol"]]=profile_size
+.profileFuncs[["length"]]=profile_size
+.profileFuncs[["matrix"]]=profile_matrix
+.profileFuncs[["+"]]=profile_arithmetic
+.profileFuncs[["-"]]=profile_arithmetic
+.profileFuncs[["*"]]=profile_arithmetic
+.profileFuncs[["/"]]=profile_arithmetic
+.profileFuncs[[">"]]=profile_logical
+.profileFuncs[[">="]]=profile_logical
+.profileFuncs[["<"]]=profile_logical
+.profileFuncs[["<="]]=profile_logical
+.profileFuncs[["=="]]=profile_logical
+.profileFuncs[["["]]=profile_subset
 .profileFuncs[["floor"]]=profile_floor
 .profileFuncs[["ceiling"]]=profile_ceil
 .profileFuncs[["gMatrix"]]=profile_gMatrix
@@ -42,6 +47,8 @@ DEBUG=TRUE
 .profileFuncs[["t"]]=profile_transpose
 .profileFuncs[["%*%"]]=profile_matrixMult
 .profileFuncs[["subRef"]]=profile_subRef
+.profileFuncs[["seq"]]=profile_seq
+.profileFuncs[[":"]]=profile_oneStepSeq
 
 
 
@@ -71,6 +78,13 @@ DEBUG=TRUE
 .cFuncs[["<-resize"]]=C_NULL
 .cFuncs[["<-subRef"]]=C_NULL
 .cFuncs[["<-%*%"]]=C_matMul_right
+.cFuncs[["<-seq"]]=C_seq_right
+.cFuncs[["<-:"]]=C_oneStepSeq_right
+
+
+.cFuncs[["length<-"]]= C_length_left_right
+.cFuncs[["nrow<-"]]= C_nrow_left_right
+.cFuncs[["ncol<-"]]= C_ncol_left_right
 
 
 .cFuncs[["return"]]=C_return
@@ -81,9 +95,7 @@ DEBUG=TRUE
 
 
 
-.cFuncs[["length<-"]]= C_length_left_right
-.cFuncs[["nrow<-"]]= C_nrow_left_right
-.cFuncs[["ncol<-"]]= C_ncol_left_right
+
 
 
 
@@ -156,8 +168,6 @@ GPUVar<-local({
   
   GPUVar_env$default_index_type="uint"
   
-  #The for loop index
-  GPUVar_env$gpu_loop_ind="gpu_loop_ind"
   
   #c(global_private_totalSize,global_private_matrixNum,return_size)
   GPUVar_env$size_info="gpu_sizeInfo"

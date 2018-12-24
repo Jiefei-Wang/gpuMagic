@@ -3,7 +3,7 @@
 
 
 CSimplify<-function(Exp,C=TRUE){
-  code=toExpression(Exp)$char
+  code=toCharacter(Exp)
   
   if(code=="") return(code)
   if(C)
@@ -38,21 +38,6 @@ gpu_cast_ulong<-function(x){
   trunc(x)
 }
 
-#Convert an non-expression to the expression and return both
-#expression and characters
-toExpression<-function(var){
-  if(is.language(var)){
-    var_char=deparse(var)
-  }else{
-    if(is.character(var))
-      var_char=var
-    else{
-      var_char=as.character(var)
-    }
-    var=parse(text=var_char)[[1]]
-  }
-  return(list(expression=var,char=var_char))
-}
 
 
 

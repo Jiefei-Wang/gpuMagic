@@ -28,6 +28,7 @@ A=matrix(runif(max=1000,n*m),n,m)*10
 
 #setDevice(3)
 #gpuMagic.option$setDefaultFloat("float")
+setDevice(1)
 tic()
 res_gpu=gpuSapply(1:m,testFunc2,A)
 toc()
@@ -41,7 +42,7 @@ toc()
 
 range(res_cpu-res_gpu)
 
-
+code=compileGPUCode(1:m,testFunc2,A)
 
 
 

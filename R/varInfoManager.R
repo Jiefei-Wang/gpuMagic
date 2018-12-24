@@ -1,30 +1,37 @@
 
 getEmpVarInfoTbl<-function(){
   varInfo=list()
-  varInfo$profile=data.frame()
+  varInfo$profile=hash()
+  #current version
   varInfo$varVersion=hash()
-  varInfo$varIndex=hash()
-  varInfo$optProfile=hash()
   varInfo
 }
 
-copyVarInfoTbl<-function(varInfo){
-  newInfo=varInfo
-  newInfo$profile=varInfo$profile
-  newInfo$varVersion=copy(varInfo$varVersion)
-  newInfo$varIndex=copy(varInfo$varIndex)
-  newInfo$optProfile=copy(varInfo$optProfile)
-  for(i in keys(varInfo$varVersion)){
-    newInfo$varVersion[[i]]=1
+copyVarInfoTbl <- function(varInfo, resetVersion = T) {
+  newInfo = varInfo
+  for (i in names(varInfo)) {
+    if (is.hash(varInfo[[i]]))
+      newInfo[[i]] = copy(newInfo[[i]])
+    else
+      newInfo[[i]] = newInfo[[i]]
+  }
+  if (resetVersion) {
+    for (i in keys(newInfo$varVersion)) {
+      newInfo$varVersion[[i]] = 1
+    }
   }
   newInfo
 }
 
 getEmpyTable<-function(type=""){
   tbl=data.frame(var="NA",dataType=T_matrix,precisionType=gpuMagic.option$getDefaultFloat(),size1="NA",size2="NA",value="NA",
-                 shared=FALSE,location="global",version=1,
+                 location="global",shared=FALSE,version=1,
                  address="NA",compileSize1=FALSE,compileSize2=FALSE,compileValue=FALSE,transpose=FALSE,
-                 require=FALSE,constVal=FALSE,constDef=FALSE,lazyRef=FALSE,ref="",initialization=TRUE,changed=FALSE,used=FALSE,stringsAsFactors=FALSE)
+                 require=FALSE,constVal=FALSE,constDef=FALSE,initialization=TRUE,
+                 isRef=FALSE,ref="",
+                 isSeq=FALSE,seq="",
+                 
+                 stringsAsFactors=FALSE)
   if(type==T_scale){
     tbl$dataType=T_scale
     tbl$compileSize1=TRUE
@@ -36,34 +43,36 @@ getEmpyTable<-function(type=""){
   tbl
 }
 
-getMandatoryVar<-function(){
-  c("var","dataType","precisionType","size1","size2","value","shared","location","version")
+
+#Convert key to a hash set
+#If value is provided, it is a hash map
+toHash<-function(key,value=NULL){
+  if(is.null(value))
+    value=rep(0,length(key))
+  names(value)=key
+  hash(value)
 }
-getOptVar<-function(){
-  c("address","compileSize1","compileSize2","compileValue","transpose","require",
-    "constVal","constDef","lazyRef","ref","initialization","changed","used")
-}
-getTableVarProperty<-function(){
-  mandatoryVar=getMandatoryVar()
-  optVar=getOptVar()
-  varName=c(mandatoryVar,optVar)
-  tbl=matrix(c(rep("mandatory",length(mandatoryVar)),rep("optional",length(optVar))),1)
-  tbl=as.data.frame(tbl)
-  colnames(tbl)=varName
-  tbl
+
+primaryProp=c("dataType","precisionType","address","shared","location",
+                  "require","constVal","constDef","initialization",
+                  "isSeq","seq","isRef","ref")
+primaryPropHash=toHash(primaryProp)
+
+
+isPrimary<-function(x){
+  has.key(x,primaryPropHash)
 }
 
 #Check if a variable is in the table
-hasVar<-function(varInfo,varName,version="all"){
+hasVar<-function(varInfo,varName,version="auto"){
   var_char=toCharacter(varName)
   if(length(version)==0) return(FALSE)
-  if(version=="all")
-    return(has.key(var_char,varInfo$varVersion))
-  if(is.numeric(version)){
-    var_char=paste0(var_char,"+",version)
-    return(has.key(var_char,varInfo$varIndex))
+  if(version=="auto"||version==0){
+    varDef_char=paste0(var_char,"+",0)
+    return(has.key(varDef_char,varInfo$profile))
   }
-  stop("An error has been occured")
+  
+  return(has.key(var_char,varInfo$varVersion))
 }
 
 
@@ -79,176 +88,127 @@ getVarInfo<-function(varInfo,varName,version="auto"){
   if(!hasVar(varInfo,var_char,version))
     stop(paste0("The variable is not found: ",var_char))
   
-  var_char=paste0(var_char,"+",version)
-  var_ind=varInfo$varIndex[[var_char]]
-  var_data=varInfo$profile[var_ind,,drop=F]
-  var_Tbl=getEmpyTable()
-  var_Tbl[1,colnames(var_data)]=var_data[1,colnames(var_data)]
-  var_opt_data=varInfo$optProfile[[var_char]]
-  if(!is.null(var_opt_data)){
-    for(i in colnames(var_opt_data)){
-      var_Tbl[1,i]=var_opt_data[1,i]
-    }
-  }
+  varDef_char=paste0(var_char,"+",0)
+  varCur_char=paste0(var_char,"+",version)
   
-  var_Tbl
+  varDef_tbl=varInfo$profile[[varDef_char]]
+  varCur_tbl=varInfo$profile[[varCur_char]]
+  
+  varCur_tbl[1,primaryProp]=varDef_tbl[1,primaryProp]
+  
+  varCur_tbl
 }
 
+
+
+#Set or add the variable info without any check
+#The function will take care of version 0
+setVarInfo_hidden<-function(varInfo,info){
+  var_char=info$var
+  version=info$version
+  varDef_char=paste0(var_char,"+",0)
+  varCur_char=paste0(var_char,"+",version)
+  if(version!=0){
+    if(hasVar(varInfo,info$var,0)){
+      varDef_tbl=varInfo$profile[[varDef_char]]
+      varDef_tbl[1,primaryProp]=info[1,primaryProp]
+      varInfo$profile[[varDef_char]]=varDef_tbl
+    }else{
+      if(version!=1)
+        stop("The variable definition is not found and the current version is not 1")
+      varDef_tbl=info
+      varDef_tbl$version=0
+      varInfo$profile[[varDef_char]]=varDef_tbl
+    }
+    varInfo$profile[[varCur_char]]=info
+    if(has.key(var_char,varInfo$varVersion)){
+      varInfo$varVersion[[var_char]]=max(varInfo$varVersion[[var_char]],version)
+    }else{
+      varInfo$varVersion[[var_char]]=version
+    }
+  }else{
+    varInfo$profile[[varDef_char]]=info
+  }
+  return(varInfo)
+}
 
 #Set the variable info
 #If the variable does not exist, an error will be given
 setVarInfo<-function(varInfo,newInfo){
-  #Find the default setting
-  tblVarInfo=getTableVarProperty()
-  mandatoryVar=getMandatoryVar()
-  defaultTable=getEmpyTable()
-  
   #Check if the symbol does not exist in the table
   if(!hasVar(varInfo,newInfo$var,newInfo$version))
     stop(paste0("The given variable is not found: ",var_char))
   
-  #Find the index of the variable in the profile table
-  var_char=paste0(newInfo$var,"+",newInfo$version)
-  var_ind=varInfo$varIndex[[var_char]]
-  
-  
-  varInfo$profile[var_ind,]=newInfo[,mandatoryVar]
-  
-  #Compare the optional variables in the newInfo with the default setting, if not the same, change it
-  optProperty=data.frame()
-  optVar=getOptVar()
-  for(i in optVar){
-    if(newInfo[1,i]!=defaultTable[1,i]){
-      optProperty[1,i]=newInfo[,i]
-    }
-  }
-  if(ncol(optProperty)!=0){
-    varInfo$optProfile[[var_char]]=optProperty
-  }
-  return(varInfo)
+  setVarInfo_hidden(varInfo,newInfo)
 }
 
 #Add a variable in the table
 #If the variable with a give version has exist in the table, an error will be given
 addVarInfo<-function(varInfo,newInfo){
-  #Find the default setting
-  tblVarInfo=getTableVarProperty()
-  mandatoryVar=getMandatoryVar()
-  defaultTable=getEmpyTable()
-  
   #Check if the info already exist
-  var_char=paste0(newInfo$var,"+",newInfo$version)
   if(hasVar(varInfo,newInfo$var,newInfo$version))
-    stop(paste0("The given variable is already in the table: ",var_char))
-  
-  varInfo$profile=rbind(varInfo$profile,newInfo[,mandatoryVar])
-  varInfo$varIndex[[var_char]]=nrow(varInfo$profile)
-  varInfo$varVersion[[newInfo$var]]=newInfo$version
+    stop(paste0("The given variable is already in the table: ",newInfo$var))
   
   
-  #Compare the optional variables in the newInfo with the default setting, if not the same, change it
-  optProperty=data.frame()
-  optVar=getOptVar()
-  for(i in optVar){
-    if(newInfo[1,i]!=defaultTable[1,i]){
-      optProperty[1,i]=newInfo[,i]
-    }
-  }
-  if(ncol(optProperty)!=0){
-    varInfo$optProfile[[var_char]]=optProperty
-  }
-  return(varInfo)
+  setVarInfo_hidden(varInfo,newInfo)
 }
 
 
 
 getVarProperty<-function(varInfo,varName,property,version="auto"){
-  varName=toCharacter(varName)
-  if(version=="auto")
-    version=as.numeric(varInfo$varVersion[[varName]])
+  var_char=toCharacter(varName)
   
-  
-  var_char=paste0(varName,"+",version)
-  if(!hasVar(varInfo,varName,version))
-    stop(paste0("The given variable is not found: ",var_char))
-  
-  var_ind=varInfo$varIndex[[var_char]]
-  
-  
-  tblVarInfo=getTableVarProperty()
-  defaultTable=getEmpyTable()
-  optionalInfo=varInfo$optProfile[[var_char]]
-  if(is.null(optionalInfo))
-    optionalInfo=data.frame()
-  
-  propertyInfo=data.frame()
-  for(prop in property){
-    type=tblVarInfo[1,prop]
-    if(is.null(type)){
-      stop("The property does not exist, please check if you have a typo: ",prop)
-    }
-    if(type=="mandatory"){
-      propertyInfo[1,prop]=varInfo$profile[var_ind,prop]
-      next
-    }
-    if(type=="optional"){
-      optInfo=optionalInfo[1,prop]
-      if(is.null(optInfo))
-        optInfo=defaultTable[1,prop]
-      propertyInfo[1,prop]=optInfo
-    }
-    
+  if (!hasVar(varInfo,var_char,version=version))
+    stop("The given variable is not found: ", var_char)
+  if (version == "auto") {
+    version = as.numeric(varInfo$varVersion[[var_char]])
   }
-  if(ncol(propertyInfo)==1)propertyInfo=propertyInfo[1,1]
-  return(propertyInfo)
+  
+  varCur_char=paste0(var_char,"+",version)
+  var_tbl=varInfo$profile[[varCur_char]]
+  value=var_tbl[[property]]
+  return(value)
 }
 
 
 setVarProperty<-function(varInfo,varName,property,value,version="auto"){
   varName=toCharacter(varName)
-  if(version=="auto")
-    version=as.numeric(varInfo$varVersion[[varName]])
   
-  var_char=paste0(varName,"+",version)
-  if(!hasVar(varInfo,varName,version))
-    stop(paste0("The given variable is not found: ",var_char))
-  
-  var_ind=varInfo$varIndex[[var_char]]
-  
-  tblVarInfo=getTableVarProperty()
-  optionalInfo=varInfo$optProfile[[var_char]]
-  if(is.null(optionalInfo))
-    optionalInfo=data.frame()
-  for(i in 1:length(property)){
-    prop=property[i]
-    if(tblVarInfo[1,prop]=="mandatory"){
-      varInfo$profile[var_ind,prop]=value[i]
-      next
-    }
-    if(tblVarInfo[1,prop]=="optional"){
-      optionalInfo[1,prop]=value[i]
-    }
+  if (!hasVar(varInfo,varName,version=version))
+    stop("The given variable is not found: ", varName)
+  if (version == "auto") {
+    version = as.numeric(varInfo$varVersion[[varName]])
   }
   
-  if(ncol(optProperty)!=0){
-    varInfo$optProfile[[var_char]]=optionalInfo
+  varCur_char=paste0(var_char,"+",version)
+  var_tbl=varInfo$profile[[varCur_char]]
+  var_tbl[[property]]=value
+  varInfo$profile[[var_char]]=var_tbl
+  
+  if(isPrimary(property)){
+    varDef_char=paste0(var_char,"+",0)
+    var_tbl=varInfo$profile[[varDef_char]]
+    var_tbl[[property]]=value
+    varInfo$profile[[var_char]]=var_tbl
   }
+  
   return(varInfo)
 }
 
-versionBump<-function(varInfo,varName){
-  curInfo_old=getVarInfo(varInfo,varName)
-  version=curInfo_old$version
-  curInfo_new=curInfo_old
-  curInfo_new$version=version+1
-  varInfo=setVarInfo(varInfo,curInfo_new)
-  varInfo
-}
 
-printVarInfo<-function(varInfo){
+
+printVarInfo<-function(varInfo,simplify=TRUE,printDef=FALSE){
+  if(!is.null(varInfo[["varInfo"]]))
+    varInfo=varInfo[["varInfo"]]
+  simplifyTbl=c("var","dataType","precisionType","size1","size2","value","ref","seq","version")
   info=c()
-  for(i in 1:nrow(varInfo$profile)){
-    info=rbind(info,getVarInfo(varInfo,varInfo$profile[i,]$var,varInfo$profile[i,]$version))
+  for(i in keys(varInfo$profile)){
+    var_tbl=varInfo$profile[[i]]
+    if(!printDef&&var_tbl$version==0)
+      next
+    if(simplify)
+      var_tbl=var_tbl[1,simplifyTbl]
+    info=rbind(info,var_tbl)
   }
   info
 }

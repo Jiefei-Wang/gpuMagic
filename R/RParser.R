@@ -111,7 +111,14 @@ RLevel1_updateFunc<-function(type,level,codeMetaInfo,parsedExp,code,i,res){
 }
 
 
-
+#1. extract the loop variable and if condition and create a new variable for them
+RParser2<-function(codeMetaInfo1){
+  codeMetaInfo2=codeMetaInfo1
+  parsedExp=extract_for_if_Var(codeMetaInfo2$Exp)
+  codeMetaInfo2$Exp=parsedExp
+  
+  codeMetaInfo2
+}
 
 
 

@@ -25,7 +25,7 @@ R_oneIndex_exp_sub<-function(varInfo,Exp,k,k_C=FALSE,opt=FALSE,optCode=list(),ba
     return(list(value=as.character(Exp)))
   }
   #Convert the character to the expression
-  Exp=toExpression(Exp)$expression
+  Exp=toExpression(Exp)
   
   #If the expression is a variable
   if(is.symbol(Exp)){
@@ -57,26 +57,32 @@ R_oneIndex_exp_sub<-function(varInfo,Exp,k,k_C=FALSE,opt=FALSE,optCode=list(),ba
   stop("unrecognized code: ",deparse(Exp))
 }
 oneIndex_to_twoIndex<-function(varInfo,Exp,k_C_value,rowNum,opt=opt,optCode=optCode){
-  tmpVar=GPUVar$getTmpVar()
-  tmpVar_value=CSimplify(paste0("(",GPUVar$default_index_type,")((",k_C_value,"-1)/",rowNum,")"))
-  #if the temporary variable is a constant, it will be plug into the code
-  #Otherwise, create the temporary variable
-  if(isNumeric(tmpVar_value)){
-    tmpVar=tmpVar_value
-    extCode=NULL
+  #If the variable only has one column, optimize it.
+  if(R_ncol(varInfo,Exp)!=1){
+    tmpVar=GPUVar$getTmpVar()
+    tmpVar_value=CSimplify(paste0("(",GPUVar$default_index_type,")((",k_C_value,"-1)/",rowNum,")"))
+    #if the temporary variable is a constant, it will be plug into the code
+    #Otherwise, create the temporary variable
+    if(isNumeric(tmpVar_value)){
+      tmpVar=tmpVar_value
+      extCode=NULL
+    }else{
+      extCode=paste0(GPUVar$default_index_type," ",tmpVar,"=",tmpVar_value,";")
+    }
+    i_C_ind=paste0(k_C_value,"-",rowNum,"*",tmpVar)
+    j_C_ind=paste0(tmpVar,"+1")
+    
+    res=R_expression_sub(varInfo,Exp,i=i_C_ind,j=j_C_ind,i_C=TRUE,j_C=TRUE,opt=opt,optCode=optCode)
+    #If the temporary variable has been cancelled out, remove the extra code
+    if(length(grep(tmpVar,res$value,fixed = TRUE))==0){
+      extCode=NULL
+    }
+    res$extCode=c(extCode,res$extCode)
+    return(res)
   }else{
-    extCode=paste0(GPUVar$default_index_type," ",tmpVar,"=",tmpVar_value,";")
+    res=R_expression_sub(varInfo,Exp,i=k_C_value,j=1,i_C=TRUE,j_C=TRUE,opt=opt,optCode=optCode)
+    return(res)
   }
-  i_C_ind=paste0(k_C_value,"-",rowNum,"*",tmpVar)
-  j_C_ind=paste0(tmpVar,"+1")
-  
-  res=R_expression_sub(varInfo,Exp,i=i_C_ind,j=j_C_ind,i_C=TRUE,j_C=TRUE,opt=opt,optCode=optCode)
-  #If the temporary variable has been cancelled out, remove the extra code
-  if(length(grep(tmpVar,res$value,fixed = TRUE))==0){
-    extCode=NULL
-  }
-  res$extCode=c(extCode,res$extCode)
-  return(res)
 }
 
 
@@ -116,13 +122,13 @@ R_expression_sub<-function(varInfo,Exp,i,j=1,opt=FALSE,optCode=list(),i_C=FALSE,
     return(list(value=as.character(Exp)))
   }
   #Convert the character to the expression
-  Exp=toExpression(Exp)$expression
+  Exp=toExpression(Exp)
   
   #if the expression contains only one element
   if(length(Exp)==1){
     curVar=deparse(Exp)
     #If the expression is a lazy reference
-    if(getVarProperty(varInfo,curVar,"lazyRef")){
+    if(getVarProperty(varInfo,curVar,"isRef")){
       refExp=parse(text=getVarProperty(varInfo,curVar,"ref"))[[1]]
       args=matchBracketFunc(refExp)
       if(is.null(args$j)){
@@ -141,6 +147,21 @@ R_expression_sub<-function(varInfo,Exp,i,j=1,opt=FALSE,optCode=list(),i_C=FALSE,
       }
       return(res)
     }
+    
+    if(getVarProperty(varInfo,curVar,"isSeq")){
+      seqExp=parse(text=getVarProperty(varInfo,curVar,"seq"))[[1]]
+      from=seqExp[[2]]
+      by=seqExp[[4]]
+      
+      from_C=R_oneIndex_exp_sub(varInfo,from,k=1,k_C=TRUE)
+      by_C=R_oneIndex_exp_sub(varInfo,by,k=1,k_C=TRUE)
+      i_C_ind=wrapIndex(varInfo,i,i_C)
+      res=list()
+      res$extCode=c(from_C$extCode,by_C$extCode,i_C_ind$extCode)
+      res$value=Simplify(paste0(from_C$value,"+","(",i_C_ind$value,"-1)*",by_C$value))
+      
+      return(res)
+    }
     #If the expression is just a variable
     dataType=getVarProperty(varInfo,curVar,"dataType")
     #Scalar
@@ -148,16 +169,9 @@ R_expression_sub<-function(varInfo,Exp,i,j=1,opt=FALSE,optCode=list(),i_C=FALSE,
       return(list(value=getVarProperty(varInfo,curVar,"address",1)))
     #Matrix
     if(dataType==T_matrix){
-      if(!i_C){
-        i_C_ind=R_oneIndex_exp_sub(varInfo,i,k=1,k_C=TRUE)
-      }else{
-        i_C_ind=list(value=i)
-      }
-      if(!j_C){
-        j_C_ind=R_oneIndex_exp_sub(varInfo,j,k=1,k_C=TRUE)
-      }else{
-        j_C_ind=list(value=j)
-      }
+      
+      i_C_ind=wrapIndex(varInfo,i,i_C)
+      j_C_ind=wrapIndex(varInfo,j,j_C)
       res=R_getVarSub(varInfo,Exp,i_C_ind$value,j_C_ind$value,opt=opt,optCode=optCode)
       res$extCode=c(i_C_ind$extCode,j_C_ind$extCode,res$extCode)
       return(res)
@@ -189,7 +203,16 @@ R_expression_sub<-function(varInfo,Exp,i,j=1,opt=FALSE,optCode=list(),i_C=FALSE,
   }
   stop("unrecognized code: ",deparse(Exp))
 }
-
+#If the index is a c variale, direct return it as a list
+#If the index is an R variable, use subset code to process it
+wrapIndex<-function(varInfo,i,i_C){
+  if(!i_C){
+    i_C_ind=R_oneIndex_exp_sub(varInfo,i,k=1,k_C=TRUE)
+  }else{
+    i_C_ind=list(value=i)
+  }
+  i_C_ind
+}
 
 #Get an element from the matrix(eg. A[i,j]), the transpose will be taken into account
 #i,j is 1-based index by default
@@ -263,9 +286,8 @@ R_C_Sub<-function(var,offset,simplification=FALSE){
 
 #Get the number of rows for a matrix in C format
 R_nrow<-function(varInfo,var){
-  varExp=toExpression(var)
-  var=varExp$expression
-  var_char=varExp$char
+  var_char=toCharacter(var)
+  var=toExpression(var)
   if(isNumeric(var_char))
     return(1)
   if(is.call(var))
@@ -279,9 +301,8 @@ R_nrow<-function(varInfo,var){
 }
 #Get the number of rows for a matrix in C format
 R_ncol<-function(varInfo,var){
-  varExp=toExpression(var)
-  var=varExp$expression
-  var_char=varExp$char
+  var_char=toCharacter(var)
+  var=toExpression(var)
   if(isNumeric(var_char))
     return(1)
   if(is.call(var))
@@ -301,9 +322,8 @@ R_length<-function(varInfo,var){
 
 
 R_getVarSize<-function(varInfo,var,ind){
-  varExp=toExpression(var)
-  var=varExp$expression
-  var_char=varExp$char
+  var_char=toCharacter(var)
+  var=toExpression(var)
   
   #Detect if the variable is a subset of a matrix
   #Or a lazy reference
@@ -312,11 +332,11 @@ R_getVarSize<-function(varInfo,var,ind){
     Exp=var
   }else{
     curInfo=getVarInfo(varInfo,var,1)
-    if(curInfo$lazyRef){
+    if(curInfo$isRef){
       Exp=parse(text=curInfo$ref)[[1]]
     }
+    
   }
-  
   #If the variable is a subset of a matrix
   if(!is.null(Exp)){
     args=matchBracketFunc(Exp)
@@ -347,6 +367,27 @@ R_getVarSize<-function(varInfo,var,ind){
   #If the variable is just a variable and is not a lazy reference
   #curInfo is obtained above
   #curInfo=getVarInfo(varInfo,var,1)
+  
+  if(curInfo$isSeq){
+    if(ind==2)
+      return(1)
+    if(ind==1){
+      seqExp=parse(text=curInfo$seq)[[1]]
+      from=seqExp[[2]]
+      to=seqExp[[3]]
+      by=seqExp[[4]]
+      from_C=R_oneIndex_exp_sub(varInfo,from,k=1,k_C=TRUE)
+      to_C=R_oneIndex_exp_sub(varInfo,to,k=1,k_C=TRUE)
+      by_C=R_oneIndex_exp_sub(varInfo,by,k=1,k_C=TRUE)
+      
+      extCode=c(from_C$extCode,by_C$extCode,to_C$extCode)
+      if(!is.null(extCode))
+        stop("This type of code is not supported: ",deparse(seqExp))
+      res=Simplify(paste0("floor((",to_C$value,"-",from_C$value,")/",by_C$value,")+1"))
+      return(res)
+    }
+  }
+  
   if(curInfo$dataType==T_scale) return(1)
   
   var_ind=varInfo$matrixInd[[var_char]]

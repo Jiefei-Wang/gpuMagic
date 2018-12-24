@@ -34,7 +34,6 @@ Collate:
     'gpuFunctions.R'
     'gpuMatix.R'
     'gpuRefAddress.R'
-    'kernelCompiler.R'
     'kernelManager.R'
     'pkgSetting.R'
     'predefinedFunc.R'

@@ -8,27 +8,28 @@ getDeviceList()
 #gpuMagic.option$setDefaultFloat("double")
 testFunc<-function(ind,A,B){
   #tmp=A[ind,]
-  tmp=subRef(B,,ind)
-  C=A%*%tmp
+  #tmp=subRef(B,,ind)
+  #C=A%*%tmp
   #break
   #next
-  return(C)
+  #return(C)
+  A[1:B[1,1],2]=seq(B[1,1],1,-1)
 }
 
 n=1024
-m=10000
+m=100
 k=1024
 
 A=matrix(runif(n*m),n,m)
 B=matrix(runif(k*m),m,k)
 
 options=gpuSapply.getOption()
-#options$verbose=F
+options$verbose=F
 #options$sapplyMsg$timing.R.code.compilation=T
 #fileName="inst/script/debugCode.txt"
 #options$debugCode=readChar(fileName,file.info(fileName)$size)
 tic()
-res_gpu=gpuSapply(1:k,testFunc,A,B,.options = options)
+res_gpu=gpuSapply(1,testFunc,A,B,.options = options)
 toc()
 tic()
 res_internel=A%*%B

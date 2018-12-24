@@ -51,66 +51,6 @@ profileVar<-function(parms,macroParms){
   }
   varInfo
 }
-renameLoopVar<-function(parsedExp,ind=0){
-  for(i in 1:length(parsedExp)){
-    curExp=parsedExp[[i]]
-    if(!is.call(curExp))
-      next
-    if(curExp[[1]]=="for"){
-      #Force substitution of the index variable
-      new_index=paste0(GPUVar$gpu_loop_ind,"_",ind)
-      ind=ind+1
-      old_Index=deparse(curExp[[2]])
-      loopBody=renameVarInCode(curExp[[4]],1,old_Index,new_index)
-      res=renameLoopVar(loopBody,ind)
-      loopBody=res$parsedExp
-      ind=res$ind
-      curExp[[2]]=as.symbol(new_index)
-      curExp[[4]]=loopBody
-      parsedExp[[i]]=curExp
-    }
-    if(curExp[[1]]=="if"){
-      res=renameLoopVar(curExp[[3]],ind)
-      codeBody=res$parsedExp
-      ind=res$ind
-      curExp[[3]]=codeBody
-      parsedExp[[i]]=curExp
-      if(length(curExp)==4){
-        res=renameLoopVar(curExp[[4]],ind)
-        codeBody=res$parsedExp
-        ind=res$ind
-        curExp[[4]]=codeBody
-        parsedExp[[i]]=curExp
-      }
-    }
-  }
-  return(list(parsedExp=parsedExp,ind=ind))
-}
-
-profileLoopVar<-function(varInfo,parsedExp){
-  for(i in 1:length(parsedExp)){
-    curExp=parsedExp[[i]]
-    if(!is.call(curExp))
-      next
-    if(curExp[[1]]=="for"){
-      var_char=deparse(curExp[[2]])
-      ExpProfile=getEmpyTable(type = T_scale)
-      ExpProfile$var=var_char
-      ExpProfile$initialization=FALSE
-      ExpProfile$precisionType=gpuMagic.option$getDefaultInt()
-      varInfo=addVarInfo(varInfo,ExpProfile)
-      loopBody=curExp[[4]]
-      varInfo=profileLoopVar(varInfo,loopBody)
-    }
-    if(curExp[[1]]=="if"){
-      varInfo=profileLoopVar(varInfo,curExp[[3]])
-      if(length(curExp)==4){
-        varInfo=profileLoopVar(varInfo,curExp[[4]])
-      }
-    }
-  }
-  return(varInfo)
-}
 
 #==================================Profiler 2==========================
 
@@ -118,6 +58,7 @@ profileLoopVar<-function(varInfo,parsedExp){
 #If the functions' argument does not show in the expression, the default value will be used
 matchFunArg<-function(fun,Exp){
   funArg=formals(fun)
+  eval(parse(text=paste0(deparse(Exp[[1]]),"=fun")))
   ExpArg=standardise_call(Exp)
   if(length(ExpArg)>1){
     argName=names(ExpArg)
@@ -134,10 +75,21 @@ matchFunArg<-function(fun,Exp){
   return(funArg)
 }
 #Get the right expression profile
-getExpInfo<-function(varInfo,Exp){
-  ExpInfo=getExpInfo_hidden(varInfo,Exp)
+getExpInfo<-function(varInfo,Exp,errorCheck=FALSE){
+  res=getExpInfo_hidden(varInfo,Exp)
+  if(is.data.frame(res)){
+    ExpInfo=res
+  }else{
+    ExpInfo=res$ExpInfo
+    if(errorCheck&&!is.null(res[["errorCheck"]])){
+      checkNum=varInfo$errorCheck[[".checkNumber"]]+1
+      varInfo$errorCheck[[as.character(checkNum)]]=res$errorCheck
+    }
+  }
+  
+  
   #If the variable is explicit definition
-  if(is.call(Exp)&&(deparse(Exp[[1]])%in% .profileVarDefine))
+  if(is.call(Exp)&&(deparse(Exp[[1]])%in% .profileExplicitDefine))
     return(ExpInfo)
   #Some optimization
   if(ExpInfo$compileSize1&&ExpInfo$compileSize2&&
@@ -152,7 +104,6 @@ getExpInfo<-function(varInfo,Exp){
   return(ExpInfo)
 }
 getExpInfo_hidden<-function(varInfo,Exp){
-  ExpInfo=NULL
   if(isNumeric(Exp)){
     ExpInfo=profile_numeric(Exp)
     return(ExpInfo)
@@ -174,10 +125,7 @@ getExpInfo_hidden<-function(varInfo,Exp){
   }
   
   
-  if(is.null(ExpInfo))
-    stop("Unknow code: ",deparse(Exp))
-  
-  return(ExpInfo)
+  stop("Unknow code: ",deparse(Exp))
 }
 
 
@@ -240,7 +188,7 @@ copyVarInfo<-function(info,fullCopy=FALSE){
   info$require=FALSE
   info$constVal=FALSE
   info$constDef=FALSE
-  info$lazyRef=FALSE
+  info$isRef=FALSE
   info$initialization=TRUE
   info$changed=FALSE
   info$used=FALSE
@@ -272,25 +220,64 @@ formatCall<-function(Exp,generalType=FALSE){
 #Test if an input is a number
 #x can be a character or an expression
 isNumeric<-function(x){
-  if(length(x)>1)
+  if(!is.call(x)&&length(x)>1)
     return(FALSE)
   
-  x_char=NULL
-  try({x_char=toExpression(x)$expression},silent = T)
-  if(is.null(x_char)) 
+  xExp=NULL
+  try({xExp=toExpression(x)},silent = T)
+  if(is.null(xExp)) 
     return(FALSE)
-  res=is.numeric(x_char)
+  if(is.call(xExp)){
+    if(xExp[[1]]!="-"&&xExp[[1]]!="+")
+      return(FALSE)
+    if(length(xExp)!=2)
+      return(FALSE)
+    else
+      return(isNumeric(xExp[[2]]))
+  }
+  res=is.numeric(xExp)
   return(res)
 }
 
-toCharacter<-function(charOrSym){
-  if(!is.character(charOrSym))
-    charOrSym=deparse(charOrSym)
-  charOrSym
+toCharacter<-function(x){
+  if(is.language(x)){
+    var_char=deparse(x)
+  }else{
+    if(is.character(x))
+      var_char=x
+    else{
+      var_char=as.character(x)
+    }
+  }
+  var_char
 }
+#Convert an non-expression to the expression and return both
+#expression and characters
+toExpression<-function(var){
+  if(is.language(var)){
+    var_char=deparse(var)
+  }else{
+    if(is.character(var))
+      var_char=var
+    else{
+      var_char=as.character(var)
+    }
+    var=parse(text=var_char)[[1]]
+  }
+  return(var)
+}
+
+
 #This function simplify the R code and make it ready to put in the varInfo table
 Simplify2<-function(Exp){
   res=Simplify(Exp)
+  #remove the space
+  #res=trimws(gsub(", ",",",res,fixed = T))
+  #If the result is a vector
+  # if(length(grep(" ",res,fixed = T))!=0){
+  #   res=paste0("c(",gsub(" +",",",res),")")
+  #   return(res)
+  # }
   if(isNumeric(res))
     return(res)
   else
@@ -300,16 +287,14 @@ Simplify2<-function(Exp){
 #var: the variable name
 #version: the version that should be bumped to
 getVersionBumpCode<-function(var,version){
-  varExp=toExpression(var)
-  parse(text=paste0(GPUVar$preservedFuncPrefix,"setVersion(",varExp$char,",",version,")"))[[1]]
+  var_char=toCharacter(var)
+  parse(text=paste0(GPUVar$preservedFuncPrefix,"setVersion(",var_char,",",version,")"))[[1]]
 }
 #Add the error check into the varInfo
 #level: the error level: warning, error
 #code: The code that generate this error check
 #check: the condition that will throw the error(check=TRUE will throw the error)
 #msg: the message that will be post when the error occurs
-addErrorCheck<-function(varInfo,level,code,check,msg=""){
-  checkNum=varInfo$errorCheck[[".checkNumber"]]+1
-  varInfo$errorCheck[[as.character(checkNum)]]=
-    data.frame(level=level,code=code,check=check,msg=msg,stringsAsFactors=FALSE)
+setErrorCheck<-function(level,code,check,msg=""){
+ data.frame(level=level,code=code,check=check,msg=msg,stringsAsFactors=FALSE)
 }
