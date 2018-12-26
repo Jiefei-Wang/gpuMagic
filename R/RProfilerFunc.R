@@ -51,6 +51,7 @@ profiler_assignment_exitingVar<-function(level,varInfo,curExp){
   
   
   action=0
+  warningLevel=0
   propertyNames=colnames(leftInfo)
   for(i in 1:length(propertyNames)){
     #Find the property name and check the setting
@@ -62,11 +63,18 @@ profiler_assignment_exitingVar<-function(level,varInfo,curExp){
     #Check if the property is the same between the left and right expression
     if(inheritProp&&leftInfo[[curProp]]!=rightInfo[[curProp]]){
       curAct=inheritAct[[defineType]][[curProp]][["act"]]
+      curWarningLevel=inheritAct[[defineType]][[curProp]][["warningLevel"]]
       if(is.null(curAct))
         curAct="no action"
+      if(is.null(curWarningLevel))
+        curWarningLevel=switch(curAct,"no action"=0,"version bump"=1,"rename var"=2)
       curAct=switch(curAct,"no action"=0,"version bump"=1,"rename var"=2)
-      if(curAct!=0)
+      if(curAct!=0){
         leftInfo[[curProp]]=rightInfo[[curProp]]
+      }
+      if(curWarningLevel!=0){
+        warningLevel=max(warningLevel,curWarningLevel)
+      }
       action=max(action,curAct)
       
     }
@@ -74,12 +82,12 @@ profiler_assignment_exitingVar<-function(level,varInfo,curExp){
   
   #Give warning and error when the expression is inside the for and if body
   if("for" %in% level || "if" %in% level){
-    if(action==1){
+    if(warningLevel==1){
       warning("The property(s) of the left variable is changed inside the for/if body,\n",
               "The result may be not correct:\n",
               deparse(curExp))
     }
-    if(action==2){
+    if(warningLevel==2){
       stop("The definition of the left variable is changed inside the for/if body,\n",
            "Please consider to redefine the variable before it:\n",
            deparse(curExp))
@@ -100,7 +108,7 @@ profiler_assignment_exitingVar<-function(level,varInfo,curExp){
     varInfo=setVarInfo(varInfo,leftDef)
   }  
   
-  
+  res=list()
   #Version bump
   if(action==1){
     leftInfo$version=leftInfo$version+1
@@ -475,7 +483,7 @@ profile_gMatrix<-function(varInfo,Exp){
   return(ExpInfo)
 }
 
-#Exp=quote(gNumber())
+#Exp=quote(gNumber(precision="uint"))
 profile_gNumber<-function(varInfo,Exp){
   args=matchFunArg(gNumber,Exp)
   ExpInfo=getEmpyTable(T_scale)

@@ -315,7 +315,7 @@ R_ncol<-function(varInfo,var){
   )
 }
 R_length<-function(varInfo,var){
-  return(Simplify(paste0(R_nrow(varInfo,var),"*",
+  return(CSimplify(paste0(R_nrow(varInfo,var),"*",
                          R_ncol(varInfo,var))))
   
 }
@@ -383,7 +383,20 @@ R_getVarSize<-function(varInfo,var,ind){
       extCode=c(from_C$extCode,by_C$extCode,to_C$extCode)
       if(!is.null(extCode))
         stop("This type of code is not supported: ",deparse(seqExp))
-      res=Simplify(paste0("floor((",to_C$value,"-",from_C$value,")/",by_C$value,")+1"))
+      #Manually simplify the length
+      part1=CSimplify(paste0(to_C$value,"/",by_C$value))
+      part2=CSimplify(paste0(from_C$value,"/",by_C$value))
+      if(!xor(isNumeric(part1),isNumeric(part2))){
+        res=CSimplify(paste0("floor((",gpuMagic.option$getDefaultFloat(),")(",part1,"-",part2,"))+1"))
+      }else{
+        if(isNumeric(part1)){
+          res=CSimplify(paste0("-floor((",gpuMagic.option$getDefaultFloat(),")(",part2,"))+",part1,"+1"))
+        }else{
+          if(isNumeric(part2)){
+            res=CSimplify(paste0("floor((",gpuMagic.option$getDefaultFloat(),")(",part1,"))-",part2,"+1"))
+          }
+        }
+      }
       return(res)
     }
   }

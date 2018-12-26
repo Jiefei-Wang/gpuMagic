@@ -221,14 +221,12 @@ RCTranslation<-function(varInfo,parsedExp){
     if(curExp[[1]]=="if"){
       curCode=RCTranslation(varInfo,curExp[[3]])
       condition=curExp[[2]]
-      condition_left=R_expression_sub(varInfo,condition[[2]],1)
-      condition_right=R_expression_sub(varInfo,condition[[3]],1)
+      condition_C=R_expression_sub(varInfo,condition,1)
       
       ifFunc=c(
         "{",
-        condition_left$extCode,
-        condition_right$extCode,
-        paste0("if(",condition_left$value,deparse(condition[[1]]),condition_right$value,"){\n"),
+        condition_C$extCode,
+        paste0("if(",condition_C$value,"){\n"),
         paste0(curCode,collapse = "\n"),
         "}")
       elseFunc=NULL

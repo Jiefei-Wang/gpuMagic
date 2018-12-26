@@ -66,6 +66,11 @@ DEBUG=TRUE
 .cFuncs[["<--"]]=C_arithmaticOP_right
 .cFuncs[["<-*"]]=C_arithmaticOP_right
 .cFuncs[["<-/"]]=C_arithmaticOP_right
+.cFuncs[["<->"]]=C_arithmaticOP_right
+.cFuncs[["<->="]]=C_arithmaticOP_right
+.cFuncs[["<-<"]]=C_arithmaticOP_right
+.cFuncs[["<-<="]]=C_arithmaticOP_right
+.cFuncs[["<-=="]]=C_arithmaticOP_right
 .cFuncs[["<-matrix"]]=C_matrix_right
 .cFuncs[["<-length"]]= C_length_left_right
 .cFuncs[["<-nrow"]]= C_nrow_left_right

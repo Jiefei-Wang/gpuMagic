@@ -43,7 +43,7 @@ range(res_cpu-res_gpu)
 microbenchmark(gpuSapply(1:n,testFunc,A,B),times = 10)
 
 
-code=compileGPUCode(1:m,testFunc,A,B)
+code=compileGPUCode(1:m,testFunc,A)
 code$Exp
 cat(code$gpu_code)
 

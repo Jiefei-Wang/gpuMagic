@@ -65,14 +65,13 @@ isPrimary<-function(x){
 
 #Check if a variable is in the table
 hasVar<-function(varInfo,varName,version="auto"){
-  var_char=toCharacter(varName)
+  varName=toCharacter(varName)
   if(length(version)==0) return(FALSE)
-  if(version=="auto"||version==0){
-    varDef_char=paste0(var_char,"+",0)
-    return(has.key(varDef_char,varInfo$profile))
+  if(version=="auto"){
+    version=0
   }
-  
-  return(has.key(var_char,varInfo$varVersion))
+  var_char=paste0(varName,"+",version)
+  return(has.key(var_char,varInfo$profile))
 }
 
 
@@ -120,6 +119,7 @@ setVarInfo_hidden<-function(varInfo,info){
       varDef_tbl$version=0
       varInfo$profile[[varDef_char]]=varDef_tbl
     }
+    info$version=version
     varInfo$profile[[varCur_char]]=info
     if(has.key(var_char,varInfo$varVersion)){
       varInfo$varVersion[[var_char]]=max(varInfo$varVersion[[var_char]],version)

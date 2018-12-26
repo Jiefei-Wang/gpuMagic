@@ -22,8 +22,8 @@ inherit$extVar$implicit$default=FALSE
 
 #special treatment
 var="precisionType"
-inherit$newVar$explicit[[var]]=FALSE
-inherit$newVar$implicit[[var]]=FALSE
+inherit$newVar$explicit[[var]]=TRUE
+inherit$newVar$implicit[[var]]=TRUE
 inherit$extVar$explicit[[var]]=FALSE
 inherit$extVar$implicit[[var]]=FALSE
 
@@ -143,18 +143,21 @@ inherit$extVar$implicit[[var]]=FALSE
 #structure
 #var--
 #     act
-#     validInLoop
+#     warningLevel
 #
 #act: no action, version bump, version bump with definiton changes, rename var
 #version bump: no definition changes, just give a version bump and change the property
 #rename var: create a new variable
 #
-#validInLoop: if this changes can be applied inside the loop
-#By default, no action, version bump can be applied inside the loop
+#warningLevel: if this changes are applied inside the loop, a warning(=1) or an error(=2) will be given
+#By default, no action, version bump can be applied inside the loop, rename variable is not allowed
+#version bump will give a warning and rename variable will have an error
 
 inheritAct=list()
 inheritAct$explicit=list()
 inheritAct$implicit=list()
+
+
 
 var="dataType"
 inheritAct$explicit[[var]]=list(act="rename var")
@@ -169,8 +172,8 @@ inheritAct$explicit[[var]]=list(act="rename var")
 inheritAct$implicit[[var]]=list(act="rename var")
 
 var="value"
-inheritAct$explicit[[var]]=list(act="version bump")
-inheritAct$implicit[[var]]=list(act="version bump")
+inheritAct$explicit[[var]]=list(act="version bump",warningLevel=0)
+inheritAct$implicit[[var]]=list(act="version bump",warningLevel=0)
 
 var="compileSize1"
 inheritAct$explicit[[var]]=list(act="version bump")
@@ -181,8 +184,8 @@ inheritAct$explicit[[var]]=list(act="version bump")
 inheritAct$implicit[[var]]=list(act="version bump")
 
 var="compileValue"
-inheritAct$explicit[[var]]=list(act="version bump")
-inheritAct$implicit[[var]]=list(act="version bump")
+inheritAct$explicit[[var]]=list(act="version bump",warningLevel=0)
+inheritAct$implicit[[var]]=list(act="version bump",warningLevel=0)
 
 var="transpose"
 inheritAct$explicit[[var]]=list(act="version bump")

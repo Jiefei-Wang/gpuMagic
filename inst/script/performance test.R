@@ -1,6 +1,6 @@
 library("microbenchmark")
 getDeviceList()
-#setDevice(1)
+#setDevice(2)
 .gpuResourcesManager$setMaxMemLimit(7*10^8)
 
 testFunc_A<-function(ind,A,B){
@@ -47,7 +47,7 @@ microbenchmark(
   gpuSapply(1:k,testFunc_B_subRef,A,B,.options = opt),
   #A%*%B,
   #check=my_check,
-  times = 1,
+  times = 2,
   control=list(warmup=1))
 
 

@@ -120,8 +120,8 @@ compileGPUCode<-function(X,FUN,...,.macroParms=NULL,.options=gpuSapply.getOption
   
   codeMetaInfo0=codePreprocessing(codeMetaInfo)
   codeMetaInfo1=RParser1(codeMetaInfo0)
-  #codeMetaInfo2=RParser2(codeMetaInfo1)
-  profileMeta1=RProfile1(codeMetaInfo1)
+  codeMetaInfo2=RParser2(codeMetaInfo1)
+  profileMeta1=RProfile1(codeMetaInfo2)
   profileMeta2=RProfile2(profileMeta1)
   #profileMeta3=RRecompiler(profileMeta2)
   GPUExp1=RCcompilerLevel1(profileMeta2)
