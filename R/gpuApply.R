@@ -11,6 +11,8 @@ gpuSapply<-function(X,FUN,...,.device="auto",.macroParms=NULL,.options=gpuSapply
   
   if(.device=="auto"){
     .device=getFirstSelectedDevice()
+  }else{
+    .device=as.integer(.device)
   }
   
   if(verbose||sum(as.matrix(msg))!=0) 
@@ -52,7 +54,7 @@ gpuSapply<-function(X,FUN,...,.device="auto",.macroParms=NULL,.options=gpuSapply
   #Complete the profile table and fill the GPU data
   GPUcode1=completeProfileTbl(GPUcode1)
   CheckCodeError(GPUcode1,parms)
-  GPUcode2=fillGPUdata(GPUcode1,.options=.options)
+  GPUcode2=fillGPUdata(GPUcode1,.options=.options,.device=.device)
   
   
   if(optimization$thread.number==TRUE){
@@ -75,7 +77,7 @@ gpuSapply<-function(X,FUN,...,.device="auto",.macroParms=NULL,.options=gpuSapply
   
   #.options$signature=c(.options$signature,sig_hash)
   .kernel(kernel=GPUcode2$kernel,src=GPUcode2$gpu_code,parms=GPUcode2$device_argument,
-          .globalThreadNum=.globalThreadNum,.options=.options)
+          .device=.device,.globalThreadNum=.globalThreadNum,.options=.options)
   res=GPUcode2$device_argument$return_var
   res=download(res)
   res=as.vector(res)

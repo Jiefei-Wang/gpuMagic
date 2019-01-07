@@ -4,7 +4,7 @@ library("tictoc")
 
 
 getDeviceList()
-#setDevice(0)
+setDevice(c(1,2,3))
 #gpuMagic.option$setDefaultFloat("double")
 testFunc<-function(ind,A,B){
   #tmp=A[ind,]
@@ -29,12 +29,13 @@ options$verbose=T
 #fileName="inst/script/debugCode.txt"
 #options$debugCode=readChar(fileName,file.info(fileName)$size)
 tic()
-res_gpu=gpuSapply(1:k,testFunc,A,B,.options = options)
+res_gpu=gpuSapply(1:k,testFunc,A,B,.options = options,.device = 2)
 toc()
 tic()
 res_internel=A%*%B
 toc()
 range(res_internel-res_gpu)
+.gpuResourcesManager$getGPUusage()
 
 range(res_internel-t(res_gpu))
 

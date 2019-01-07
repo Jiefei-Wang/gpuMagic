@@ -47,17 +47,23 @@ createSapplySignature<-function(parms,FUN,.macroParms,.device,.options){
 
 
 
-fillGPUdata<-function(GPUcode1,.options){
+fillGPUdata<-function(GPUcode1,.options,.device){
   parms=GPUcode1$parms
   varInfo=GPUcode1$varInfo
   
   #Convert all the parameters into the gpuMatrix objects
   for(varName in names(parms)){
-    if(class(parms[[varName]])=="gpuMatrix")
-      next
+    if(class(parms[[varName]])=="gpuMatrix"){
+      if(.device(parms[[varName]])==.device){
+        next
+      }else{
+        warning("You supplied a gpu memory object but it is not belong to the device that the code will be run on.")
+        parms[[varName]]=as.matrix(parms[[varName]])
+       }
+    }
     curInfo=getVarInfo(varInfo,varName,1)
     curType=curInfo$precisionType
-    parms[[varName]]=gpuMatrix(parms[[varName]],type=curType)
+    parms[[varName]]=gpuMatrix(parms[[varName]],type=curType,device=.device)
   }
   
   
@@ -162,15 +168,15 @@ fillGPUdata<-function(GPUcode1,.options){
   IntType=GPUVar$default_index_type
   
   device_argument=list()
-  device_argument$gp_data=gpuEmptMatrix(row=floor(gp_size*totalWorkerNum/4)+1,col=1,type="int")
-  device_argument$gp_size1=gpuMatrix(rep(kernel_args$gp_size1,totalWorkerNum),type=IntType)
-  device_argument$gp_size2=gpuMatrix(rep(kernel_args$gp_size2,totalWorkerNum),type=IntType)
-  device_argument$gp_offset=gpuMatrix(kernel_args$gp_offset,type=IntType)
+  device_argument$gp_data=gpuEmptMatrix(row=floor(gp_size*totalWorkerNum/4)+1,col=1,type="int",device=.device)
+  device_argument$gp_size1=gpuMatrix(rep(kernel_args$gp_size1,totalWorkerNum),type=IntType,device=.device)
+  device_argument$gp_size2=gpuMatrix(rep(kernel_args$gp_size2,totalWorkerNum),type=IntType,device=.device)
+  device_argument$gp_offset=gpuMatrix(kernel_args$gp_offset,type=IntType,device=.device)
   
-  device_argument$gs_data=gpuEmptMatrix(row=floor(gs_size/4)+1,type="int")
-  device_argument$gs_size1=gpuMatrix(kernel_args$gs_size1,type=IntType)
-  device_argument$gs_size2=gpuMatrix(kernel_args$gs_size2,type=IntType)
-  device_argument$gs_offset=gpuMatrix(kernel_args$gs_offset,type=IntType)
+  device_argument$gs_data=gpuEmptMatrix(row=floor(gs_size/4)+1,type="int",device=.device)
+  device_argument$gs_size1=gpuMatrix(kernel_args$gs_size1,type=IntType,device=.device)
+  device_argument$gs_size2=gpuMatrix(kernel_args$gs_size2,type=IntType,device=.device)
+  device_argument$gs_offset=gpuMatrix(kernel_args$gs_offset,type=IntType,device=.device)
   
   device_argument$ls_data=kernel.getSharedMem(ls_size+1,type="char")
   device_argument$ls_size1=kernel.getSharedMem(length(kernel_args$ls_size1),type=IntType)
@@ -180,8 +186,8 @@ fillGPUdata<-function(GPUcode1,.options){
   returnSize=kernel_args$sizeInfo[3]*totalWorkerNum
   if(returnSize==0)
     returnSize=1
-  device_argument$return_var=gpuEmptMatrix(returnSize,type=GPUVar$default_float)
-  device_argument$sizeInfo=gpuMatrix(kernel_args$sizeInfo,type=IntType)
+  device_argument$return_var=gpuEmptMatrix(returnSize,type=GPUVar$default_float,device=.device)
+  device_argument$sizeInfo=gpuMatrix(kernel_args$sizeInfo,type=IntType,device=.device)
   
   
   
