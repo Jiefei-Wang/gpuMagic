@@ -1,7 +1,7 @@
 # gpuMagic
 An R interface to write OpenCL functions
 
-This package provide an easy way to access the power of the GPU using the familar R language. Since it is still under development, tons of bugs is hidden somewhere and waiting to surprise someone. Please use it with your best judgement.
+This package provide an easy way to access the power of the GPU using the familar R language. The user can write the regular R function and call the gpuSapply function to digest it. The gpuSapply function will translate the R function into openCL code and run it in the GPU, which is supposed to be faster than CPU in math operation. Since the package is still under development, tons of bugs is hidden somewhere and waiting to surprise someone. Please use it with your best judgement.
 
 Before you start to use the package, please make sure you have the CUDA toolkit installed. Even though the package uses openCL as the background language, the current makevars only support CUDA path. If you have another openCL platform, you need to customize the makevars to compile the package.
 
