@@ -1,25 +1,18 @@
 library("microbenchmark")
-setDevice(2)
-offset=1
-n=5*10240000+offset
-type="float"
+setDevice(c(1,2,3))
+.gpuResourcesManager$getGPUusage()
+n=4000
+type="double"
 A=runif(n)
 A_dev=gpuMatrix(A,type=type)
-B_dev=gpuEmptMatrix(n,1,type=type)
-off=gpuMatrix(offset,type="int")
 fileName="inst/script/performance test code.c"
 opt=kernel.getOption()
 #opt$verbose=T
-microbenchmark({
-.kernel(file = fileName,kernel="offsetCopy",.globalThreadNum = n-offset,
-        parms=list(B_dev,A_dev,off),.options = opt)
-  off=download(off)
-  },
-times = 10
-)
-B_dev=download(B_dev)
-B=as.matrix(B_dev)
-range(A-B)
+.kernel(src = fileName,kernel="test_vector",.globalThreadNum = n/4,
+        parms=list(A_dev,1),.options = opt)
+A_dev=download(A_dev)
+A1=as.matrix(A_dev)
+range(2*sqrt(A)-A1)
 
 
 

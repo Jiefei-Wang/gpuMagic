@@ -2,7 +2,7 @@ context("gpuMatrix operation")
 
 test_that("Matrix upload and download",{
   
-  type=c("char","half","float","double","int","long","uint","ulong")
+  type=c("bool","char","half","float","double","int","long","uint","ulong")
   for(i in 1:8){
     k=100
     mydata=1:k

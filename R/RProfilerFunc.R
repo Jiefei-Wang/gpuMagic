@@ -270,7 +270,7 @@ profile_arithmetic<-function(varInfo,Exp){
   ExpInfo$precisionType=typeInherit(leftInfo$precisionType,rightInfo$precisionType)
   
   if(op=="/")
-    ExpInfo$precisionType=gpuMagic.option$getDefaultFloat()
+    ExpInfo$precisionType=GPUVar$default_float
   
   if(leftInfo$compileSize1&&rightInfo$compileSize1&&leftInfo$compileSize2&&rightInfo$compileSize2){
     ExpInfo$compileSize1=TRUE
@@ -310,7 +310,7 @@ profile_arithmetic<-function(varInfo,Exp){
 
 profile_logical<-function(varInfo,Exp){
   res=profile_arithmetic(varInfo,Exp)
-  res$ExpInfo$precisionType=gpuMagic.option$getDefaultInt()
+  res$ExpInfo$precisionType="bool"
   res
 }
 
@@ -428,7 +428,7 @@ profile_numeric<-function(Exp){
   ExpInfo=getEmpyTable(type=T_scale)
   ExpInfo$value=toCharacter(Exp)
   if(length(grep(".",ExpInfo$value,fixed=T))==0){
-    ExpInfo$precisionType=gpuMagic.option$getDefaultInt()
+    ExpInfo$precisionType=GPUVar$default_int
   }
   ExpInfo$compileValue=TRUE
   ExpInfo$constVal=TRUE
@@ -441,12 +441,12 @@ profile_symbol<-function(varInfo,Exp){
 
 profile_floor<-function(varInfo,Exp){
   ExpInfo=getExpInfo(varInfo,Exp[[2]])
-  ExpInfo$precisionType=gpuMagic.option$getDefaultInt()
+  ExpInfo$precisionType=GPUVar$default_int
   return(ExpInfo)
 }
 profile_ceil<-function(varInfo,Exp){
   ExpInfo=getExpInfo(varInfo,Exp[[2]])
-  ExpInfo$precisionType=gpuMagic.option$getDefaultInt()
+  ExpInfo$precisionType=GPUVar$default_int
   return(ExpInfo)
 }
 
@@ -483,7 +483,7 @@ profile_gMatrix<-function(varInfo,Exp){
   return(ExpInfo)
 }
 
-#Exp=quote(gNumber(precision="uint"))
+#Exp=quote(gNumber())
 profile_gNumber<-function(varInfo,Exp){
   args=matchFunArg(gNumber,Exp)
   ExpInfo=getEmpyTable(T_scale)

@@ -2,19 +2,17 @@
 #include "kernelManager.h"
 #include <string> 
 using namespace std;
-openArray::openArray(size_t length, dtype type){
-	kernelManager::checkAndInitializeManager();
-	device_id = kernelManager::getDeviceIndex();
+openArray::openArray(deviceIdentifier device, size_t length, dtype type){
+	device_id = device;
 	gpuAlloc(length, type);
 	this->length = length;
 	dataType = type;
 }
 
 
-openArray::openArray( void * src, size_t length, dtype type)
+openArray::openArray(deviceIdentifier device, void * src, size_t length, dtype type)
 {
-	kernelManager::checkAndInitializeManager();
-	device_id = kernelManager::getDeviceIndex();
+	device_id = device;
 	void* host_data = malloc(length*typesize(type));
 	RTogpu(host_data, src, type, length);
 	gpuAlloc(host_data, length, type);
@@ -23,8 +21,31 @@ openArray::openArray( void * src, size_t length, dtype type)
 	free(host_data);
 }
 
-
-
+openArray* openArray::constant(deviceIdentifier device, double number, size_t length, dtype type)
+{
+	openArray* oa = new openArray(device,length, type);
+	deviceContext dc = kernelManager::getDevice(device);
+	void* tmp_data = malloc(typesize(type));
+	void* host_ptr = malloc(8);
+	//support float, double, long only
+	switch (type) {
+	case dtype::i32:
+		*(int*)host_ptr = (int)number;
+	case dtype::f64:
+	case dtype::f32:
+	case dtype::i64:
+		*(double*)host_ptr = number;
+		break;
+	default:
+		errorHandle("Unsupported data type!");
+	}
+	RTogpu(tmp_data, host_ptr, type, 1);
+	cl_int error = clEnqueueFillBuffer(dc.command_queue, *(*oa).getDeviceData(), tmp_data, typesize(type), 0, length*typesize(type), 0, NULL, NULL);
+	if (error != CL_SUCCESS) errorHandle("An error has occured in memory assignment!");
+	free(tmp_data);
+	free(host_ptr);
+	return oa;
+}
 
 
 openArray::~openArray()
@@ -35,17 +56,6 @@ openArray::~openArray()
 }
 
 
-openArray* openArray::constant(double number, size_t length, dtype type)
-{
-	openArray* oa=new openArray(length, type);
-	cl_command_queue queue = kernelManager::getQueue(oa->getDeviceId());
-	void* tmp_data = malloc(typesize(type));
-	RTogpu(tmp_data, &number, type, 1);
-	cl_int error=clEnqueueFillBuffer(queue, *(*oa).getDeviceData(), tmp_data, typesize(type), 0, length*typesize(type), 0, NULL, NULL);
-	if (error != CL_SUCCESS) errorHandle("An error has occured in memory assignment!");
-	free(tmp_data);
-	return oa;
-}
 
 
 
@@ -59,8 +69,8 @@ void openArray::getHostData(void *source)
 {
 	if (data == nullptr) return;
 	size_t size = length * typesize(dataType);
-	cl_command_queue queue = kernelManager::getQueue(getDeviceId());
-	cl_int error=clEnqueueReadBuffer(queue, data, CL_TRUE, 0, size, source, 0, NULL, NULL);
+	deviceContext dc = kernelManager::getDevice(device_id);
+	cl_int error=clEnqueueReadBuffer(dc.command_queue, data, CL_TRUE, 0, size, source, 0, NULL, NULL);
 	if (error != CL_SUCCESS)errorHandle(string("Error in read GPU memory, error info:")+ getErrorString(error));
 }
 
@@ -78,14 +88,6 @@ dtype openArray::getDataType()
 	return dataType;
 }
 
-int openArray::getDeviceId()
-{
-	if (device_id == -1) {
-		kernelManager::checkAndInitializeManager();
-		device_id = kernelManager::getDeviceIndex();
-	}
-	return device_id;
-}
 
 size_t openArray::getLength()
 {
@@ -103,9 +105,9 @@ void openArray::releaseHostData() {
 
 void openArray::gpuAlloc(size_t size, dtype type)
 {
-	cl_context context = kernelManager::getContext(getDeviceId());
+	deviceContext dc = kernelManager::getDevice(device_id);
 	cl_int error;
-	data=clCreateBuffer(context, CL_MEM_READ_WRITE, size*typesize(type), NULL, &error);
+	data=clCreateBuffer(dc.context, CL_MEM_READ_WRITE, size*typesize(type), NULL, &error);
 	if (error != CL_SUCCESS) {
 		string errorInfo =string("Fail to allocate ") +
 			to_string(size*typesize(type) / 1024 / 1024)+
@@ -116,9 +118,9 @@ void openArray::gpuAlloc(size_t size, dtype type)
 
 void openArray::gpuAlloc(void * hostData,size_t length, dtype type)
 {
-	cl_context context = kernelManager::getContext(getDeviceId());
+	deviceContext dc = kernelManager::getDevice(device_id);
 	cl_int error;
-	data = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, length*typesize(type), hostData, &error);
+	data = clCreateBuffer(dc.context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, length*typesize(type), hostData, &error);
 	if (error != CL_SUCCESS) {
 		string errorInfo = string("Fail to allocate ") +
 			to_string(length*typesize(type) / 1024 / 1024) +
@@ -148,6 +150,7 @@ int openArray::typesize(dtype type)
 	default:
 		errorHandle("Unsupported type");
 	}
+	return 0;
 }
 
 

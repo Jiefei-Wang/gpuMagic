@@ -1,11 +1,12 @@
 
 checkTypeSupport<-function(type){
-  if(!(type %in% gpuMagic.option$getAvailableType()))
+  if(!(type %in% gpuMagic$getAvailableType()))
     stop("The variable type ", type," is not supported")
 }
 getTypeNum<-function(type){
   switch(
     type,
+    bool=1L,
     char=1L,
     half=2L,
     float=3L,
@@ -22,6 +23,7 @@ getTypeNum<-function(type){
 getTypeCXXStr<-function(type){
   switch(
     type,
+    bool="bool",
     char="char",
     half="half",
     float="float",
@@ -34,9 +36,11 @@ getTypeCXXStr<-function(type){
   )
 }
 
+#in byte
 getTypeSize<-function(type){
   switch(
     type,
+    bool=1L,
     char=1L,
     half=2L,
     float=4L,
@@ -50,16 +54,17 @@ getTypeSize<-function(type){
 }
 getDataType<-function(data){
   if(typeof(data)=="double"||typeof(data)=="numeric")
-    return(gpuMagic.option$getDefaultFloat())
+    return(GPUVar$default_float)
   if(typeof(data)=="integer")
-    return(gpuMagic.option$getDefaultInt())
+    return(as.character(gpuMagic$getOptions("default.int",F)))
   stop("The given type is not defined")
 }
 convertDataType<-function(data,type){
   checkTypeSupport(type)
   switch(
     type,
-    char=rawToChar(as.raw(data)),
+    bool=as.raw(data),
+    char=as.raw(data),
     int=as.integer(data),
     as.double(data)
   )
@@ -67,52 +72,102 @@ convertDataType<-function(data,type){
 
 
 
+getPlatformNum<-function(){
+  platform=0L
+  res=.C("getPlatformNum",platform)
+  res[[1]]
+}
+getDeviceNum<-function(platform){
+  device=0L
+  res=.C("getDeviceNum",as.integer(platform),device)
+  res[[2]]
+}
+getSingleDeviceInfo<-function(platform,device){
+  deviceName=paste0(rep(" ",100),collapse = "")
+  deviceType=0L
+  global_memory=0.0
+  local_memory=0.0
+  haslocalMemory=0L
+  opencl_version=paste0(rep(" ",100),collapse = "")
+  compute_unit_num=0L
+  res=.C("getDeviceInfo",as.integer(platform),as.integer(device),
+         deviceName,deviceType,
+         global_memory,local_memory,haslocalMemory,
+         opencl_version,compute_unit_num
+  )
+  deviceInfo=data.frame(
+    id=NA,platform=platform,device=device,
+    deviceName=trimws(res[[3]]),deviceType=res[[4]],
+    globalMemory=res[[5]],localMemory=res[[6]],haslocalMemory=res[[7]],
+    opencl_version=trimws(res[[8]]),compute_unit_num=res[[9]],stringsAsFactors=F
+  )
+  deviceInfo$deviceType=switch(as.character(deviceInfo$deviceType),"0"="CPU","1"="GPU","2"="other")
+  
+  deviceInfo
+}
+
+prettyPrint<-function(x){
+  name=StrAlign(colnames(x),sep="\\l")
+  value=StrAlign(as.character(x),sep="\\l")
+  final=paste0(paste(name,value,sep=": "),collapse = "\n")
+  cat(final)
+}
 #===========================Obtain device infomation==============
 #' The function is used to obtain all the opencl-enable devices
 #' @export
 getDeviceList=function(){
-  .C("getDeviceList")
+  updateDeviceInfo()
+  deviceInfo=.gpuResourcesManager$globalVars$deviceInfo[,c("id","platform","device","deviceName","globalMemory")]
+  deviceInfo$globalMemory=sapply(deviceInfo$globalMemory,format_memory_size_output)
+  print(deviceInfo, row.names = FALSE,right=F)
   invisible()
 }
+
 #' Get the ith device information, call 'getDeviceList()' first to figure out the index before use this function
 #' @param i numeric The device index
 #' @export
 getDeviceInfo=function(i){
-  .C("getDeviceInfo",as.integer(i))
+  updateDeviceInfo()
+  deviceInfo=.gpuResourcesManager$globalVars$deviceInfo
+  if(i>nrow(deviceInfo)||i<=0){
+    stop("Invalid device id!")
+  }
+  deviceInfo=deviceInfo[i,,drop=F]
+  deviceInfo$globalMemory=format_memory_size_output(deviceInfo$globalMemory)
+  deviceInfo$localMemory=format_memory_size_output(deviceInfo$localMemory)
+  prettyPrint(deviceInfo)
   invisible()
 }
-#' Get the device detailed information, call 'getDeviceList()' first to figure out the index before use this function
-#' @param i The device index
-#' @export
-getDeviceDetail=function(i){
-  .C("getDeviceDetail",as.integer(i))
-  invisible()
-}
+
 #' Get the current used device
 #' @export
 getCurDevice=function(){
-  .C("getCurDevice")
+  curInd=.gpuResourcesManager$globalVars$curDeviceIndex
+  for(i in curInd){
+    getDeviceInfo(i)
+    cat("\n\n")
+  }
   invisible()
 }
 #' Set which device will be used in the opencl, call 'getDeviceList()' first to figure out the index before use this function
 #' @param i numeric The device index
 #' @export
 setDevice=function(i){
-  .gpuResourcesManager$releaseAll()
-  .C("setDevice",as.integer(i))
+  selectDevice(sort(unique(as.integer(i))))
   invisible()
 }
 
-getCurDeviceIndex<-function(){
-  id=-1L
-  res=.C("getCurDeviceIndex",id)
-  id=res[[1]]
-  if(id==-1) 
-    setDevice(0)
-  else 
-    return(id)
-  res=.C("getCurDeviceIndex",id)
-  id=res[[1]]
-  if(id==-1) stop("An error has occured during the device initialization.")
-  id
+#' Query the current job status in a device
+#' @param i numeric The device index
+#' @export
+getJobStatus=function(i){
+  device=getSelectedDevice(i)
+  res=.C("getDeviceStatus",device[1],device[2],1L)
+  status=res[[length(res)]]
+  switch(as.character(status),
+         "3"="queued",
+         "2"="submitted",
+         "1"="running",
+         "0"="complete",
+         paste0("Unknown status:",status))
 }

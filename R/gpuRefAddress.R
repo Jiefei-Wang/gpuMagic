@@ -20,7 +20,7 @@ gpuRefAddress$methods(
 gpuRefAddress$methods(
   getAddress = function() {
     if(!is.null(.self$address))
-      .gpuResourcesManager$getAddress(.self$address)
+      return(.self$address)
     else
       stop("The GPU resources does not exist")
   }
@@ -29,43 +29,43 @@ gpuRefAddress$methods(
 gpuRefAddress$methods(
   finalize = function() {
     if(!is.null(.self$address))
-      .gpuResourcesManager$releaseAddress(.self$address)
+      .gpuResourcesManager$releaseAddress(.self$device,.self$address)
   }
 )
 
 gpuRefAddress$methods(
-  gpuMalloc = function(len,type) {
+  gpuMalloc = function(device,len,type) {
     if(!is.null(.self$address))
-      .gpuResourcesManager$releaseAddress(.self,.self$address)
+      .gpuResourcesManager$releaseAddress(.self$device,.self$address)
     .self$length=len
     .self$type=type
-    .self$device=getCurDeviceIndex()
-    .self$address=.gpuResourcesManager$gpuMalloc(len,type)
+    .self$device=device
+    .self$address=.gpuResourcesManager$gpuMalloc(device,len,type)
   }
 )
 
 gpuRefAddress$methods(
-  upload = function(data,type) {
+  upload = function(device,data,type) {
     if(!is.null(.self$address))
-      .gpuResourcesManager$releaseAddress(.self$address)
+      .gpuResourcesManager$releaseAddress(.self$device,.self$address)
     data=as.matrix(data)
     .self$length=length(data)
     .self$type=type
-    .self$device=getCurDeviceIndex()
-    .self$address=.gpuResourcesManager$upload(data,type)
+    .self$device=device
+    .self$address=.gpuResourcesManager$upload(device,data,type)
   }
 )
 gpuRefAddress$methods(
   download = function() {
-    .gpuResourcesManager$download(.self$address,.self$length,.self$type)
+    .gpuResourcesManager$download(.self$device,.self$address,.self$length,.self$type)
   }
 )
 
 gpuRefAddress$methods(
-  switchDevice = function() {
-    data=.gpuResourcesManager$download(.self$address,.self$length,.self$type)
-    upload(data,.self$type)
-    .self$device=getCurDeviceIndex()
+  switchDevice = function(device) {
+    data=.gpuResourcesManager$download(.self$device,.self$address,.self$length,.self$type)
+    upload(device,data,.self$type)
+    .self$device=device
   }
 )
 

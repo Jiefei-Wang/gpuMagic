@@ -387,13 +387,13 @@ R_getVarSize<-function(varInfo,var,ind){
       part1=CSimplify(paste0(to_C$value,"/",by_C$value))
       part2=CSimplify(paste0(from_C$value,"/",by_C$value))
       if(!xor(isNumeric(part1),isNumeric(part2))){
-        res=CSimplify(paste0("floor((",gpuMagic.option$getDefaultFloat(),")(",part1,"-",part2,"))+1"))
+        res=CSimplify(paste0("floor((",GPUVar$default_float,")(",part1,"-",part2,"))+1"))
       }else{
         if(isNumeric(part1)){
-          res=CSimplify(paste0("-floor((",gpuMagic.option$getDefaultFloat(),")(",part2,"))+",part1,"+1"))
+          res=CSimplify(paste0("-floor((",GPUVar$default_float,")(",part2,"))+",part1,"+1"))
         }else{
           if(isNumeric(part2)){
-            res=CSimplify(paste0("floor((",gpuMagic.option$getDefaultFloat(),")(",part1,"))-",part2,"+1"))
+            res=CSimplify(paste0("floor((",GPUVar$default_float,")(",part1,"))-",part2,"+1"))
           }
         }
       }

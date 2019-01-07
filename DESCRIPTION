@@ -16,10 +16,10 @@ Suggests: testthat,
     rmarkdown
 Collate:
     'ParserFramework.R'
-    'gpuResourcesManager.R'
     'RCParserFunc.R'
     'RRecompileFunc.R'
     'RProfilerFunc.R'
+    'gpuResourcesManager.R'
     'pkgFunc.R'
     'RCParser.R'
     'RCParserFunc_Rlevel.R'
@@ -27,6 +27,7 @@ Collate:
     'RParser.R'
     'RParserSupportFunc.R'
     'RProfiler.R'
+    'RProfilerSettings.R'
     'RProfilerSupportFunc.R'
     'RRecompiler.R'
     'gpuApply.R'
@@ -36,7 +37,6 @@ Collate:
     'gpuRefAddress.R'
     'kernelManager.R'
     'pkgSetting.R'
-    'predefinedFunc.R'
     'varInfoManager.R'
 VignetteBuilder: knitr
 Encoding: UTF-8

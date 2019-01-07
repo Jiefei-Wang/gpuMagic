@@ -1,0 +1,3 @@
+reference number for an S5 class object
+
+initialize the package when loading it.

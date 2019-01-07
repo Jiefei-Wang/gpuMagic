@@ -118,7 +118,7 @@ C_arithmaticOP_right<-function(varInfo,Exp){
   
   #If the operation is division, it need to be cast to a floating number
   if(op=="/")
-    value_right=paste0("(",gpuMagic.option$getDefaultFloat(),")",value_right)
+    value_right=paste0("(",GPUVar$default_float,")",value_right)
   
   code=c(loopCode,
          extCode,
@@ -181,7 +181,7 @@ C_subset_right<-function(varInfo,Exp){
 #Exp=parse(text="A=floor(B)")[[1]]
 C_floor_right<-function(varInfo,Exp){
   floorFunc<-function(left,right){
-    paste0(left,"=floor((",gpuMagic.option$getDefaultFloat(),")(",right,"))")
+    paste0(left,"=floor((",GPUVar$default_float,")(",right,"))")
   }
   leftVar=Exp[[2]]
   rightVar=Exp[[3]][[2]]
@@ -191,7 +191,7 @@ C_floor_right<-function(varInfo,Exp){
 }
 C_ceil_right<-function(varInfo,Exp){
   floorFunc<-function(left,right){
-    paste0(left,"=ceil((",gpuMagic.option$getDefaultFloat(),")(",right,"))")
+    paste0(left,"=ceil((",GPUVar$default_float,")(",right,"))")
   }
   leftVar=Exp[[2]]
   rightVar=Exp[[3]][[2]]
@@ -324,8 +324,8 @@ C_matMul_right<-function(varInfo,Exp){
   privateSize=GPUVar$private_size
   vector_size=8
   vector_length=privateSize/vector_size
-  defaultFloat=gpuMagic.option$getDefaultFloat()
-  defaultFloatV=paste0(gpuMagic.option$getDefaultFloat(),vector_size)
+  defaultFloat=GPUVar$default_float
+  defaultFloatV=paste0(GPUVar$default_float,vector_size)
   defaultIndex=GPUVar$default_index_type
   
   #define macro for the matrix dimension
@@ -389,8 +389,8 @@ C_matMul_right_A<-function(varInfo,Exp){
   privateSize=GPUVar$private_size
   vector_size=8
   vector_length=privateSize/vector_size
-  defaultFloat=gpuMagic.option$getDefaultFloat()
-  defaultFloatV=paste0(gpuMagic.option$getDefaultFloat(),vector_size)
+  defaultFloat=GPUVar$default_float
+  defaultFloatV=paste0(GPUVar$default_float,vector_size)
   defaultIndex=GPUVar$default_index_type
   
   #private assignment
@@ -530,8 +530,8 @@ C_matMul_right_B<-function(varInfo,Exp){
   privateSize=GPUVar$private_size
   vector_size=8
   vector_length=privateSize/vector_size
-  defaultFloat=gpuMagic.option$getDefaultFloat()
-  defaultFloatV=paste0(gpuMagic.option$getDefaultFloat(),vector_size)
+  defaultFloat=GPUVar$default_float
+  defaultFloatV=paste0(GPUVar$default_float,vector_size)
   defaultIndex=GPUVar$default_index_type
   
   #private assignment

@@ -3,46 +3,47 @@
 
 
 extern "C" LibExport
-void getCurDeviceIndex(int* id);
+void getPlatformNum(int* platformNum);
+extern "C" LibExport
+void getDeviceNum(int* platform, int* deviceNum);
+extern "C" LibExport
+void getDeviceInfo(int* platform, int* device,
+	char** deviceName,int* deviceType,double* global_memory,
+	double* local_memory,int* haslocalMemory,char** opencl_version,int* compute_unit_num);
+
+
 
 extern "C" LibExport
-void upload(void * data, double * length, int * type, void ** address);
+void upload(int* platform, int* deviceNum,void * data, double * length, int * type, void ** address);
 extern "C" LibExport
-void gpuMalloc(double* length, int* type, void** address);
+void gpuMalloc(int* platform, int* deviceNum,double* length, int* type, void** address);
 
 extern "C" LibExport
 void download(void* data, void** address);
 
 
 extern "C" LibExport
-void clear(void** address);
+void release(void** address);
 extern "C" LibExport
-void hasKernel(char** signature, char** kernel, bool* res);
+void hasKernel(int* platform, int* deviceNum,char** signature, char** kernel, bool* res);
 
 extern "C" LibExport
-void createKernel(char** signature,char** kernel,  char** code, char** flag=nullptr);
+void createKernel(int* platform, int* deviceNum,char** signature, char** flag, char** code, char** kernel);
 extern "C" LibExport
-void loadParameter(char** signature, char** kernel, void** data_address, int *parm_index);
+void setParameter(int* platform, int* deviceNum, char** signature, char** kernel, void** data_address, int *parm_index);
 extern "C" LibExport
-void loadSharedParameter(char** signature, char** kernel, int* size, int *parm_index);
+void setSharedParameter(int* platform, int* deviceNum, char** signature, char** kernel, int* size, int *parm_index);
 extern "C" LibExport
-void launchKernel(char** signature, char** kernel, int* blockSize, int* threadSize);
-
-
+void launchKernel(int* platform, int* deviceNum, char** signature, char** kernel, int* blockSize, int* threadSize);
 
 extern "C" LibExport
-void getDeviceList();
+void getPreferredGroupSize(int* platform, int* deviceNum, char** signature, char** kernel, double* res);
 extern "C" LibExport
-void getDeviceInfo(int * i);
-extern "C" LibExport
-void getDeviceDetail(int * i);
-extern "C" LibExport
-void setDevice(int * i);
-extern "C" LibExport
-void getCurDevice();
+void getDeviceStatus(int* platform, int* deviceNum, int* status);
 
 extern "C" LibExport
-void getDeviceSharedMem(int* id, double* mem);
+void getDeviceFullInfo(int* platform, int* deviceNum);
+
 
 extern "C" LibExport
 void debug(bool* test, int* length);

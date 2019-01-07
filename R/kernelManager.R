@@ -1,8 +1,7 @@
 
 #' @export
-.kernel<-function(file="",kernel,parms,
-                  .globalThreadNum="length(FirstArg)",.options=kernel.getOption(),
-                  src=""){
+.kernel<-function(src="",kernel,parms,
+                  .device="auto",.globalThreadNum="length(FirstArg)",.options=kernel.getOption()){
   verbose=.options$verbose
   kernelMsg=.options$kernelMsg
   kernelOption=.options$kernelOption
@@ -10,11 +9,20 @@
   if(verbose||sum(as.matrix(kernelMsg[,-grep("warning",colnames(kernelMsg))]))!=0) 
     message("======kelnel compilation=========")
   #Read the opencl code
-  codePack=readCode(file,src)
+  codePack=readCode(src)
   src=codePack$src
+  srcSig=codePack$srcSig
+  
+  #Find the device and platform id
+  if(.device=="auto"){
+    deviceId=getFirstSelectedDevice()
+  }else{
+    if(length(.device)>1) stop("Multiple devices are not supported!")
+    deviceId=.device
+  }
+  device=getSelectedDevice(deviceId)
   
   
-  device=getCurDeviceIndex()
   dataType=c()
   for(i in seq_len(length(parms))){
     if(class(parms[[i]])=="list"){
@@ -22,17 +30,17 @@
       next
     }
     if(class(parms[[i]])!="gpuMatrix"){
-      parms[[i]]=gpuMatrix(parms[[i]])
+      parms[[i]]=gpuMatrix(parms[[i]],device=deviceId)
     }
     dataType[i]=.type(parms[[i]])
-    if(parms[[i]]@gpuAddress$getDevice()!=device)
+    if(.device(parms[[i]])!=deviceId)
       stop("The data is not in the same device!")
   }
   
   
   
   #Create the signature for the kernel function
-  sig=paste0(codePack$timeSig,kernelOption$flag,kernelOption$signature)
+  sig=paste0(srcSig,kernelOption$flag,kernelOption$signature)
   
   
   #Create the data type macros
@@ -49,11 +57,11 @@
   }
   
   sig_hash=digest(sig)
-  
-  if(!hasKernel(sig_hash,kernel)){
+  #Create the kernel if it does not exist
+  if(!hasKernel(device,sig_hash,kernel)){
     if(verbose||kernelMsg$compilation.msg)
       message("OpenCL compiler message: The kernel does not exist and will be created")
-    .C("createKernel",sig_hash,kernel,src,kernelOption$flag)
+    .C("createKernel",device[1],device[2],sig_hash,kernelOption$flag,src,kernel)
   }
   #Compute the usage of the shared memory and global memory
   #upload the parameters
@@ -63,13 +71,13 @@
     if(class(parms[[i]])=="list"){
       share_memory=share_memory+parms[[i]]$size
       
-      .C("loadSharedParameter",sig_hash,kernel,
+      .C("setSharedParameter",device[1],device[2],sig_hash,kernel,
          as.integer(parms[[i]]$size),as.integer(i-1))
     }else{
       global_memory=global_memory+getSize(parms[[i]])
       #message(getSize(parms[[i]]))
-      .C("loadParameter",sig_hash,kernel,.getAddress(parms[[i]]),
-         as.integer(i-1))
+      .C("setParameter",device[1],device[2],sig_hash,kernel,
+         .getAddress(parms[[i]]),as.integer(i-1))
     }
   }
   if(verbose||kernelMsg$memory.usage.msg){
@@ -81,34 +89,24 @@
   if(.globalThreadNum=="length(FirstArg)"){
     .globalThreadNum=length(parms[[1]])
   }
-  minBlock=16
+  
   if(kernelOption$localThreadNum=="Auto"){
-    Block=.globalThreadNum
-    localThreadNum=1
-    repeat{
-      if(Block%%2==0&&localThreadNum<64&&Block>=minBlock*2){
-        localThreadNum=localThreadNum*2
-        Block=Block/2
-      }else{
-        break
-      }
-    }
+    localThreadNum=0
+    localThreadNum_output=getGroupSize(device,sig_hash,kernel)
   }else{
     localThreadNum=kernelOption$localThreadNum
+    localThreadNum_output=kernelOption$localThreadNum
   }
-  if(localThreadNum<=32&&Block>=minBlock&&
-     (verbose||kernelMsg$insufficient.thread.num.warning)){
-    warning(paste0("The current thread number is ",localThreadNum,". This may have negative effect on the performance. Please consider to increase the thread number"))
-  }
+  
   
   if(verbose||kernelMsg$thread.num.msg){
     message("OpenCL thread Number report:")
     message(paste0("Total thread number: ",.globalThreadNum))
-    message(paste0("Block number: ",.globalThreadNum/localThreadNum))
-    message(paste0("Thread number per block: ",localThreadNum))
+    message(paste0("block number: ",.globalThreadNum/localThreadNum_output))
+    message(paste0("Thread number per block: ",localThreadNum_output))
   }
   
-  .C("launchKernel",sig_hash,kernel,as.integer(.globalThreadNum),as.integer(localThreadNum))
+  .C("launchKernel",device[1],device[2],sig_hash,kernel,as.integer(.globalThreadNum),as.integer(localThreadNum))
   invisible()
 }
 #' @export
@@ -138,60 +136,35 @@ kernel.getSharedMem<-function(length,type){
   return(list(length=length,size=length*getTypeSize(type),type=type))
 }
 
-readCode<-function(file,src){
-  if(file!=""){
+readCode<-function(src){
+  #if the src can be treated as a file name, then read the file, 
+  #otherwise check if it is code.
+  if(nchar(src)<128&&file.exists(src)){
+    fileName=src
     ##Read source file
-    src=readChar(file, file.info(file)$size)
-    #src=cleanCode(src)
+    src=readChar(fileName, file.info(fileName)$size)
+    sig=as.character(file.mtime(fileName))
     #Add a space to make it more stable
     src=paste0(" ",src)
-    timeSig=as.character(file.mtime(file))
   }else{
-    if(src!=""){
-      #src=cleanCode(src)
-      #Add a space to make it more stable
-      src=paste0(" ",src)
-      timeSig=src
-    }else{
-      stop("Does not find the kernel code")
-    }  
+    if(nchar(src)<40){
+      if(length(grep("\\(.*\\)",src))==0){
+        warning("It looks like the src variable is a file address, but I cannot find it.")
+      }
+    }
+    sig=digest(src)
   }
-  list(timeSig=timeSig,src=src)
-}
-
-parseProgram<-function(codePack,kernel,parms,autoType=TRUE){
-  typeList=c()
-  
-  for(i in seq_len(length(parms))){
-    if(class(parms[[i]])!="gpuMatrix")
-      type=getTypeCXXStr(getDataType(parms[[i]]))
-    else
-      type=getTypeCXXStr(.type(parms[[i]]))
-    typeList[i]=type
-  }
-  sig=paste0(c(codePack$timeSig,autoType,typeList),collapse = "")
-  if(!hasKernel(sig,kernel)){
-    if(autoType)
-      codePack$src=kernelSub(kernel,codePack$src,typeList)
-  }
-  
-  list(src=codePack$src,sig=sig)
+  return(list(src=src,srcSig=sig))
 }
 
 
-#Clean The code to make the kernel code more stable
-#Clean comments, tabs and unnecessary wrap.
-cleanCode<-function(src){
-  src=gsub("//.*?\n","",src)
-  src=gsub("\t","",src)
-  src=gsub("\r","",src)
-  src=gsub("\n+"," ",src)
-  
-  src
-}
 #Check if the kernel is already exist
-hasKernel<-function(sig,kernel){
-  res=.C("hasKernel",sig,kernel,FALSE)
-  res[[3]]
+hasKernel<-function(device,sig,kernel){
+  res=.C("hasKernel",device[1],device[2],sig,kernel,FALSE)
+  res[[length(res)]]
 }
 
+getGroupSize<-function(device,sig,kernel){
+  res=.C("getPreferredGroupSize",device[1],device[2],sig,kernel,as.double(0))
+  res[[length(res)]]
+}

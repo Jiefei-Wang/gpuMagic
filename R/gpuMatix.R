@@ -1,36 +1,50 @@
 
 .gpuMatrix=setClass(
   Class="gpuMatrix",
-  slots = c(data="ANY",dimension="vector",type="character",gpuAddress="ANY")
+  slots = c(data="ANY",dimension="vector",type="character",gpuAddress="ANY",device="numeric")
 )
 #' @export
-gpuMatrix<-function(data,type="auto"){
+gpuMatrix<-function(data,type="auto",device="auto"){
   data=as.matrix(data)
   
   if(type=="auto"){
-    type=gpuMagic.option$getDefaultFloat()
+    type=GPUVar$default_float
   }
+  if(device=="auto"){
+    device=getFirstSelectedDevice()
+  }
+  if(length(device)>1)
+    stop("Only one device is supported")
+  #check if the device has been initialized
+  getSelectedDevice(device)
    
   checkTypeSupport(type)
   ad=gpuRefAddress()
-  ad$upload(data,type)
+  ad$upload(device,data,type)
   
-  obj=.gpuMatrix(data=data,dimension=dim(data),type=type,gpuAddress=ad)
+  obj=.gpuMatrix(data=data,dimension=dim(data),type=type,gpuAddress=ad,device=device)
   
   
   obj
 }
 #' @export
-gpuEmptMatrix<-function(row=1,col=1,type="auto"){
+gpuEmptMatrix<-function(row=1,col=1,type="auto",device="auto"){
   if(type=="auto"){
-    type=gpuMagic.option$getDefaultFloat()
+    type=GPUVar$default_float
   }
+  if(device=="auto"){
+    device=getFirstSelectedDevice()
+  }
+  if(length(device)>1)
+    stop("Only one device is supported")
+  #check if the device has been initialized
+  getSelectedDevice(device)
   
   checkTypeSupport(type)
   ad=gpuRefAddress()
-  ad$gpuMalloc(row*col,type)
+  ad$gpuMalloc(device,row*col,type)
   
-  obj=.gpuMatrix(data=NULL,dimension=c(row,col),type=type,gpuAddress=ad)
+  obj=.gpuMatrix(data=NULL,dimension=c(row,col),type=type,gpuAddress=ad,device=device)
   
   
   obj
@@ -45,7 +59,9 @@ gpuEmptMatrix<-function(row=1,col=1,type="auto"){
     stop("The GPU address does not exist")
   ad
 }
-
+.device<-function(obj){
+  obj@device
+}
 .data<-function(obj){
   if(is.null( obj@data))
     stop("The data is not available")
@@ -91,7 +107,7 @@ setMethod(
   f="upload",
   signature = "gpuMatrix",
   definition = function(obj){
-    obj@gpuAddress$upload(.data(obj),.type(obj))
+    obj@gpuAddress$upload(.device(obj),.data(obj),.type(obj))
     obj
   }
 )

@@ -11,7 +11,7 @@ test_that("vector add",{
   option=kernel.getOption()
   option$kernelMsg$insufficient.thread.num.warning=F
   
-  .kernel(file=fileName,kernel="vectorAdd",parms=list(A,B,dev_C),.options=option)
+  .kernel(src=fileName,kernel="vectorAdd",parms=list(A,B,dev_C),.options=option)
   
   dev_C=download(dev_C)
   C=as.vector(dev_C)

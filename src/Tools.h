@@ -7,6 +7,7 @@
 #include <iostream>
 
 
+
 enum dtype {
 	c = 1, f16 = 2, f32 = 3, f64 = 4, i32 = 5, i64 = 6,
 	ui32 = 7, ui64 = 8
@@ -17,6 +18,7 @@ void gpuToR(void* Rdata, void* gpuData, dtype type,size_t length);
 void RTogpu(void* gpuData, void* Rdata, dtype type, size_t length);
 
 void errorHandle(std::string errorInfo);
+void warningHandle(std::string warningInfo);
 void message(std::string msg);
 const char * getErrorString(cl_int error);
 
@@ -27,7 +29,7 @@ const char * getErrorString(cl_int error);
 template<class T1, class T2>
 void cpyData(T1* target, T2* src, size_t n) {
 	for (size_t i = 0; i < n; i++) {
-		target[i] = src[i];
+		target[i] = (T1)src[i];
 	}
 }
 

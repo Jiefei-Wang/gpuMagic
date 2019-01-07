@@ -9,12 +9,20 @@ saveGPUcode<-function(GPUcode){
   GPUcode_hash$parmsName=names(GPUcode$parms)
   GPUcode_hash
 }
+loadGPUcode<-function(key,parms){
+  GPUcode=gpuApplyFuncList[[key]]
+  GPUcode[["parms"]]=parms
+  names(GPUcode$parms)=GPUcode$parmsName
+  return(GPUcode)
+}
 
 
-createSapplySignature<-function(parms,FUN,.macroParms,.options){
-  sig=getCurDeviceIndex()
+createSapplySignature<-function(parms,FUN,.macroParms,.device,.options){
+  sig=.device
   parmsName=names(parms)
-  for(i in 1:length(parms)){
+  
+  #skip the first parameter(the parameter that will be looped on)
+  for(i in seq_len(length(parms)-1)+1){
     #Type of the parameters
     varSig=""
     if(sum(dim(parms[[i]]))==2)
@@ -31,12 +39,9 @@ createSapplySignature<-function(parms,FUN,.macroParms,.options){
     sig=c(sig,varSig)
   }
   #Default variable type
-  sig=c(sig,paste(gpuMagic.option$getDefaultFloat(),gpuMagic.option$getDefaultInt(),gpuMagic.option$getDefaultIndexType(),sep=","))
+  sig=c(sig,paste(GPUVar$default_float,GPUVar$default_int,GPUVar$default_index_type,sep=","))
   #gpuSapply options
-  .options$sapplyMsg=NULL
-  .options$kernelMsg=NULL
-  .options$verbose=NULL
-  sig=c(sig,digest(FUN),digest(.macroParms),digest(.options))
+  sig=c(sig,digest(FUN),digest(.macroParms),digest(.options$sapplyOptimization))
   sig
 }
 
@@ -46,7 +51,7 @@ fillGPUdata<-function(GPUcode1,.options){
   parms=GPUcode1$parms
   varInfo=GPUcode1$varInfo
   
-  #transfer all the parameters to the gpuMatrix objects
+  #Convert all the parameters into the gpuMatrix objects
   for(varName in names(parms)){
     if(class(parms[[varName]])=="gpuMatrix")
       next
@@ -175,7 +180,7 @@ fillGPUdata<-function(GPUcode1,.options){
   returnSize=kernel_args$sizeInfo[3]*totalWorkerNum
   if(returnSize==0)
     returnSize=1
-  device_argument$return_var=gpuEmptMatrix(returnSize,type=gpuMagic.option$getDefaultFloat())
+  device_argument$return_var=gpuEmptMatrix(returnSize,type=GPUVar$default_float)
   device_argument$sizeInfo=gpuMatrix(kernel_args$sizeInfo,type=IntType)
   
   
@@ -217,7 +222,7 @@ completeGPUcode<-function(GPUcode){
   arg_type_list=c("char",GPUVar$default_index_type,GPUVar$default_index_type,GPUVar$default_index_type,
                   "char",GPUVar$default_index_type,GPUVar$default_index_type,GPUVar$default_index_type,
                   "char",GPUVar$default_index_type,GPUVar$default_index_type,GPUVar$default_index_type,
-                  gpuMagic.option$getDefaultFloat(),GPUVar$default_index_type)
+                  GPUVar$default_float,GPUVar$default_index_type)
   for(i in 1:length(arg_list)){
     curCode=paste0(arg_prefix_list[i]," ",arg_type_list[i],"* ",arg_list[i])
     if(i!=length(arg_list))
@@ -235,7 +240,7 @@ completeGPUcode<-function(GPUcode){
   code=paste0(code,"){\n",paste0(GPUcode$gpu_code,collapse = "\n"),"}")
   
   #Add the double vector support if appliable
-  if(gpuMagic.option$getDefaultFloat()=="double")
+  if(GPUVar$default_float=="double")
     code=paste0("#pragma OPENCL EXTENSION cl_khr_fp64：enable\n",code)
   
   GPUcode$gpu_code=code
@@ -256,7 +261,7 @@ completeProfileTbl<-function(GPUExp2){
       curPrecision=getTypeNum(.type(var))
       curDim=dim(var)
     }else{
-      curPrecision=gpuMagic.option$getDefaultFloat()
+      curPrecision=GPUVar$default_float
       curDim=dim(as.matrix(var))
     }
     curInfo$size1=curDim[1]

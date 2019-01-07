@@ -1,25 +1,92 @@
-#' @importFrom pryr standardise_call
-#' @importFrom Deriv Simplify
-#' @importFrom Rcpp sourceCpp
-#' @importFrom digest digest
-#' @importFrom stringr str_match_all
-#' @import hash
-#' @useDynLib gpuMagic
+#' @include gpuResourcesManager.R
 
-.onDetach<-function(libpath){
-  gc()
-}
-
-.onUnload<-function(libpath){
-  library.dynam.unload("gpuMagic",libpath)
-  .gpuResourcesManager$deleteEnv()
-}
-
-
-
-DEBUG=TRUE
-
-
+T_scale="scale"
+T_matrix="matrix"
+GPUVar<-local({
+  GPUVar_env=new.env()
+  
+  #The precision setting
+  GPUVar_env$default_index_type="uint"
+  GPUVar_env$default_float="double"
+  GPUVar_env$default_int="int"
+  
+  #worker private data, loacted in global memory
+  GPUVar_env$global_private_data="gpu_gp_data"
+  GPUVar_env$global_private_totalSize="gpu_gp_totalSize"
+  GPUVar_env$global_private_matrixNum="gpu_gp_matrixNum"
+  
+  #Per worker length
+  GPUVar_env$global_private_size1="gpu_gp_size1"
+  GPUVar_env$global_private_size2="gpu_gp_size2"
+  #Per worker offset
+  GPUVar_env$global_private_offset="gpu_gp_offset"
+  
+  #worker shared data, located in global memory
+  GPUVar_env$global_shared_data="gpu_gs_data"
+  GPUVar_env$global_shared_size1="gpu_gs_size1"
+  GPUVar_env$global_shared_size2="gpu_gs_size2"
+  GPUVar_env$global_shared_offset="gpu_gs_offset"
+  
+  #worker private data, located in private/local memory
+  GPUVar_env$local_private_data="gpu_lp_data"
+  GPUVar_env$local_private_size1="gpu_lp_size1"
+  GPUVar_env$local_private_size2="gpu_lp_size2"
+  GPUVar_env$local_private_offset="gpu_lp_offset"
+  
+  #worker shared data, located in local memory
+  GPUVar_env$local_shared_data="gpu_ls_data"
+  GPUVar_env$local_shared_size1="gpu_ls_size1"
+  GPUVar_env$local_shared_size2="gpu_ls_size2"
+  GPUVar_env$local_shared_offset="gpu_ls_offset"
+  
+  
+  #return value
+  GPUVar_env$return_variable="gpu_return_variable"
+  #Per worker size
+  GPUVar_env$return_size="gpu_return_size"
+  
+  #The vector that is looped on
+  GPUVar_env$gpu_loop_data="gpu_loop_data"
+  
+  
+  #Deducted variable
+  GPUVar_env$gpu_global_id="gpu_global_id"
+  
+  #The offset to find the worker data space in the global memory
+  #It is not an argument
+  GPUVar_env$worker_offset="gpu_worker_offset"
+  
+  #parameters for creating the function
+  GPUVar_env$functionCount=0
+  GPUVar_env$functionName="gpu_kernel"
+  
+  #This number can be reset to 0 in the beggining of the parser
+  #The parser can call it when it needs a new variable
+  GPUVar_env$tempVarInd=0
+  GPUVar_env$getTmpVar<-function(){
+    GPUVar_env$tempVarInd=GPUVar_env$tempVarInd+1
+    return(paste0("gpu_temp_var",GPUVar_env$tempVarInd))
+  }
+  GPUVar_env$resetTmpCount<-function(){
+    GPUVar_env$tempVarInd=0
+  }
+  
+  
+  
+  #c(global_private_totalSize,global_private_matrixNum,return_size)
+  GPUVar_env$size_info="gpu_sizeInfo"
+  
+  GPUVar_env$preservedFuncPrefix="compiler."
+  GPUVar_env$openclCode=".opencl_"
+  GPUVar_env$openclFuncCall=".opencl("
+  
+  #This variable is for doing the matrix optimization
+  GPUVar_env$private_var_space="gpu_private_spcae"
+  GPUVar_env$private_size=16
+  
+  
+  return(GPUVar_env)
+})
 
 
 #' @include RProfilerFunc.R
@@ -100,93 +167,22 @@ DEBUG=TRUE
 
 
 
-
-
-
-
-#' @include gpuResourcesManager.R
-
-T_scale="scale"
-T_matrix="matrix"
-GPUVar<-local({
-  GPUVar_env=new.env()
-  #worker private data, loacted in global memory
-  GPUVar_env$global_private_data="gpu_gp_data"
-  GPUVar_env$global_private_totalSize="gpu_gp_totalSize"
-  GPUVar_env$global_private_matrixNum="gpu_gp_matrixNum"
-  
-  #Per worker length
-  GPUVar_env$global_private_size1="gpu_gp_size1"
-  GPUVar_env$global_private_size2="gpu_gp_size2"
-  #Per worker offset
-  GPUVar_env$global_private_offset="gpu_gp_offset"
-  
-  #worker shared data, located in global memory
-  GPUVar_env$global_shared_data="gpu_gs_data"
-  GPUVar_env$global_shared_size1="gpu_gs_size1"
-  GPUVar_env$global_shared_size2="gpu_gs_size2"
-  GPUVar_env$global_shared_offset="gpu_gs_offset"
-  
-  #worker private data, located in private/local memory
-  GPUVar_env$local_private_data="gpu_lp_data"
-  GPUVar_env$local_private_size1="gpu_lp_size1"
-  GPUVar_env$local_private_size2="gpu_lp_size2"
-  GPUVar_env$local_private_offset="gpu_lp_offset"
-  
-  #worker shared data, located in local memory
-  GPUVar_env$local_shared_data="gpu_ls_data"
-  GPUVar_env$local_shared_size1="gpu_ls_size1"
-  GPUVar_env$local_shared_size2="gpu_ls_size2"
-  GPUVar_env$local_shared_offset="gpu_ls_offset"
-  
-  
-  #return value
-  GPUVar_env$return_variable="gpu_return_variable"
-  #Per worker size
-  GPUVar_env$return_size="gpu_return_size"
-  
-  #The vector that is looped on
-  GPUVar_env$gpu_loop_data="gpu_loop_data"
-  
-  
-  #Deducted variable
-  GPUVar_env$gpu_global_id="gpu_global_id"
-  
-  #The offset to find the worker data space in the global memory
-  #It is not an argument
-  GPUVar_env$worker_offset="gpu_worker_offset"
-  
-  #parameters for creating the function
-  GPUVar_env$functionCount=0
-  GPUVar_env$functionName="gpu_kernel"
-  
-  #This number can be reset to 0 in the beggining of the parser
-  #The parser can call it when it needs a new variable
-  GPUVar_env$tempVarInd=0
-  GPUVar_env$getTmpVar<-function(){
-    GPUVar_env$tempVarInd=GPUVar_env$tempVarInd+1
-    return(paste0("gpu_temp_var",GPUVar_env$tempVarInd))
-  }
-  GPUVar_env$resetTmpCount<-function(){
-    GPUVar_env$tempVarInd=0
-  }
-  
-  GPUVar_env$default_index_type="uint"
-  
-  
-  #c(global_private_totalSize,global_private_matrixNum,return_size)
-  GPUVar_env$size_info="gpu_sizeInfo"
-  
-  GPUVar_env$preservedFuncPrefix="compiler."
-  GPUVar_env$openclCode=".opencl_"
-  GPUVar_env$openclFuncCall=".opencl("
-  
-  #This variable is for doing the matrix optimization
-  GPUVar_env$private_var_space="gpu_private_spcae"
-  GPUVar_env$private_size=16
-  
-  
-  return(GPUVar_env)
-})
-
-
+#These function does not have any meaning, just for making sure the GPU code can also be ran on CPU
+gNumber<-function(precision=GPUVar$default_float,constDef=FALSE){
+  return(0)
+}
+gMatrix<-function(nrow=1,ncol=1,precision=GPUVar$default_float,constDef=FALSE,shared=FALSE,location="global"){
+  return(matrix(NA,nrow,ncol))
+}
+resize<-function(data,nrow,ncol){
+  return(matrix(data,nrow,ncol))
+}
+subRef<-function(variable,i="",j=""){
+  if(i==""&&j=="")
+    return(variable[,,drop=F])
+  if(i=="")
+    return(variable[,j,drop=F])
+  if(j=="")
+    return(variable[i,,drop=F])
+  return(variable[i,j,drop=F])
+}

@@ -24,7 +24,7 @@ copyVarInfoTbl <- function(varInfo, resetVersion = T) {
 }
 
 getEmpyTable<-function(type=""){
-  tbl=data.frame(var="NA",dataType=T_matrix,precisionType=gpuMagic.option$getDefaultFloat(),size1="NA",size2="NA",value="NA",
+  tbl=data.frame(var="NA",dataType=T_matrix,precisionType=GPUVar$default_float,size1="NA",size2="NA",value="NA",
                  location="global",shared=FALSE,version=1,
                  address="NA",compileSize1=FALSE,compileSize2=FALSE,compileValue=FALSE,transpose=FALSE,
                  require=FALSE,constVal=FALSE,constDef=FALSE,initialization=TRUE,

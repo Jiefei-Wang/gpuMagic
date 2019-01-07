@@ -16,11 +16,8 @@ kernel void test_vector(gAuto1 *val,gAuto2 *num) {
   ulong k=4*i;
   auto1_v4 tmp=(auto1_v4)(val[k],val[k+1],val[k+2],val[k+3]);
   
-  for(uint j1=0;j1<1000;j1++){
-    for (uint j = 0; j < lt; j++) {
-      tmp=2*sqrt(tmp);
-    }
-  }
+  tmp=2*sqrt(tmp);
+  
   val[k]=tmp.s0;
   val[k+1]=tmp.s1;
   val[k+2]=tmp.s2;

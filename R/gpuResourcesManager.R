@@ -5,147 +5,164 @@
 #The data will be automatically released when the it is not in use
 #' @export
 .gpuResourcesManager<-local({
-  e=new.env()
-  e$unload=FALSE
-  e$totalMemory=10^9
-  #e$totalMemory=12
-  e$memoryUsage=as.double(0)
-  e$maxAddressNum=.Machine$integer.max
-  #e$maxAddressNum=10
-  e$addressList=hash()
-  e$addressSizeList=hash()
-  e$empPtr=0
+  internalVars=new.env()
+  internalVars$unload=FALSE
+  internalVars$totalMemory=hash()
+  internalVars$GCcutoff=0.9
+  internalVars$memoryUsage=hash()
+  internalVars$addressList=hash()
+  internalVars$addressSizeList=hash()
+  internalVars$empPtr=0
   
-  getGPUmemInd<-function(size){
-    if(e$memoryUsage+size>e$totalMemory){
+  
+  globalVars=new.env()
+  globalVars$deviceInfo=c()
+  globalVars$curDevice=hash()
+  globalVars$curDevice[["1"]]=c(0,0)
+  
+  
+  
+  
+  checkGPUmemUsage<-function(devKey,size){
+    if(length(keys(internalVars$memoryUsage))==0)
+      setDevice(keys(globalVars$curDevice))
+    if(internalVars$memoryUsage[[devKey]]+size>internalVars$totalMemory[[devKey]]*internalVars$GCcutoff){
       if(DEBUG)
-        message("The data is larger than the available GPU memory, a garbage collection is triggered")
+        message("A garbage collection is triggered to release the GPU memory")
       gc()
-      if(e$memoryUsage+size>e$totalMemory)
+      if(internalVars$memoryUsage[[devKey]]+size>internalVars$totalMemory[[devKey]])
         stop("The data is larger than the available GPU memory! Garbage collection can not free more space")
     }
-    e$memoryUsage=e$memoryUsage+size
-    
-    
-    ##Check if there is at least one avaible memory index
-    if(length(e$addressList)>=e$maxAddressNum){
-      if(debug)
-        message("The GPU address index is full, a garbage collection is triggered")
-      gc()
-      if(length(e$addressList)>=e$maxAddressNum){
-        stop("The GPU address index is full! Garbage collection can not free more index")
-      }
-    }
-    
-    ##Find an empty index
-    repeat{
-      if(e$empPtr>=e$maxAddressNum){
-        e$empPtr=0
-      }
-      e$empPtr=e$empPtr+1
-      if(!has.key(as.character(e$empPtr),e$addressList))
-        break
-    }
-    return(e$empPtr)
+    internalVars$memoryUsage[[devKey]]=internalVars$memoryUsage[[devKey]]+size
   }
   
+  
+  ##########################################################################################
+  
   list(
-    upload=function(data,type){
+    upload=function(deviceId,data,type){
+      curDevice=getSelectedDevice(deviceId)
+      devKey=as.character(deviceId)
       ##Check if the data is larger than the available memory size and get the memory index
       size=as.double(getTypeSize(type))*length(data)
-      gpuInd=getGPUmemInd(size)
-      
-        res=.C(
-          "upload",convertDataType(data,type),
-          as.double(length(data)),getTypeNum(type),as.double(0)
-        )
-      
-      e$addressList[[as.character(gpuInd)]]=res[[length(res)]]
-      e$addressSizeList[[as.character(gpuInd)]]=size
-      
-      return(gpuInd)
-    },
-    gpuMalloc=function(len,type){
-      ##Check if the data is larger than the available memory size and get the memory index
-      size=getTypeSize(type)*len
-      gpuInd=getGPUmemInd(size)
+      checkGPUmemUsage(devKey,size)
       
       res=.C(
-        "gpuMalloc",as.double(len),getTypeNum(type),as.double(0)
+        "upload",curDevice[1],curDevice[2],convertDataType(data,type),
+        as.double(length(data)),getTypeNum(type),as.double(0)
       )
       
-      e$addressList[[as.character(gpuInd)]]=res[[length(res)]]
-      e$addressSizeList[[as.character(gpuInd)]]=size
+      gpuAd=res[[length(res)]]
+      adKey=digest(gpuAd)
+      internalVars$addressSizeList[[devKey]][[adKey]]=size
+      internalVars$addressList[[devKey]][[adKey]]=gpuAd
+      return(gpuAd)
+    },
+    gpuMalloc=function(deviceId,len,type){
+      updateDeviceInfo(initialOnly=T)
+      curDevice=getSelectedDevice(deviceId)
+      devKey=as.character(deviceId)
       
-      return(gpuInd)
+      size=getTypeSize(type)*len
+      ##Check if the data is larger than the available memory size
+      checkGPUmemUsage(devKey,size)
+      
+      res=.C(
+        "gpuMalloc",curDevice[1],curDevice[2],as.double(len),getTypeNum(type),as.double(0)
+      )
+      
+      gpuAd=res[[length(res)]]
+      adKey=digest(gpuAd)
+      internalVars$addressSizeList[[devKey]][[adKey]]=size
+      internalVars$addressList[[devKey]][[adKey]]=gpuAd
+      
+      return(gpuAd)
     }
     ,
-    download=function(ind,len,type){
-      if(!has.key(as.character(ind),e$addressList))
+    download=function(deviceId,gpuAd,len,type){
+      curDevice=getSelectedDevice(deviceId)
+      devKey=as.character(deviceId)
+      adKey=digest(gpuAd)
+      if(!has.key(adKey,internalVars$addressSizeList[[devKey]]))
         stop("The GPU resources does not exist!")
-      ad=e$addressList[[as.character(ind)]]
-      if(type=="char"){
-        empData=paste0(rep(" ",len),collapse = "")
-        res=.C("download",empData,ad)
-        return(as.numeric(charToRaw(res[[1]])))
-      }else{
-        empData=convertDataType(rep(0,len),type)
-        res=.C("download",empData,ad)
-        
-        return(res[[1]])
-      }
       
+      #General case
+      empData=convertDataType(rep(0,len),type)
+      res=.C("download",empData,gpuAd)
+      return(as.numeric(res[[1]]))
     },
-    getAddress=function(ind){
-      return(e$addressList[[as.character(ind)]])
-    },
-    releaseAddress=function(ind){
-      if(e$unload)
+    releaseAddress=function(deviceId,gpuAd){
+      curDevice=getSelectedDevice(deviceId,checkInital = F)
+      devKey=as.character(deviceId)
+      adKey=digest(gpuAd)
+      if(internalVars$unload)
         return()
-      if(!hash::has.key(as.character(ind),e$addressList)){
-        warning("GPU memory has already been free")
+      if(!hash::has.key(adKey,internalVars$addressSizeList[[devKey]])){
         return()
       }
-      .C("clear",e$addressList[[as.character(ind)]])
+      .C("release",internalVars$addressList[[devKey]][[adKey]])
       
-      e$memoryUsage=e$memoryUsage-e$addressSizeList[[as.character(ind)]]
-      del(as.character(ind),e$addressList)
-      del(as.character(ind),e$addressSizeList)
-      
+      internalVars$memoryUsage[[devKey]]=
+        internalVars$memoryUsage[[devKey]]-internalVars$addressSizeList[[devKey]][[adKey]]
+      del(adKey,internalVars$addressSizeList[[devKey]])
+      del(adKey,internalVars$addressList[[devKey]])
     },
     releaseAll=function(){
-      if(length(e$addressList)!=0)
-        warning("The function releaseAll may cause an incorrect release of the GPU memory.\nPlease clear the global environment before you release them.")
-      
-      for(i in keys(e$addressList)){
-        .C("clear",e$addressList[[i]])
-        #message(i)
+      for(i in keys(internalVars$addressSizeList)){
+        for(j in keys(internalVars$addressList[[i]])){
+          .C("release",internalVars$addressList[[i]][[j]])
+        }
+        clear(internalVars$addressSizeList[[i]])
+        clear(internalVars$addressList[[i]])
       }
-      clear(e$addressList)
-      clear(e$addressSizeList)
-      e$memoryUsage=0
+      clear(internalVars$memoryUsage)
       gc()
       invisible()
     },
     getGPUusage=function(){
-      message(paste0("Max GPU memory: ",format_memory_size_output(e$totalMemory)))
-      message(paste0("Current GPU usage: ",format_memory_size_output(e$memoryUsage),"(",ceiling(e$memoryUsage/e$totalMemory*100),"%)"))
+      deviceList=c()
+      maxMem=c()
+      usedMem=c()
+      for(i in keys(internalVars$totalMemory)){
+        deviceList=c(deviceList,paste0("Device ",i))
+        maxMem=c(maxMem,internalVars$totalMemory[[i]])
+        usedMem=c(usedMem,internalVars$memoryUsage[[i]])
+      }
+      memPercent=paste0("(",ceiling(usedMem/maxMem*100),"%)")
       
-      message(paste0("Max Memory container length: ",e$maxAddressNum))
-      message(paste0("Current container length: ",length(e$addressList)))  
+      usedMem_char=sapply(usedMem,format_memory_size_output)
+      maxMem_char=sapply(maxMem,format_memory_size_output)
+      
+      usedMem_char=paste0("--Used: ",usedMem_char,memPercent)
+      maxMem_char=paste0("--Total: ",maxMem_char)
+      
+      if(length(deviceList)>1){
+      deviceList=StrAlign(deviceList,sep="\\l")
+      usedMem_char=StrAlign(usedMem_char,sep="\\l")
+      maxMem_char=StrAlign(maxMem_char,sep="\\l")
+      }
+      
+      message("Device memory usage:")
+      message(paste(deviceList,usedMem_char,maxMem_char,sep=" ",collapse = "\n"))
     },
     setMaxMemLimit=function(mem=0){
       if(mem==0) mem=10^9
-      tmp=e$totalMemory
-      e$totalMemory=mem
+      tmp=internalVars$totalMemory
+      internalVars$totalMemory=mem
       tmp
     },
+    globalVars=globalVars,
+    internalVars=internalVars,
     deleteEnv=function(){
-      rm(list =ls(envir = e),envir=e)
-      e$unload=TRUE
+      .gpuResourcesManager$releaseAll()
+      rm(list =ls(envir = internalVars),envir=internalVars)
+      rm(list =ls(envir = globalVars),envir=globalVars)
+      internalVars$unload=TRUE
     }
   )
 })
+
+
 
 
 #A tiny function that can make the output more compact
@@ -163,3 +180,89 @@ format_memory_size_output<-function(x){
 }
 
 
+#This function query the device info and storage the results into the global variable
+#If initialOnly=T the function will only update the deviceInfo in the first call
+updateDeviceInfo<-function(initialOnly=F){
+  if(initialOnly){
+    if(!is.null(.gpuResourcesManager$globalVars$deviceInfo))
+      return()
+  }
+  platformNum=getPlatformNum()
+  
+  deviceInfo=c()
+  id=0
+  for(i in seq_len(platformNum)-1){
+    deviceNum=getDeviceNum(i)
+    for(j in seq_len(deviceNum)-1){
+      curDeviceInfo=getSingleDeviceInfo(i,j)
+      curDeviceInfo$id=id
+      deviceInfo=rbind(deviceInfo,curDeviceInfo)
+      id=id+1
+    }
+  }
+  
+  if(length(deviceInfo)==0){
+    message("No device has been found, please make sure the computer has a graphic card or the driver has been properly installed.")
+    message("Hint:",
+            "\nFor CPU, you can install the intel's / ATI's graphic driver for the intel's / AMD's CPU respectively.",
+            "\nFor GPU, you need to download the graphic driver from your vendor's website.")
+    return()
+  }
+  deviceInfo$haslocalMemory=deviceInfo$haslocalMemory==1
+  deviceInfo$id=as.integer(deviceInfo$id+1)
+  deviceInfo$platform=as.integer(deviceInfo$platform+1)
+  deviceInfo$device=as.integer(deviceInfo$device+1)
+  .gpuResourcesManager$globalVars$deviceInfo=deviceInfo
+}
+
+selectDevice=function(devices){
+  .gpuResourcesManager$releaseAll()
+  updateDeviceInfo(initialOnly=T)
+  deviceInfo=.gpuResourcesManager$globalVars$deviceInfo
+  if(range(devices)[1]<=0||range(devices)[2]>nrow(deviceInfo)){
+    stop("Invalid device id!")
+  }
+  
+  curDeviceInfo=deviceInfo[devices,,drop=F]
+  
+  clear(.gpuResourcesManager$internalVars$addressSizeList)
+  clear(.gpuResourcesManager$internalVars$addressList)
+  clear(.gpuResourcesManager$internalVars$memoryUsage)
+  clear(.gpuResourcesManager$internalVars$totalMemory)
+  clear(.gpuResourcesManager$globalVars$curDevice)
+  
+  for(i in seq_len(length(devices))){
+    key=as.character(devices[i])
+    .gpuResourcesManager$internalVars$addressSizeList[[key]]=hash()
+    .gpuResourcesManager$internalVars$addressList[[key]]=hash()
+    .gpuResourcesManager$globalVars$curDevice[[key]]=as.integer(curDeviceInfo[i,c("platform","device"),drop=F]-1)
+    .gpuResourcesManager$internalVars$totalMemory[[key]]=as.double(curDeviceInfo[i,"globalMemory"])
+    .gpuResourcesManager$internalVars$memoryUsage[[key]]=0
+  }
+}
+
+getFirstSelectedDevice<-function(){
+  deviceList=sort(as.integer(keys(.gpuResourcesManager$globalVars$curDevice)))
+  as.integer(deviceList[1])
+}
+#Get the platform and device id
+#If checkInitial=T, the function will check if the device has been selected
+#If checkInitial=F, the function will just return the device information without check
+getSelectedDevice<-function(device,checkInital=T){
+  if(checkInital){
+    devKey=as.character(device)
+    if(!isDeviceSelected(devKey)) 
+      stop("The device has not been initialized! Please call setDevice() to initialize the device before use it.")
+    
+    return(as.integer(.gpuResourcesManager$globalVars$curDevice[[devKey]]))
+  }else{
+    updateDeviceInfo(initialOnly=T)
+    curDevice=as.integer(.gpuResourcesManager$globalVars$deviceInfo[device,c("platform","device")]-1)
+    if(is.null(curDevice)) stop("the device does not exist!")
+    return(curDevice)
+  }
+}
+isDeviceSelected<-function(device){
+  devKey=as.character(device)
+  has.key(devKey,.gpuResourcesManager$globalVars$curDevice)
+}

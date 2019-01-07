@@ -38,6 +38,7 @@ my_check<-function(values){
 }
 
 opt=gpuSapply.getOption()
+opt$kernelOption$localThreadNum=2
 #opt$kernelOption$localThreadNum=128
 #gpuMagic.option$setDefaultFloat("float")
 microbenchmark(

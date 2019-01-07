@@ -11,7 +11,7 @@ using namespace std;
 void gpuToR(void* Rdata, void* gpuData, dtype type, size_t length) {
 	switch (type) {
 	case dtype::c:
-		cpyData(*(char**)Rdata, (cl_char*)gpuData, length);
+		cpyData((unsigned char*)Rdata, (cl_uchar*)gpuData, length);
 		break;
 	case dtype::f16:
 		cpyData((double*)Rdata, (cl_half*)gpuData, length);
@@ -42,7 +42,7 @@ void RTogpu(void* gpuData, void* Rdata, dtype type, size_t length)
 {
 	switch (type) {
 	case dtype::c:
-		cpyData((cl_char*)gpuData, *(char**)Rdata, length);
+		cpyData((cl_uchar*)gpuData, (unsigned char*)Rdata, length);
 		break;
 	case dtype::f16:
 		cpyData((cl_half*)gpuData, (double*)Rdata, length);
@@ -70,9 +70,19 @@ void RTogpu(void* gpuData, void* Rdata, dtype type, size_t length)
 
 void errorHandle(std::string errorInfo) {
 #ifdef VS
-	std::cout << errorInfo.c_str() << std::endl;
+	throw errorInfo;
 #else
 	error(errorInfo.c_str());
+	Rprintf("\n");
+#endif // VS
+}
+
+void warningHandle(std::string warningInfo)
+{
+#ifdef VS
+	std::cout << warningInfo.c_str() << std::endl;
+#else
+	warning(warningInfo.c_str());
 	Rprintf("\n");
 #endif // VS
 }

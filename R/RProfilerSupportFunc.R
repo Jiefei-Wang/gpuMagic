@@ -14,7 +14,7 @@ profileVar<-function(parms,macroParms){
       curPrecision=.type(parms[[i]])
       curDim=dim(parms[[i]])
     }else{
-      curPrecision=gpuMagic.option$getDefaultFloat()
+      curPrecision=GPUVar$default_float
       curDim=dim(as.matrix(parms[[i]]))
     }
     info=getEmpyTable()
@@ -151,25 +151,26 @@ typeInherit<-function(type1,type2){
     type2=as.character(type2)
   
   group_float=c("half","float","double")
-  group_int=c("char","int","long","uint","ulong")
+  group_int=c("bool","char","int","long","uint","ulong")
   
   target_size=max(getTypeSize(type1),getTypeSize(type2))
   if(type1 %in% group_float||type2%in% group_float){
     for(i in 1:length(group_float)){
       if(target_size==getTypeSize(group_float[i]))
-         return(group_float[i])
-    }
-  }else{
-    if(type1 %in% group_int||type2%in% group_int){
-      for(i in 1:length(group_int)){
-        if(target_size==getTypeSize(group_int[i]))
-          return(group_int[i])
-      }
-    }else{
-      warning("Unsupported type inherit: ",type1,"+",type2)
-      return(gpuMagic.option$getDefaultFloat())
+        return(group_float[i])
     }
   }
+  if(type1 %in% group_int||type2%in% group_int){
+    for(i in 1:length(group_int)){
+      if(target_size==getTypeSize(group_int[i]))
+        return(group_int[i])
+    }
+  }
+  for(i in 1:length(group_float)){
+    if(target_size==getTypeSize(group_float[i]))
+      return(group_int[i])
+  }
+  stop("Unsupported variable type!")
 }
 
 is.preservedFunc<-function(func){
