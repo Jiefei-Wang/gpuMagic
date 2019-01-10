@@ -15,7 +15,7 @@ RRecompiler<-function(profileMeta2){
   codeMetaInfo$Exp=profileMeta3$Exp
   codeMetaInfo$parms=profileMeta3$parms
   codeMetaInfo$staticParms=profileMeta3$staticParms
-  codeMetaInfo1=RParser1(codeMetaInfo,tmpMeta)
+  codeMetaInfo1=RParser1(codeMetaInfo)
   #codeMetaInfo2=RParser2(codeMetaInfo1)
   profileMeta1=RProfile1(codeMetaInfo2)
   profileMeta2=RProfile2(profileMeta1)

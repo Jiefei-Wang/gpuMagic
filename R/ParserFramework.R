@@ -143,10 +143,7 @@ ProcessCodeChunk<-function(parserFunc,checkFunc,updateFunc,codeMetaInfo,curLevel
 #code: The parsed expression
 ProcessCodeSingle<-function(parserFunc,updateFunc,codeMetaInfo,curLevel,parsedExp,code,i,Exp){
   res=parserFunc(curLevel,codeMetaInfo,Exp)
-  if("renameList" %in% names(res)){
-    parsedExp=renamevariable(parsedExp,res$renameList,i)
-    codeMetaInfo$renameList=rbind(codeMetaInfo$renameList,res$renameList)
-  }
+  
   Exp=res$Exp
   code=c(code,res$extCode)
   res1=updateFunc(type="normal",curLevel,codeMetaInfo,parsedExp,code,i,res)
@@ -156,15 +153,29 @@ ProcessCodeSingle<-function(parserFunc,updateFunc,codeMetaInfo,curLevel,parsedEx
     parsedExp=res1$parsedExp
   if("code" %in% names(res1))
     code=res1$code
-  
+  if("renameList" %in% names(res)){
+    parsedExp=renamevariable(parsedExp,res$renameList,i)
+    codeMetaInfo$renameList=rbind(codeMetaInfo$renameList,res$renameList)
+  }
   list(codeMetaInfo=codeMetaInfo,parsedExp=parsedExp,code=code,Exp=Exp)
 }
 renamevariable<-function(parsedExp,renameList,i){
- for(i in 1:nrow(renameList))
-  parsedExp=renameVarInCode(parsedExp,i,renameList[i,1],renameList[i,2])
+ for(j in 1:nrow(renameList))
+  parsedExp=renameVarInCode(parsedExp,i,renameList[j,1],renameList[j,2])
   parsedExp
 }
-
+renameVarInCode<-function(code,start,oldName,newName){
+  oldName=as.character(oldName)
+  newName=as.symbol(newName)
+  if(start<=length(code)){
+    for(i in start:length(code)){
+      renameList=list(newName)
+      names(renameList)=oldName
+      code[[i]]=do.call('substitute', list(code[[i]], renameList))
+    }
+  }
+  return(code)
+}
 
 general_updateFunc<-function(codeMetaInfo,parsedExp,code){
   result=list()

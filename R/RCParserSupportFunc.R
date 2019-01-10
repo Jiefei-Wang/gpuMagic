@@ -1,7 +1,31 @@
-#code="A[(uint)(c+d+1-1+B[(ulong)4]+0[1])]"
+#==================parser 1====================
+addvariableSizeInfo<-function(sizeInfo,curVarInfo){
+  curSizeinfo=data.frame(var=curVarInfo$var,precisionType=curVarInfo$precisionType,
+                         totalSize=curVarInfo$totalSize,
+                         size1=curVarInfo$size1,size2=curVarInfo$size2,stringsAsFactors = F)
+    
+  if(curVarInfo$redirect!="NA"){
+    curSizeinfo$totalSize=0
+  }
+  sizeInfo=rbind(sizeInfo,curSizeinfo)
+  return(sizeInfo)
+}
+addVariableDeclaration<-function(curVarInfo,data,offset,offsetInd){
+  CXXtype=curVarInfo$precisionType
+  if(curVarInfo$redirect=="NA"){
+    curCode=paste0("global ",CXXtype,"* ",curVarInfo$var,"=",
+                   "(global ",CXXtype,"*)(",
+                   data
+                   ,"+",
+                   offset,"[",offsetInd,"]",");")
+  }else{
+    curCode=paste0("#define ",curVarInfo$var," ",curVarInfo$redirect)
+  }
+  return(curCode)
+}
 
 
-
+#==================parser 2====================
 CSimplify<-function(Exp,C=TRUE){
   code=toCharacter(Exp)
   

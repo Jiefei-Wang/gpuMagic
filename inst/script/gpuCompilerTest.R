@@ -1,24 +1,30 @@
 
+getDeviceList()
+
+
 library("microbenchmark")
 library("tictoc")
-
-
-getDeviceList()
-setDevice(c(1,2,3))
+setDevice(c(1,3))
 #gpuMagic.option$setDefaultFloat("double")
 testFunc<-function(ind,A,B){
   #tmp=A[ind,]
-  tmp=subRef(B,,ind)
-  C=A%*%tmp
+  #tmp=subRef(B,,ind)
+  .opencl_printf("%d,%d,%p\n",gpu_global_id,gpu_return_size,gpu_return_variable)
+  opencl
+  C=A%*%B[,ind]
   #break
   #next
   return(C)
   #A[1:B[1,1],2]=seq(B[1,1],1,-1)
 }
 
-n=1024
-m=100
-k=1024
+n=4000
+m=10000
+k=2024
+
+n=2
+m=3
+k=4
 
 A=matrix(runif(n*m),n,m)
 B=matrix(runif(k*m),m,k)
@@ -26,10 +32,11 @@ B=matrix(runif(k*m),m,k)
 options=gpuSapply.getOption()
 options$verbose=T
 #options$sapplyMsg$timing.R.code.compilation=T
-#fileName="inst/script/debugCode.txt"
-#options$debugCode=readChar(fileName,file.info(fileName)$size)
+fileName="inst/script/debugCode.txt"
+options$sapplyOption$debugCode=readChar(fileName,file.info(fileName)$size)
 tic()
-res_gpu=gpuSapply(1:k,testFunc,A,B,.options = options,.device = 2)
+res_gpu=gpuSapply(1:k,testFunc,A,B,.options = options)
+#res_gpu=value(res_gpu)
 toc()
 tic()
 res_internel=A%*%B

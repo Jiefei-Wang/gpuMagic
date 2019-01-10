@@ -45,6 +45,9 @@ RCcompilerLevel1<-function(profileMeta3){
   #Deducted variable
   gpu_global_id=GPUVar$gpu_global_id
   gpu_worker_offset=GPUVar$worker_offset
+  #The return variable is also derived, it need the global id to find the private return variable
+  gpu_return_variable=GPUVar$return_variable
+  
   
   gpu_code=c(
     "//Function data preparation",
@@ -54,7 +57,8 @@ RCcompilerLevel1<-function(profileMeta3){
     paste0("global ",GPUVar$default_index_type,"* ", gpu_gp_size1,"=",gpu_gp_size1,"_arg+",gpu_gp_matrixNum,"*",gpu_global_id,";"),
     paste0("global ",GPUVar$default_index_type,"* ", gpu_gp_size2,"=",gpu_gp_size2,"_arg+",gpu_gp_matrixNum,"*",gpu_global_id,";"),
     paste0(GPUVar$default_index_type," ", gpu_worker_offset,"=",gpu_global_id,"*",gpu_gp_totalSize,";"),
-    paste0(GPUVar$default_index_type," ", gpu_returnSize,"=",gpu_sizeInfo,"[2];")
+    paste0(GPUVar$default_index_type," ", gpu_returnSize,"=",gpu_sizeInfo,"[2];"),
+    paste0(gpu_return_variable,"=",gpu_return_variable,"+",gpu_returnSize,"*",gpu_global_id,";")
   )
   
   
@@ -66,15 +70,14 @@ RCcompilerLevel1<-function(profileMeta3){
   gpu_ls_num=-1
   #matrixInd is for finding the index of a matrix size in the gpu code
   varInfo$matrixInd=hash()
-  varInfo$matrix_gp=c()
-  varInfo$matrix_gs=c()
-  varInfo$matrix_lp=c()
-  varInfo$matrix_ls=c()
+  #format: var, precision type, physical length(in byte), row number, col number
+  varInfo$matrix_gp=data.frame()
+  varInfo$matrix_gs=data.frame()
+  varInfo$matrix_lp=data.frame()
+  varInfo$matrix_ls=data.frame()
   
   for(curVar in keys(varInfo$varVersion)){
-    if(varInfo$varVersion[[curVar]]!=1)
-      next
-    curInfo=getVarInfo(varInfo,curVar,1)
+    curInfo=getVarInfo(varInfo,curVar,0)
     
     
     if(curInfo$location!="local"||curInfo$shared)
@@ -83,6 +86,7 @@ RCcompilerLevel1<-function(profileMeta3){
     #If the variable does not need to be initialized
     #Case 1: the variable is the function argument
     #Case 2: the variable is a lazy reference
+    #Case 3: the variable is a sequence
     if(!curInfo$initialization){
       #Don't touch it, its for the gpu_global_id
       curInfo$address=curInfo$var
@@ -90,7 +94,8 @@ RCcompilerLevel1<-function(profileMeta3){
       if(curInfo$require){
         gpu_gs_num=gpu_gs_num+1
         varInfo$matrixInd[[curVar]]=gpu_gs_num
-        varInfo$matrix_gs=c(varInfo$matrix_gs,curVar)
+        curInfo$totalSize=0
+        varInfo$matrix_gs=addvariableSizeInfo(varInfo$matrix_gs,curInfo)
       }
       varInfo=setVarInfo(varInfo,curInfo)
       next
@@ -106,55 +111,34 @@ RCcompilerLevel1<-function(profileMeta3){
     }
     
     if(curInfo$dataType==T_matrix){
-      
-      CXXtype=curInfo$precisionType
-      size1=curInfo$size1
-      size2=curInfo$size2
-    if(curInfo$location=="global"&&curInfo$shared){
-      gpu_gs_num=gpu_gs_num+1
-      varInfo$matrixInd[[curVar]]=gpu_gs_num
-      varInfo$matrix_gs=c(varInfo$matrix_gs,curVar)
-      curCode=paste0("global ",CXXtype,"* ",curInfo$var,"=",
-                     "(global ",CXXtype,"*)(",
-                     gpu_gs_data
-                     ,"+",
-                     gpu_gs_offset,"[",gpu_gs_num,"]",");")
-    }
-    if(curInfo$location=="local"&&curInfo$shared){
-      gpu_ls_num=gpu_ls_num+1
-      varInfo$matrixInd[[curVar]]=gpu_ls_num
-      varInfo$matrix_ls=c(varInfo$matrix_ls,curVar)
-      curCode=paste0("local ",CXXtype,"* ",curInfo$var,"=",
-                     "(local ",CXXtype,"*)(",
-                     gpu_ls_data
-                     ,"+",
-                     gpu_ls_offset,"[",gpu_ls_num,"]",");")
-    }
-    if(curInfo$location=="global"&&!curInfo$shared){
-      gpu_gp_num=gpu_gp_num+1
-      varInfo$matrixInd[[curVar]]=gpu_gp_num
-      varInfo$matrix_gp=c(varInfo$matrix_gp,curVar)
-      curCode=paste0("global ",CXXtype,"* ",curInfo$var,"=",
-                     "(global ",CXXtype,"*)(",
-                     gpu_gp_data
-                     ,"+",gpu_worker_offset,"+",
-                     gpu_gp_offset,"[",gpu_gp_num,"]",");")
-    }
-    if(curInfo$location=="local"&&!curInfo$shared){
-      gpu_lp_num=gpu_lp_num+1
-      varInfo$matrixInd[[curVar]]=gpu_lp_num
-      varInfo$matrix_lp=c(varInfo$matrix_lp,curVar)
-      curCode=paste0("private ",CXXtype,"* ",curInfo$var,"=",
-                     "(private ",CXXtype,"*)(",
-                     gpu_lp_data
-                     ,"+",
-                     gpu_lp_offset,"[",gpu_lp_num,"]",");")
-    }
-    gpu_code=c(gpu_code,curCode)
-    curInfo$address=curInfo$var
-    curInfo$dataType=T_matrix
-    varInfo=setVarInfo(varInfo,curInfo)
-    next
+      if(curInfo$location=="global"&&curInfo$shared){
+        gpu_gs_num=gpu_gs_num+1
+        varInfo$matrixInd[[curVar]]=gpu_gs_num
+        varInfo$matrix_gs=addvariableSizeInfo(varInfo$matrix_gs,curInfo)
+        curCode=addVariableDeclaration(curInfo,gpu_gs_data,gpu_gs_offset,gpu_gs_num)
+      }
+      if(curInfo$location=="local"&&curInfo$shared){
+        gpu_ls_num=gpu_ls_num+1
+        varInfo$matrixInd[[curVar]]=gpu_ls_num
+        varInfo$matrix_ls=addvariableSizeInfo(varInfo$matrix_ls,curInfo)
+        curCode=addVariableDeclaration(curInfo,gpu_ls_data,gpu_ls_offset,gpu_ls_num)
+      }
+      if(curInfo$location=="global"&&!curInfo$shared){
+        gpu_gp_num=gpu_gp_num+1
+        varInfo$matrixInd[[curVar]]=gpu_gp_num
+        varInfo$matrix_gp=addvariableSizeInfo(varInfo$matrix_gp,curInfo)
+        curCode=addVariableDeclaration(curInfo,gpu_gp_data,gpu_gp_offset,gpu_gp_num)
+      }
+      if(curInfo$location=="local"&&!curInfo$shared){
+        gpu_lp_num=gpu_lp_num+1
+        varInfo$matrixInd[[curVar]]=gpu_lp_num
+        varInfo$matrix_lp=addvariableSizeInfo(varInfo$matrix_lp,curInfo)
+        curCode=addVariableDeclaration(curInfo,gpu_lp_data,gpu_lp_offset,gpu_lp_num)
+      }
+      curInfo$address=curInfo$var
+      gpu_code=c(gpu_code,curCode)
+      varInfo=setVarInfo(varInfo,curInfo)
+      next
     }
     
   }
@@ -241,16 +225,15 @@ RCTranslation<-function(varInfo,parsedExp){
     #Add the code tracker
     gpu_code=c(gpu_code,paste0("//",deparse(curExp)))
     #If the code starts with opencl_
-    code_char=deparse(curExp)[1]
+    code_char=paste0(deparse(curExp),collapse = "")
     if(substr(code_char,1,nchar(GPUVar$openclCode))==GPUVar$openclCode){
-      code_char=deparse(curExp)
       curCode=paste0(substr(code_char,nchar(GPUVar$openclCode)+1,nchar(code_char)),";")
-      gpu_code=c(gpu_code,code_char)
+      gpu_code=c(gpu_code,curCode)
       next
     }
     if(substr(code_char,1,nchar(GPUVar$openclFuncCall))==GPUVar$openclFuncCall){
-      code_char=curExp[[2]]
-      gpu_code=c(gpu_code,code_char)
+      curCode=curExp[[2]]
+      gpu_code=c(gpu_code,curCode)
       next
     }
     

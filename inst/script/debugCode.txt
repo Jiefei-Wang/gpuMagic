@@ -1,4 +1,5 @@
-kernel void gpu_kernel_3(global float* gpu_loop_data,global float* A,
+#pragma OPENCL EXTENSION cl_khr_fp64:enable
+kernel void gpu_kernel_4(global double* gpu_loop_data,global double* A,global double* B,
                          global char* gpu_gp_data,
                          global uint* gpu_gp_size1_arg,
                          global uint* gpu_gp_size2_arg,
@@ -11,7 +12,7 @@ kernel void gpu_kernel_3(global float* gpu_loop_data,global float* A,
                          local uint* gpu_ls_size1,
                          local uint* gpu_ls_size2,
                          local uint* gpu_ls_offset,
-                         global float* gpu_return_variable,
+                         global double* gpu_return_variable,
                          global uint* gpu_sizeInfo){
   //Function data preparation
   uint gpu_global_id=get_global_id(0);
@@ -21,94 +22,157 @@ kernel void gpu_kernel_3(global float* gpu_loop_data,global float* A,
   global uint* gpu_gp_size2=gpu_gp_size2_arg+gpu_gp_matrixNum*gpu_global_id;
   uint gpu_worker_offset=gpu_global_id*gpu_gp_totalSize;
   uint gpu_return_size=gpu_sizeInfo[2];
+  gpu_return_variable=gpu_return_variable+gpu_return_size*gpu_global_id;
   //Function variable definition
-  float col_ind;
-  float curA;
-  float gpu_temp_var1;
-  uint gpu_temp_var2;
-  float largest;
-  int largest_ind;
-  float second_largest;
-  int second_largest_ind;
+  global double* C=(global double*)(gpu_gp_data+gpu_gp_offset[0]);
+  int gpu_temp_var1;
+  double ind;
   //End of the stage 1 compilation
   //Thread number optimization
-  if(gpu_global_id<gpu_gs_size1[1] * gpu_gs_size2[1]){
+  if(gpu_global_id<gpu_gs_size1[2] * gpu_gs_size2[2]){
     ///Matrix dimension optimization
+    uint gpu_gp_size1_0=gpu_gp_size1[0];
     uint gpu_gs_size1_0=gpu_gs_size1[0];
+    uint gpu_gs_size1_1=gpu_gs_size1[1];
+    uint gpu_gp_size2_0=gpu_gp_size2[0];
+    uint gpu_gs_size2_0=gpu_gs_size2[0];
     //Start of the GPU code
     //gpu_temp_var1 = gpu_global_id + 1
     gpu_temp_var1=gpu_global_id+1;
-    //col_ind = gpu_loop_data[gpu_temp_var1]
-    col_ind=gpu_loop_data[(uint)(gpu_temp_var1 - 1)];
-    //largest = 0
-    largest=0;
-    //largest_ind = 1
-    largest_ind=1;
-    //second_largest = 0
-    second_largest=0;
-    //second_largest_ind = 1
-    second_largest_ind=1;
-    //gpu_temp_var2 = nrow(A)
-    gpu_temp_var2=gpu_gs_size1_0;
-    if (col_ind == 1678) {
-      //message(second_largest)
-      printf("%d,%d,%f",gpu_gs_size1_0,(uint)((col_ind - 1) * gpu_gs_size1_0 + 8503 - 1),A[(uint)((col_ind - 1) * gpu_gs_size1_0 + 8503 - 1)]);
-    }
-    for (int gpu_loop_ind_0 = 1; gpu_loop_ind_0 <= gpu_temp_var2; gpu_loop_ind_0++) {
-      //curA = A[gpu_loop_ind_0, col_ind]
-      curA = A[(uint)((col_ind - 1) * gpu_gs_size1_0 + gpu_loop_ind_0 - 1)]; {
-        if (curA > largest) {
-          
-          //second_largest = largest
-          second_largest = largest;
-          //second_largest_ind = largest_ind
-          second_largest_ind = largest_ind;
-          //compiler.setVersion(largest, 2)
-          //largest = curA
-          largest = curA;
-          //compiler.setVersion(largest_ind, 2)
-          //largest_ind = gpu_loop_ind_0
-          largest_ind = gpu_loop_ind_0; {
-            if (col_ind == 1678) {
-              //message(second_largest)
-              printf("first:%d:%f",second_largest_ind, second_largest);
+    //ind = gpu_loop_data[gpu_temp_var1]
+    ind=gpu_loop_data[(uint)(gpu_temp_var1 - 1)];
+    //.opencl_printf("%d,%d,%p\n", gpu_global_id, gpu_return_size, 
+                     //    gpu_return_variable)
+    //gpu_temp_var2 = subRef(B, , ind)
+    
+    //C = A %*% gpu_temp_var2
+    {
+      #define gpu_A_row gpu_gs_size1_0
+      #define gpu_A_col gpu_gs_size2_0
+      #define gpu_B_row gpu_gs_size1_1
+      #define gpu_B_col 1
+      #define gpu_private_size 16
+      #define gpu_vector_size 8
+      #define gpu_vector_len 2
+      double gpu_private_spcae[gpu_private_size];
+      double8* gpu_private_spcae_vector=gpu_private_spcae;
+      uint gpu_loopNum=ceil((double)gpu_A_col/gpu_private_size);
+      uint gpu_start=0;
+      uint gpu_end=0;
+      uint gpu_length=0;
+      if(gpu_gs_size1_0>1){
+        for(uint gpu_t=0;gpu_t<gpu_loopNum;gpu_t++){
+          gpu_start=gpu_end;
+          gpu_end=gpu_end+gpu_private_size;
+          if(gpu_end>gpu_A_col) gpu_end=gpu_A_col;
+          gpu_length=gpu_end-gpu_start;
+          for(uint gpu_j=0;gpu_j<gpu_B_col;gpu_j++){
+            //Read a piece of column of B into the private memory
+            uint   gpu_temp_var7 = gpu_gs_size1_1 * (ind - 1) ;
+            for(uint gpu_k=0;gpu_k<gpu_length;gpu_k++){
+              gpu_private_spcae[gpu_k]=B[(uint)(gpu_k + gpu_start + gpu_temp_var7)];
             }
-          }
-          
-        } else {
-          {
-            if (curA > second_largest) {
-              
-              //compiler.setVersion(second_largest, 2)
-              //second_largest = curA
-              second_largest = curA;
-              //compiler.setVersion(second_largest_ind, 2)
-              //second_largest_ind = gpu_loop_ind_0
-              second_largest_ind = gpu_loop_ind_0;
-              if (col_ind == 1678) {
-                printf("second:%d:%f",second_largest_ind, second_largest);
+            if(gpu_length!=gpu_private_size){
+              for(uint gpu_i=0;gpu_i<gpu_A_row;gpu_i++){
+                //Element operation to compute the matrix multiplication
+                double gpu_tmp=0;
+                uint   gpu_temp_var8 = gpu_i ;
+                for(uint gpu_k=0;gpu_k<gpu_length;gpu_k++){
+                  gpu_tmp=gpu_tmp+gpu_private_spcae[gpu_k]*A[(uint)(gpu_gs_size1_0 * (gpu_k + gpu_start) + gpu_temp_var8)];
+                }
+                //Write the result back to the matrix
+                if(gpu_t==0){
+                  C[(uint)(gpu_i + gpu_j * gpu_gp_size1_0)]=gpu_tmp;
+                }else{
+                  C[(uint)(gpu_i + gpu_j * gpu_gp_size1_0)]=C[(uint)(gpu_i + gpu_j * gpu_gp_size1_0)]+gpu_tmp;
+                }
+              }
+            }else{
+              for(uint gpu_i=0;gpu_i<gpu_A_row;gpu_i++){
+                double8 gpu_tmp=0;
+                uint   gpu_temp_var9 = gpu_i ;
+                for(uint gpu_k=0;gpu_k<gpu_vector_len;gpu_k++){
+                  double8 gpu_A_vector=(double8)(A[(uint)(gpu_gs_size1_0 * (gpu_k * gpu_vector_size +      gpu_start) + gpu_temp_var9)],A[(uint)((1 + gpu_k * gpu_vector_size + gpu_start) * gpu_gs_size1_0 +      gpu_temp_var9)],A[(uint)((2 + gpu_k * gpu_vector_size + gpu_start) * gpu_gs_size1_0 +      gpu_temp_var9)],A[(uint)((3 + gpu_k * gpu_vector_size + gpu_start) * gpu_gs_size1_0 +      gpu_temp_var9)],A[(uint)((4 + gpu_k * gpu_vector_size + gpu_start) * gpu_gs_size1_0 +      gpu_temp_var9)],A[(uint)((5 + gpu_k * gpu_vector_size + gpu_start) * gpu_gs_size1_0 +      gpu_temp_var9)],A[(uint)((6 + gpu_k * gpu_vector_size + gpu_start) * gpu_gs_size1_0 +      gpu_temp_var9)],A[(uint)((7 + gpu_k * gpu_vector_size + gpu_start) * gpu_gs_size1_0 +      gpu_temp_var9)]);
+                  gpu_tmp=gpu_tmp+gpu_private_spcae_vector[gpu_k]*gpu_A_vector;
+                }
+                //Write the result back to the matrix
+                if(gpu_t==0){
+                  C[(uint)(gpu_i + gpu_j * gpu_gp_size1_0)]=gpu_tmp.s0+gpu_tmp.s1+gpu_tmp.s2+gpu_tmp.s3+gpu_tmp.s4+gpu_tmp.s5+gpu_tmp.s6+gpu_tmp.s7;
+                }else{
+                  C[(uint)(gpu_i + gpu_j * gpu_gp_size1_0)]=C[(uint)(gpu_i + gpu_j * gpu_gp_size1_0)]+gpu_tmp.s0+gpu_tmp.s1+gpu_tmp.s2+gpu_tmp.s3+gpu_tmp.s4+gpu_tmp.s5+gpu_tmp.s6+gpu_tmp.s7;
+                }
               }
             }
           }
-          
+        }
+      }else{
+        for(uint gpu_t=0;gpu_t<gpu_loopNum;gpu_t++){
+          gpu_start=gpu_end;
+          gpu_end=gpu_end+gpu_private_size;
+          if(gpu_end>gpu_A_col) gpu_end=gpu_A_col;
+          gpu_length=gpu_end-gpu_start;
+          for(uint gpu_i=0;gpu_i<gpu_A_row;gpu_i++){
+            //Read a piece of row of A into the private memory
+            uint   gpu_temp_var4 = gpu_i ;
+            for(uint gpu_k=0;gpu_k<gpu_length;gpu_k++){
+              gpu_private_spcae[gpu_k]=A[(uint)(gpu_gs_size1_0 * (gpu_k + gpu_start) + gpu_temp_var4)];
+            }
+            if(gpu_length!=gpu_private_size){
+              for(uint gpu_j=0;gpu_j<gpu_B_col;gpu_j++){
+                //Element operation to compute the matrix multiplication
+                double gpu_tmp=0;
+                uint   gpu_temp_var5 = gpu_gs_size1_1 * (ind - 1) ;
+                for(uint gpu_k=0;gpu_k<gpu_length;gpu_k++){
+                  gpu_tmp=gpu_tmp+gpu_private_spcae[gpu_k]*B[(uint)(gpu_k + gpu_start + gpu_temp_var5)];
+                }
+                //Write the result back to the matrix
+                if(gpu_t==0){
+                  C[(uint)(gpu_i + gpu_j * gpu_gp_size1_0)]=gpu_tmp;
+                }else{
+                  C[(uint)(gpu_i + gpu_j * gpu_gp_size1_0)]=C[(uint)(gpu_i + gpu_j * gpu_gp_size1_0)]+gpu_tmp;
+                }
+              }
+            }else{
+              for(uint gpu_j=0;gpu_j<gpu_B_col;gpu_j++){
+                double8 gpu_tmp=0;
+                uint   gpu_temp_var6 = gpu_gs_size1_1 * (ind - 1) ;
+                for(uint gpu_k=0;gpu_k<gpu_vector_len;gpu_k++){
+                  double8 gpu_B_vector=(double8)(B[(uint)(gpu_k * gpu_vector_size + gpu_start + gpu_temp_var6)],B[(uint)(1 + gpu_k * gpu_vector_size + gpu_start + gpu_temp_var6)],B[(uint)(2 + gpu_k * gpu_vector_size + gpu_start + gpu_temp_var6)],B[(uint)(3 + gpu_k * gpu_vector_size + gpu_start + gpu_temp_var6)],B[(uint)(4 + gpu_k * gpu_vector_size + gpu_start + gpu_temp_var6)],B[(uint)(5 + gpu_k * gpu_vector_size + gpu_start + gpu_temp_var6)],B[(uint)(6 + gpu_k * gpu_vector_size + gpu_start + gpu_temp_var6)],B[(uint)(7 + gpu_k * gpu_vector_size + gpu_start + gpu_temp_var6)]);
+                  gpu_tmp=gpu_tmp+gpu_private_spcae_vector[gpu_k]*gpu_B_vector;
+                }
+                //Write the result back to the matrix
+                if(gpu_t==0){
+                  C[(uint)(gpu_i + gpu_j * gpu_gp_size1_0)]=gpu_tmp.s0+gpu_tmp.s1+gpu_tmp.s2+gpu_tmp.s3+gpu_tmp.s4+gpu_tmp.s5+gpu_tmp.s6+gpu_tmp.s7;
+                }else{
+                  C[(uint)(gpu_i + gpu_j * gpu_gp_size1_0)]=C[(uint)(gpu_i + gpu_j * gpu_gp_size1_0)]+gpu_tmp.s0+gpu_tmp.s1+gpu_tmp.s2+gpu_tmp.s3+gpu_tmp.s4+gpu_tmp.s5+gpu_tmp.s6+gpu_tmp.s7;
+                }
+              }
+            }
+          }
         }
       }
-      
+      #undef gpu_A_row
+      #undef gpu_A_col
+      #undef gpu_B_row
+      #undef gpu_B_col
+      #undef gpu_private_size
+      #undef gpu_vector_size
+      #undef gpu_vector_len
     }
-    //return(second_largest_ind)
+    //return(C)
     {
-      uint gpu_return_k = 0;
-      for (uint gpu_return_i = 0; gpu_return_i < 1; gpu_return_i++) {
+      uint gpu_return_k=0;
+      for(uint gpu_return_i=0;gpu_return_i<gpu_gp_size1_0;gpu_return_i++){
         
-        for (uint gpu_return_j = 0; gpu_return_j < 1; gpu_return_j++) {
+        for(uint gpu_return_j=0;gpu_return_j<gpu_gp_size2_0;gpu_return_j++){
           
-          gpu_return_variable[gpu_return_k + gpu_global_id * gpu_return_size] = second_largest_ind;
-          gpu_return_k = gpu_return_k + 1;
-          if (gpu_return_k == gpu_return_size) {
+          gpu_return_variable[gpu_return_k]=C[(uint)(gpu_return_i + gpu_return_j * gpu_gp_size1_0)];
+          printf("%d,%d,%p\n", gpu_global_id, gpu_return_k,C[(uint)(gpu_return_i + gpu_return_j * gpu_gp_size1_0)]);
+          gpu_return_k=gpu_return_k+1;
+          if(gpu_return_k==gpu_return_size){
             break;
           }
         }
       }
-    }
-  }
+    }}
 }

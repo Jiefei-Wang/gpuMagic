@@ -1,3 +1,21 @@
 reference number for an S5 class object
 
 initialize the package when loading it.
+
+
+return an unevaluate object
+makeActiveBindBinding()
+
+
+R_MakeExternalPtr
+R_RigisterCFinalizer(x,fun)
+
+void fun(x){
+double* value=R_ExternalPtrAddr(ext)
+free(value)
+}
+
+REAL()
+
+NAMED(x)
+

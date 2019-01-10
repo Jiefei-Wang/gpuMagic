@@ -7,9 +7,8 @@ profileVar<-function(parms,macroParms){
   varInfo$parmsTblName="parms"
   varInfo$requiredVar=c()
   
-  if(length(parms)==0) return(varInfo)
   varName=names(parms)
-  for(i in 1:length(parms)){
+  for(i in seq_len(length(parms))){
     if(class(parms[[i]])=="gpuMatrix"){
       curPrecision=.type(parms[[i]])
       curDim=dim(parms[[i]])
@@ -35,14 +34,19 @@ profileVar<-function(parms,macroParms){
       info$value=paste0("(",varInfo$parmsTblName,"[[",i,"]])")
     }
     
-    if(curDim[1]==1&&curDim[2]==1){
+    if(curDim[1]==1&&curDim[2]==1&&varName[i]!=GPUVar$gpu_loop_data){
       info$dataType=T_scale
       info$size1=1
       info$size2=1
     }else{
       info$dataType=T_matrix
-      info$size1=paste0("(nrow(",varInfo$parmsTblName,"[[",i,"]]))")
-      info$size2=paste0("(ncol(",varInfo$parmsTblName,"[[",i,"]]))")
+      if(varName[i]==GPUVar$gpu_loop_data){
+        info$size1=paste0("length(",varInfo$parmsTblName,"[[",i,"]])")
+        info$size2=1
+      }else{
+        info$size1=paste0("nrow(",varInfo$parmsTblName,"[[",i,"]])")
+        info$size2=paste0("ncol(",varInfo$parmsTblName,"[[",i,"]])")
+      }
     }
     
     
@@ -298,4 +302,32 @@ getVersionBumpCode<-function(var,version){
 #msg: the message that will be post when the error occurs
 setErrorCheck<-function(level,code,check,msg=""){
  data.frame(level=level,code=code,check=check,msg=msg,stringsAsFactors=FALSE)
+}
+
+#Redirect the variable to an exist variable to save the memory space
+redirectVar<-function(varInfo,sourceVar,desVar){
+  sourceVarInfo=getVarInfo(varInfo,sourceVar)
+  if(hasVar(varInfo,desVar)){
+    desVarInfo=getVarInfo(varInfo,desVar)
+    #If the destination is a lazy ref or seq object, no redirection is available
+    if(desVarInfo$isRef||desVarInfo$isSeq){
+      return()
+    }
+    #Check if the variable can be redirect
+    if(curInfo$require||
+       sourceVar$dataType!=desVar$dataType||
+       sourceVar$shared!=desVar$shared||
+       sourceVar$location!=desVar$location||
+       desVar$precisionType!=typeInherit(sourceVar$precisionType,desVar$precisionType))
+      return()
+    if(desVarInfo$redirect=="NA"){
+      sourceVarInfo$redirect=desVar
+    }else{
+      sourceVarInfo$redirect=desVarInfo$redirect
+    }
+    return(sourceVarInfo)
+  }else{
+    sourceVarInfo$redirect=desVar
+    return(sourceVarInfo)
+  }
 }

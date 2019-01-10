@@ -186,3 +186,6 @@ subRef<-function(variable,i="",j=""){
     return(variable[i,,drop=F])
   return(variable[i,j,drop=F])
 }
+return.nocpy<-function(x){
+  stop("You cannot use the reference return in R code")
+}

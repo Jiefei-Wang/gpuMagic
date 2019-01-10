@@ -24,12 +24,13 @@ copyVarInfoTbl <- function(varInfo, resetVersion = T) {
 }
 
 getEmpyTable<-function(type=""){
-  tbl=data.frame(var="NA",dataType=T_matrix,precisionType=GPUVar$default_float,size1="NA",size2="NA",value="NA",
+  tbl=data.frame(var="NA",dataType=T_matrix,precisionType=GPUVar$default_float,
+                 size1="NA",size2="NA",value="NA",
                  location="global",shared=FALSE,version=1,
                  address="NA",compileSize1=FALSE,compileSize2=FALSE,compileValue=FALSE,transpose=FALSE,
                  require=FALSE,constVal=FALSE,constDef=FALSE,initialization=TRUE,
                  isRef=FALSE,ref="",
-                 isSeq=FALSE,seq="",
+                 isSeq=FALSE,seq="",redirect="NA",length="NA",totalSize="NA",
                  
                  stringsAsFactors=FALSE)
   if(type==T_scale){
@@ -55,7 +56,7 @@ toHash<-function(key,value=NULL){
 
 primaryProp=c("dataType","precisionType","address","shared","location",
                   "require","constVal","constDef","initialization",
-                  "isSeq","seq","isRef","ref")
+                  "isSeq","seq","isRef","ref","redirect")
 primaryPropHash=toHash(primaryProp)
 
 
@@ -103,6 +104,9 @@ getVarInfo<-function(varInfo,varName,version="auto"){
 #Set or add the variable info without any check
 #The function will take care of version 0
 setVarInfo_hidden<-function(varInfo,info){
+  info$length=Simplify(paste0("(",info$size1,")*(",info$size2,")"))
+  info$totalSize=Simplify(
+    paste0("(",info$length,")*",getTypeSize(info$precisionType)))
   var_char=info$var
   version=info$version
   varDef_char=paste0(var_char,"+",0)
@@ -164,8 +168,13 @@ getVarProperty<-function(varInfo,varName,property,version="auto"){
     version = as.numeric(varInfo$varVersion[[var_char]])
   }
   
+  vardef_char=paste0(var_char,"+",0)
   varCur_char=paste0(var_char,"+",version)
-  var_tbl=varInfo$profile[[varCur_char]]
+  if(isPrimary(property)){
+    var_tbl=varInfo$profile[[vardef_char]]
+  }else{
+    var_tbl=varInfo$profile[[varCur_char]]
+  }
   value=var_tbl[[property]]
   return(value)
 }
@@ -200,7 +209,7 @@ setVarProperty<-function(varInfo,varName,property,value,version="auto"){
 printVarInfo<-function(varInfo,simplify=TRUE,printDef=FALSE){
   if(!is.null(varInfo[["varInfo"]]))
     varInfo=varInfo[["varInfo"]]
-  simplifyTbl=c("var","dataType","precisionType","size1","size2","value","ref","seq","version")
+  simplifyTbl=c("var","dataType","precisionType","size1","size2","value","ref","seq","redirect","version","address")
   info=c()
   for(i in keys(varInfo$profile)){
     var_tbl=varInfo$profile[[i]]

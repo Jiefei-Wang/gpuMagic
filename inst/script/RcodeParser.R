@@ -1,21 +1,15 @@
 
 #The return size still has bug
 testFunc<-function(ind,A,B){
-  for(i in 1:10+1){
-    #B[i]=B[i]+1
-    message(i)
-  }
-  #if(A[1]>10){
-  #  A=A+1
-  #}
- 
-  return(A[,ind])
+  C=A+B
+  return.nocpy(C)
 }
 n=3
 m=4
 A=matrix(runif(n*m),n,m)
 B=matrix(runif(n*m),n,m)
-parms=matchParms(1:m,list(A),testFunc)
+parms=matchParms(1:m,list(A,B),testFunc)
+opt=gpuSapply.getOption()
 macroParms=NULL
 codeMetaInfo=list()
 codeMetaInfo$Exp=funcToExp(testFunc)$code
@@ -30,6 +24,7 @@ GPUExp1=RCcompilerLevel1(profileMeta2)
 GPUExp2=RCcompilerLevel2(GPUExp1)
 GPUcode=completeProfileTbl(GPUExp2)
 GPUcode1=completeGPUcode(GPUcode)
+GPUcode2=fillGPUdata(GPUcode1,.options=opt,.device=getFirstSelectedDevice())
 
 printVarInfo(profileMeta2$varInfo)
 

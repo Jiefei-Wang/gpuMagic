@@ -42,7 +42,8 @@ gpuEmptMatrix<-function(row=1,col=1,type="auto",device="auto"){
   
   checkTypeSupport(type)
   ad=gpuRefAddress()
-  ad$gpuMalloc(device,row*col,type)
+  len=max(row*col,1)
+  ad$gpuMalloc(device,len,type)
   
   obj=.gpuMatrix(data=NULL,dimension=c(row,col),type=type,gpuAddress=ad,device=device)
   
@@ -120,7 +121,7 @@ setMethod(
   f="download",
   signature = "gpuMatrix",
   definition = function(obj){
-    obj@data=as.matrix(obj@gpuAddress$download(),.nrow(obj),.ncol(obj))
+    obj@data=matrix(obj@gpuAddress$download(),.nrow(obj),.ncol(obj))
     obj
   }
 )

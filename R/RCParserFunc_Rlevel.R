@@ -166,7 +166,7 @@ R_expression_sub<-function(varInfo,Exp,i,j=1,opt=FALSE,optCode=list(),i_C=FALSE,
     dataType=getVarProperty(varInfo,curVar,"dataType")
     #Scalar
     if(dataType==T_scale)
-      return(list(value=getVarProperty(varInfo,curVar,"address",1)))
+      return(list(value=getVarProperty(varInfo,curVar,"address")))
     #Matrix
     if(dataType==T_matrix){
       
@@ -228,7 +228,7 @@ R_getVarSub<-function(varInfo,var,i,j=1,opt=FALSE,optCode=list(),base=1){
   if(var=="")
     return(list(value=as.character(i)))
   
-  address=getVarProperty(varInfo,var,"address",1)
+  address=getVarProperty(varInfo,var,"address")
   transpose=getVarProperty(varInfo,var,"transpose")
   
   #Get the simplified index
@@ -293,7 +293,7 @@ R_nrow<-function(varInfo,var){
   if(is.call(var))
     return(R_getVarSize1(varInfo,var))
   
-  curInfo=getVarInfo(varInfo,var,1)
+  curInfo=getVarInfo(varInfo,var)
   ifelse(curInfo$transpose,
          R_getVarSize2(varInfo,var),
          R_getVarSize1(varInfo,var)
@@ -308,7 +308,7 @@ R_ncol<-function(varInfo,var){
   if(is.call(var))
     return(R_getVarSize2(varInfo,var))
   
-  curInfo=getVarInfo(varInfo,var,1)
+  curInfo=getVarInfo(varInfo,var)
   ifelse(curInfo$transpose,
          R_getVarSize1(varInfo,var),
          R_getVarSize2(varInfo,var)
@@ -331,7 +331,7 @@ R_getVarSize<-function(varInfo,var,ind){
   if(is.call(var)&&var[[1]]=="["){
     Exp=var
   }else{
-    curInfo=getVarInfo(varInfo,var,1)
+    curInfo=getVarInfo(varInfo,var)
     if(curInfo$isRef){
       Exp=parse(text=curInfo$ref)[[1]]
     }

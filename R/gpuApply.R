@@ -1,19 +1,78 @@
 gpuApplyFuncList=hash()
 
 #' @export
-gpuSapply<-function(X,FUN,...,.device="auto",.macroParms=NULL,.options=gpuSapply.getOption()){
+gpuSapply<-function(X,FUN,...,.macroParms=NULL,.device="auto",loading="auto",.options=gpuSapply.getOption()){
+  if(.device=="auto"){
+    .device=as.integer(keys(.gpuResourcesManager$globalVars$curDevice))
+  }else{
+    .device=as.integer(.device)
+  }
+  jobsNum=length(X)
+  deviceNum=length(.device)
+  #If the number of device is 1, just call the single device function
+  if(deviceNum==1){
+    res=gpuSapply_singleDev(X,FUN,...,.macroParms=.macroParms,.device=.device,.options=.options)
+    return(res)
+  }
+  #If the number of device is larger than 1, parallel the process
+  #Find the loading for each device
+  if(loading=="auto"||length(loading)!=deviceNum){
+    loading=rep(1,deviceNum)
+  }
+  loading=loading/sum(loading)
+  
+  #Create job blocks
+  jobs=c()
+  startInd=0
+  for(i in seq_len(deviceNum)){
+    endInd=min(startInd+ceiling(jobsNum*loading[i]),jobsNum)
+    jobs=rbind(jobs,c(startInd,endInd))
+    startInd=min(endInd,jobsNum)
+  }
+  
+  #Parallel the jobs
+  parallelSet=list()
+  for(i in seq_len(deviceNum)){
+    start=jobs[i,1]
+    end=jobs[i,2]
+    if(end-start==0){
+      parallelSet[[i]]=NULL
+    }else{
+      parallelSet[[i]]=
+          gpuSapply_singleDev(
+            X[(start+1):end],FUN,...,
+            .macroParms=.macroParms,.device=.device[i],.options=.options,.block=F)
+    }
+  }
+  #Get the result back
+  unfinishedDevice=seq_len(deviceNum)
+  unfinishedDeviceNum=deviceNum
+  while(unfinishedDeviceNum!=0){
+    for(i in seq_len(deviceNum)){
+      ind=unfinishedDevice[i]
+      if(ind==0)
+        next
+      curDev=.device(parallelSet[[ind]])
+      if(getJobStatus(curDev)=="complete"){
+        unfinishedDevice[i]=0
+        unfinishedDeviceNum=unfinishedDeviceNum-1
+        parallelSet[[i]]=as.vector(download(parallelSet[[i]]))
+      }
+    }
+  }
+  res=unlist(parallelSet)
+  if(length(res)!=jobsNum)
+    res=matrix(res,ncol=jobsNum)
+  return(res)
+}
+
+gpuSapply_singleDev<-function(X,FUN,...,.macroParms=NULL,.device,.options=gpuSapply.getOption(),.block=T){
   #Some interesting setup
   start_time <- Sys.time()
   verbose=.options$verbose
   optimization=.options$sapplyOptimization
   msg=.options$sapplyMsg
   option=.options$sapplyOption
-  
-  if(.device=="auto"){
-    .device=getFirstSelectedDevice()
-  }else{
-    .device=as.integer(.device)
-  }
   
   if(verbose||sum(as.matrix(msg))!=0) 
     message("======gpuSapply compilation======")
@@ -43,7 +102,7 @@ gpuSapply<-function(X,FUN,...,.device="auto",.macroParms=NULL,.options=gpuSapply
     #insert debug code, when debug code is not empty, the function will be compiled every time
     if(option$debugCode!=""){
       GPUcode1$gpu_code=option$debugCode
-      GPUcode1$kernel=gsub("kernel void ([^(]+)\\(.+","\\1",option$debugCode)
+      GPUcode1$kernel=gsub(".+kernel void ([^(]+)\\(.+","\\1",option$debugCode)
     }
   }
   
@@ -79,15 +138,15 @@ gpuSapply<-function(X,FUN,...,.device="auto",.macroParms=NULL,.options=gpuSapply
   .kernel(kernel=GPUcode2$kernel,src=GPUcode2$gpu_code,parms=GPUcode2$device_argument,
           .device=.device,.globalThreadNum=.globalThreadNum,.options=.options)
   res=GPUcode2$device_argument$return_var
-  res=download(res)
-  res=as.vector(res)
-  if(length(res)==length(X)){
-    return(res)
-  }else{
-    return(matrix(res,ncol=length(X)))
+  
+  if(.block){
+    res=download(res)
+    res=as.matrix(res)
   }
+  return(res)
 }
 
+#' @export
 gpuSapply.getOption<-function(){
   curOp=kernel.getOption()
   curOp$kernelOption$autoType=FALSE

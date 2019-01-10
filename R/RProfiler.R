@@ -105,10 +105,30 @@ RProfile2_parserFunc<-function(level,codeMetaInfo,curExp){
     
   }
   
-  if(curExp[[1]]=="return"){
-    returnInfo=getVarInfo(varInfo,curExp[[2]])
-    varInfo$returnInfo=returnInfo
+  
+  
+  #For the no copy return, the function will first try to redirect it
+  #to the return variable in the function argument. If it is not possible,
+  #the legacy method will be used.
+  if(curExp[[1]]=="return.nocpy"){
+    returnVar=deparse(curExp[[2]])
+    returnInfo=redirectVar(varInfo,returnVar,GPUVar$return_variable)
+    if(returnInfo$redirect==GPUVar$return_variable){
+      setVarInfo(varInfo,returnInfo)
+      varInfo$returnInfo=rbind(varInfo$returnInfo,returnInfo)
+      curExp=quote(return())
+    }else{
+      curExp[[1]]=as.symbol("return")
+    }
   }
+  
+  
+  if(curExp[[1]]=="return"&&length(curExp)>1){
+    returnVar=deparse(curExp[[2]])
+    returnInfo=getVarInfo(varInfo,returnVar)
+    varInfo$returnInfo=rbind(varInfo$returnInfo,returnInfo)
+  }
+  
   
   result$Exp=curExp
   result$renameList=renameList

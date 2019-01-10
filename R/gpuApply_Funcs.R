@@ -18,7 +18,7 @@ loadGPUcode<-function(key,parms){
 
 
 createSapplySignature<-function(parms,FUN,.macroParms,.device,.options){
-  sig=.device
+  sig=c()
   parmsName=names(parms)
   
   #skip the first parameter(the parameter that will be looped on)
@@ -46,7 +46,20 @@ createSapplySignature<-function(parms,FUN,.macroParms,.device,.options){
 }
 
 
-
+getVarSizeInfo_C_level<-function(sizeMatrix){
+  matrixOffset=c()
+  size1=sizeMatrix$size1
+  size2=sizeMatrix$size2
+  curoffSet=0
+  for(i in seq_len(nrow(sizeMatrix))){
+    curInfo=sizeMatrix[i,]
+    matrixOffset[i]=curoffSet
+    curoffSet=curoffSet+curInfo$totalSize
+  }
+  res=list(matrixOffset=matrixOffset,size1=size1,size2=size2,
+           totalSize=curoffSet,matrixNum=nrow(sizeMatrix))
+  return(res)
+}
 fillGPUdata<-function(GPUcode1,.options,.device){
   parms=GPUcode1$parms
   varInfo=GPUcode1$varInfo
@@ -86,75 +99,46 @@ fillGPUdata<-function(GPUcode1,.options,.device){
   kernel_args$sizeInfo=rep(0,3)
   
   
-  i=1
-  offset=0
-  for(varName in varInfo$matrix_gp){
-    curInfo=getVarInfo(varInfo,varName,1)
-    curType=curInfo$precisionType
-    typeSize=getTypeSize(curType)
-    kernel_args$gp_size1[i]=as.numeric(curInfo$size1)
-    kernel_args$gp_size2[i]=as.numeric(curInfo$size2)
-    curSize=kernel_args$gp_size1[i]*kernel_args$gp_size2[i]*typeSize
-    kernel_args$gp_offset[i]=offset
-    offset=offset+curSize
-    i=i+1
-  }
+  sizeInfo_gp=getVarSizeInfo_C_level(varInfo$matrix_gp)
+  kernel_args$gp_offset=sizeInfo_gp$matrixOffset
+  kernel_args$gp_size1=sizeInfo_gp$size1
+  kernel_args$gp_size2=sizeInfo_gp$size2
+  gp_size=sizeInfo_gp$totalSize
   #Total size per worker
-  kernel_args$sizeInfo[1]=offset
+  kernel_args$sizeInfo[1]=sizeInfo_gp$totalSize
   #Matrix number per worker
-  kernel_args$sizeInfo[2]=i-1
-  gp_size=offset
+  kernel_args$sizeInfo[2]=sizeInfo_gp$matrixNum
   
-  i=1
-  offset=0
-  for(varName in varInfo$matrix_gs){
-    curInfo=getVarInfo(varInfo,varName,1)
-    curType=curInfo$precisionType
-    typeSize=getTypeSize(curType)
-    kernel_args$gs_size1[i]=as.numeric(curInfo$size1)
-    kernel_args$gs_size2[i]=as.numeric(curInfo$size2)
-    if(curInfo$require)
-      curSize=0
-    else
-      curSize=kernel_args$gs_size1[i]*kernel_args$gs_size2[i]*typeSize
-    kernel_args$gs_offset[i]=offset
-    offset=offset+curSize
-    i=i+1
+  
+  sizeInfo_gs=getVarSizeInfo_C_level(varInfo$matrix_gs)
+  kernel_args$gs_offset=sizeInfo_gs$matrixOffset
+  kernel_args$gs_size1=sizeInfo_gs$size1
+  kernel_args$gs_size2=sizeInfo_gs$size2
+  gs_size=sizeInfo_gs$totalSize
+  
+  sizeInfo_ls=getVarSizeInfo_C_level(varInfo$matrix_ls)
+  kernel_args$ls_offset=sizeInfo_ls$matrixOffset
+  kernel_args$ls_size1=sizeInfo_ls$size1
+  kernel_args$ls_size2=sizeInfo_ls$size2
+  ls_size=sizeInfo_ls$totalSize
+  
+  sizeInfo_lp=getVarSizeInfo_C_level(varInfo$matrix_lp)
+  kernel_args$lp_offset=sizeInfo_lp$matrixOffset
+  kernel_args$lp_size1=sizeInfo_lp$size1
+  kernel_args$lp_size2=sizeInfo_lp$size2
+  lp_size=sizeInfo_lp$totalSize
+  
+  
+  if(!is.null(varInfo$returnInfo)){
+    returnInfo=varInfo$returnInfo
+    returnSizeVector=returnInfo$size1*returnInfo$size2
+    returnSizeVector=returnSizeVector[returnInfo$redirect!=GPUVar$return_variable]
+    if(length(returnSizeVector)!=0){
+      if(sum(returnSizeVector[1]!=returnSizeVector)>0)
+        stop("Multiple return size has been found!")
+      kernel_args$sizeInfo[3]=returnSizeVector[1]
+    }
   }
-  gs_size=offset
-  
-  i=1
-  offset=0
-  for(varName in varInfo$matrix_ls){
-    curInfo=getVarInfo(varInfo,varName,1)
-    curType=curInfo$precisionType
-    typeSize=getTypeSize(curType)
-    kernel_args$ls_size1[i]=as.numeric(curInfo$size1)
-    kernel_args$ls_size2[i]=as.numeric(curInfo$size2)
-    curSize=kernel_args$ls_size1[i]*kernel_args$ls_size2[i]*typeSize
-    kernel_args$ls_offset[i]=offset
-    offset=offset+curSize
-    i=i+1
-  }
-  ls_size=offset
-  
-  i=1
-  offset=0
-  for(varName in varInfo$matrix_lp){
-    curInfo=getVarInfo(varInfo,varName,1)
-    curType=curInfo$precisionType
-    typeSize=getTypeSize(curType)
-    kernel_args$lp_size1[i]=as.numeric(curInfo$size1)
-    kernel_args$lp_size2[i]=as.numeric(curInfo$size2)
-    curSize=kernel_args$lp_size1[i]*kernel_args$lp_size2[i]*typeSize
-    kernel_args$lp_offset[i]=offset
-    offset=offset+curSize
-    i=i+1
-  }
-  lp_size=offset
-  
-  if(!is.null(varInfo$returnInfo))
-    kernel_args$sizeInfo[3]=as.numeric(varInfo$returnInfo$size1)*as.numeric(varInfo$returnInfo$size2)
   
   #add a 0 value if there is no value in the arguments
   for(var in names(kernel_args)){
@@ -168,12 +152,12 @@ fillGPUdata<-function(GPUcode1,.options,.device){
   IntType=GPUVar$default_index_type
   
   device_argument=list()
-  device_argument$gp_data=gpuEmptMatrix(row=floor(gp_size*totalWorkerNum/4)+1,col=1,type="int",device=.device)
+  device_argument$gp_data=gpuEmptMatrix(row=ceiling(gp_size*totalWorkerNum/4),col=1,type="int",device=.device)
   device_argument$gp_size1=gpuMatrix(rep(kernel_args$gp_size1,totalWorkerNum),type=IntType,device=.device)
   device_argument$gp_size2=gpuMatrix(rep(kernel_args$gp_size2,totalWorkerNum),type=IntType,device=.device)
   device_argument$gp_offset=gpuMatrix(kernel_args$gp_offset,type=IntType,device=.device)
   
-  device_argument$gs_data=gpuEmptMatrix(row=floor(gs_size/4)+1,type="int",device=.device)
+  device_argument$gs_data=gpuEmptMatrix(row=ceiling(gs_size/4),type="int",device=.device)
   device_argument$gs_size1=gpuMatrix(kernel_args$gs_size1,type=IntType,device=.device)
   device_argument$gs_size2=gpuMatrix(kernel_args$gs_size2,type=IntType,device=.device)
   device_argument$gs_offset=gpuMatrix(kernel_args$gs_offset,type=IntType,device=.device)
@@ -183,10 +167,9 @@ fillGPUdata<-function(GPUcode1,.options,.device){
   device_argument$ls_size2=kernel.getSharedMem(length(kernel_args$ls_size2),type=IntType)
   device_argument$ls_offset=kernel.getSharedMem(length(kernel_args$ls_offset),type=IntType)
   
-  returnSize=kernel_args$sizeInfo[3]*totalWorkerNum
-  if(returnSize==0)
-    returnSize=1
-  device_argument$return_var=gpuEmptMatrix(returnSize,type=GPUVar$default_float,device=.device)
+  #The return size for each thread
+  returnSize=kernel_args$sizeInfo[3]
+  device_argument$return_var=gpuEmptMatrix(kernel_args$sizeInfo[3],totalWorkerNum,type=GPUVar$default_float,device=.device)
   device_argument$sizeInfo=gpuMatrix(kernel_args$sizeInfo,type=IntType,device=.device)
   
   
@@ -255,42 +238,23 @@ completeGPUcode<-function(GPUcode){
   GPUcode
 }
 
+evaluateProfileTbl<-function(parms,table){
+  if(is.null(table)||nrow(table)==0) return(table)
+  table$totalSize=sapply(as.list(parse(text=table$totalSize)), eval,envir=environment())
+  table$size1=sapply(as.list(parse(text=table$size1)), eval,envir=environment())
+  table$size2=sapply(as.list(parse(text=table$size2)), eval,envir=environment())
+  return(table)
+}
+
+
 completeProfileTbl<-function(GPUExp2){
-  varInfo=GPUExp2$varInfo
-  profile=varInfo$profile
   parms=GPUExp2$parms
-  for(varName in varInfo$requiredVar){
-    curInfo=getVarInfo(varInfo,varName,1)
-    var=parms[[varName]]
-    
-    if(class(var)=="gpuMatrix"){
-      curPrecision=getTypeNum(.type(var))
-      curDim=dim(var)
-    }else{
-      curPrecision=GPUVar$default_float
-      curDim=dim(as.matrix(var))
-    }
-    curInfo$size1=curDim[1]
-    curInfo$size2=curDim[2]
-    varInfo=setVarInfo(varInfo,curInfo)
-  }
-  allVars=keys(varInfo$varVersion)
-  nonRequiredVars=allVars[!allVars%in% varInfo$requiredVar]
-  
-  for(varName in nonRequiredVars){
-    curInfo=getVarInfo(varInfo,varName,1)
-    curInfo$size1=eval(parse(text=curInfo$size1))
-    curInfo$size2=eval(parse(text=curInfo$size2))
-    varInfo=setVarInfo(varInfo,curInfo)
-  }
-  returnVar=varInfo$returnInfo$var
-  if(!is.null(returnVar)){
-    returnInfo=getVarInfo(varInfo,returnVar)
-    
-    returnInfo$size1=eval(parse(text=returnInfo$size1))
-    returnInfo$size2=eval(parse(text=returnInfo$size2))
-    varInfo$returnInfo=returnInfo
-  }
+  varInfo=GPUExp2$varInfo
+  varInfo$matrix_gs=evaluateProfileTbl(parms,varInfo$matrix_gs)
+  varInfo$matrix_gp=evaluateProfileTbl(parms,varInfo$matrix_gp)
+  varInfo$matrix_ls=evaluateProfileTbl(parms,varInfo$matrix_ls)
+  varInfo$matrix_lp=evaluateProfileTbl(parms,varInfo$matrix_lp)
+  varInfo$returnInfo=evaluateProfileTbl(parms,varInfo$returnInfo)
   
   GPUExp2$varInfo=varInfo
   GPUExp2

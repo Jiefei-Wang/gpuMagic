@@ -4,6 +4,7 @@
 #' @importFrom digest digest
 #' @importFrom stringr str_match_all
 #' @importFrom DescTools StrAlign
+#' @importFrom future future value
 #' @import hash
 #' @useDynLib gpuMagic
 
@@ -15,9 +16,9 @@
   #.gpuResourcesManager$deleteEnv()
   library.dynam.unload("gpuMagic",libpath)
 }
-
-
-
+.onLoad<-function(libname, pkgname){
+  setDevice(1)
+}
 
 DEBUG=TRUE
 gpuMagic<-local({

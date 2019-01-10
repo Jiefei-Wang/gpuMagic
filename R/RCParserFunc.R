@@ -201,6 +201,7 @@ C_ceil_right<-function(varInfo,Exp){
 }
 #Exp=parse(text="return(tmp1)")[[1]]
 C_return<-function(varInfo,Exp){
+  if(length(Exp)==1) return("return;")
   returnVar=Exp[[2]]
   
   code_right=R_expression_sub(varInfo,returnVar,"gpu_return_i","gpu_return_j",i_C =T,j_C=T,base=0)
@@ -210,8 +211,7 @@ C_return<-function(varInfo,Exp){
           paste0("for(",GPUVar$default_index_type," gpu_return_i=0;gpu_return_i<",R_nrow(varInfo,returnVar),";gpu_return_i++){\n"),
           paste0("for(",GPUVar$default_index_type," gpu_return_j=0;gpu_return_j<",R_ncol(varInfo,returnVar),";gpu_return_j++){\n"),
           code_right$extCode,
-          paste0(GPUVar$return_variable,"[gpu_return_k+",GPUVar$gpu_global_id,"*",GPUVar$return_size
-                 ,"]=",
+          paste0(GPUVar$return_variable,"[gpu_return_k]=",
                  code_right$value,";"),
           "gpu_return_k=gpu_return_k+1;",
           paste0("if(gpu_return_k==",GPUVar$return_size,"){"),

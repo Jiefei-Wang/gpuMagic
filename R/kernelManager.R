@@ -14,10 +14,10 @@
   srcSig=codePack$srcSig
   
   #Find the device and platform id
+  if(length(.device)>1) stop("Multiple devices are not supported!")
   if(.device=="auto"){
     deviceId=getFirstSelectedDevice()
   }else{
-    if(length(.device)>1) stop("Multiple devices are not supported!")
     deviceId=.device
   }
   device=getSelectedDevice(deviceId)
@@ -109,8 +109,8 @@
   .C("launchKernel",device[1],device[2],sig_hash,kernel,as.integer(.globalThreadNum),as.integer(localThreadNum))
   invisible()
 }
-#' @export
 
+#' @export
 kernel.getOption<-function(){
   curOp=list()
   curOp$verbose=FALSE

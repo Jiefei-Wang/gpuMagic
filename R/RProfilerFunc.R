@@ -126,7 +126,8 @@ profiler_assignment_exitingVar<-function(level,varInfo,curExp){
     newVar=GPUVar$getTmpVar()
     curExp[[2]]=as.symbol(newVar)
     
-    res=profiler_assignment_newVar(level,varInfo,newExp)
+    res=profiler_assignment_newVar(level,varInfo,curExp)
+    res$Exp=curExp
     res$extCode=c(extCode,res$extCode)
     res$renameList=matrix(c(deparse(leftVar),newVar),1)
     return(res)
