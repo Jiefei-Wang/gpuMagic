@@ -1,5 +1,7 @@
 #pragma once
 #include "R_ext/libextern.h"
+#include <R.h>
+#include <Rinternals.h>
 
 
 extern "C" LibExport
@@ -14,7 +16,7 @@ void getDeviceInfo(int* platform, int* device,
 
 
 extern "C" LibExport
-void upload(int* platform, int* deviceNum,void * data, double * length, int * type, void ** address);
+SEXP upload(SEXP platform, SEXP deviceNum, SEXP data, SEXP length, SEXP type);
 extern "C" LibExport
 void gpuMalloc(int* platform, int* deviceNum,double* length, int* type, void** address);
 
@@ -44,6 +46,5 @@ void getDeviceStatus(int* platform, int* deviceNum, int* status);
 extern "C" LibExport
 void getDeviceFullInfo(int* platform, int* deviceNum);
 
-
-extern "C" LibExport
-void debug(bool* test, int* length);
+//extern "C" LibExport
+//SEXP test();

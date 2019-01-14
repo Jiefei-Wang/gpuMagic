@@ -8,7 +8,7 @@
   internalVars=new.env()
   internalVars$unload=FALSE
   internalVars$totalMemory=hash()
-  internalVars$GCcutoff=0.9
+  internalVars$GCcutoff=0.8
   internalVars$memoryUsage=hash()
   internalVars$addressList=hash()
   internalVars$addressSizeList=hash()

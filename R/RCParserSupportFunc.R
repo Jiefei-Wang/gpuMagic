@@ -10,16 +10,25 @@ addvariableSizeInfo<-function(sizeInfo,curVarInfo){
   sizeInfo=rbind(sizeInfo,curSizeinfo)
   return(sizeInfo)
 }
-addVariableDeclaration<-function(curVarInfo,data,offset,offsetInd){
+addVariableDeclaration<-function(curVarInfo,data,offset,offsetInd,threadOffset=0){
   CXXtype=curVarInfo$precisionType
   if(curVarInfo$redirect=="NA"){
-    curCode=paste0("global ",CXXtype,"* ",curVarInfo$var,"=",
-                   "(global ",CXXtype,"*)(",
-                   data
-                   ,"+",
-                   offset,"[",offsetInd,"]",");")
+    if(threadOffset==0){
+      curCode=paste0("global ",CXXtype,"* ",curVarInfo$var,"=",
+                     "(global ",CXXtype,"*)(",
+                     data
+                     ,"+",
+                     offset,"[",offsetInd,"]);")
+    }else{
+      curCode=paste0("global ",CXXtype,"* ",curVarInfo$var,"=",
+                     "(global ",CXXtype,"*)(",
+                     data
+                     ,"+",
+                     offset,"[",offsetInd,"]+",threadOffset,");")
+    }
   }else{
     curCode=paste0("#define ",curVarInfo$var," ",curVarInfo$redirect)
+    #curCode=paste0("global ",CXXtype,"* ",curVarInfo$var,"=",curVarInfo$redirect,";")
   }
   return(curCode)
 }

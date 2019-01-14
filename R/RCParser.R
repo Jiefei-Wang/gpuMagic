@@ -127,7 +127,7 @@ RCcompilerLevel1<-function(profileMeta3){
         gpu_gp_num=gpu_gp_num+1
         varInfo$matrixInd[[curVar]]=gpu_gp_num
         varInfo$matrix_gp=addvariableSizeInfo(varInfo$matrix_gp,curInfo)
-        curCode=addVariableDeclaration(curInfo,gpu_gp_data,gpu_gp_offset,gpu_gp_num)
+        curCode=addVariableDeclaration(curInfo,gpu_gp_data,gpu_gp_offset,gpu_gp_num,gpu_worker_offset)
       }
       if(curInfo$location=="local"&&!curInfo$shared){
         gpu_lp_num=gpu_lp_num+1

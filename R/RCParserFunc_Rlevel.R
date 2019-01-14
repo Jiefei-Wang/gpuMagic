@@ -342,6 +342,7 @@ R_getVarSize<-function(varInfo,var,ind){
     args=matchBracketFunc(Exp)
     refVar=Exp[[2]]
     if(ind==1){
+      #If the first index is empty. eg: A[,1]
       if(!is.null(args$i)&&args$i=="")
         return(R_nrow(varInfo,refVar))
       
@@ -352,8 +353,12 @@ R_getVarSize<-function(varInfo,var,ind){
       return(R_length(varInfo,sub1))
     }
     if(ind==2){
+      #If the second index is empty. eg: A[1,]
       if(!is.null(args$j)&&args$j=="")
         return(R_ncol(varInfo,refVar))
+      #If there is no second index. eg:A[1]
+      if(is.null(args$j))
+        return(1)
       
       subs=args$j
       if(isNumeric(subs))

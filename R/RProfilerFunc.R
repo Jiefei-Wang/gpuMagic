@@ -99,7 +99,7 @@ profiler_assignment_exitingVar<-function(level,varInfo,curExp){
   ######changing the variable type inside the for loop need to be solved in recompiler##########
   requiredPrecision=typeInherit(leftInfo$precisionType,rightInfo$precisionType)
   if(requiredPrecision!=leftInfo$precisionType){
-    curAct=max(curAct,1)
+    action=max(action,1)
     leftInfo$precisionType=requiredPrecision
     
     #update the definition
@@ -245,7 +245,7 @@ profile_matrix<-function(varInfo,Exp){
   ExpInfo$compileSize1=TRUE
   ExpInfo$compileSize2=TRUE
   ExpInfo$size1=rowInfo$value
-  ExpInfo$size1=colInfo$value
+  ExpInfo$size2=colInfo$value
   #The simplification function may simplify the function such that the result is a matrix
   #Therefore the value will not be stored
   ExpInfo$compileValue=FALSE

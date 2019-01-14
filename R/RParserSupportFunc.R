@@ -156,7 +156,8 @@ extract_for_if_Var<-function(parsedExp){
       
       loopNumExp=parse(text=paste0("1:",loopNumCountvar))[[1]]
       index_def_code=parse(text=index_def_code)[[1]]
-      loopNum_def_Code=parse(text=loopNum_def_Code)[[1]]
+      if(!is.null(loopNum_def_Code))
+        loopNum_def_Code=parse(text=loopNum_def_Code)[[1]]
       loopNumCountvar_def_code=parse(text=loopNumCountvar_def_code)[[1]]
       index_var_code=parse(text=index_var_code)[[1]]
       

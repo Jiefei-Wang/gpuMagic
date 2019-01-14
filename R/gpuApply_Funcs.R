@@ -132,11 +132,11 @@ fillGPUdata<-function(GPUcode1,.options,.device){
   if(!is.null(varInfo$returnInfo)){
     returnInfo=varInfo$returnInfo
     returnSizeVector=returnInfo$size1*returnInfo$size2
-    returnSizeVector=returnSizeVector[returnInfo$redirect!=GPUVar$return_variable]
     if(length(returnSizeVector)!=0){
       if(sum(returnSizeVector[1]!=returnSizeVector)>0)
-        stop("Multiple return size has been found!")
-      kernel_args$sizeInfo[3]=returnSizeVector[1]
+        warning("Multiple return size has been found!")
+      
+      kernel_args$sizeInfo[3]=max(returnSizeVector)
     }
   }
   

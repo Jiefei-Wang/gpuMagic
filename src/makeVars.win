@@ -5,7 +5,7 @@ CUDA_LIB = "${CUDA_PATH}/lib/x64"
 
 # This defines what the shared object libraries will be
 PKG_LIBS=  -L${CUDA_LIB} -lOpenCL
-PKG_CPPFLAGS =  -I${R_HOME}/include -I${CUDA_INC}
+PKG_CPPFLAGS =  -I${R_HOME}/include -I${CUDA_INC} 
 
 ### Define objects
 

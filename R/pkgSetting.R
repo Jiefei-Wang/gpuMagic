@@ -6,14 +6,14 @@
 #' @importFrom DescTools StrAlign
 #' @importFrom future future value
 #' @import hash
-#' @useDynLib gpuMagic
+#' @useDynLib gpuMagic, .registration = TRUE
 
 .onDetach<-function(libpath){
   gc()
 }
 
 .onUnload<-function(libpath){
-  #.gpuResourcesManager$deleteEnv()
+  .gpuResourcesManager$deleteEnv()
   library.dynam.unload("gpuMagic",libpath)
 }
 .onLoad<-function(libname, pkgname){

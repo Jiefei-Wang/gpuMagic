@@ -167,7 +167,7 @@ kernel void gpu_kernel_4(global double* gpu_loop_data,global double* A,global do
         for(uint gpu_return_j=0;gpu_return_j<gpu_gp_size2_0;gpu_return_j++){
           
           gpu_return_variable[gpu_return_k]=C[(uint)(gpu_return_i + gpu_return_j * gpu_gp_size1_0)];
-          printf("%d,%d,%p\n", gpu_global_id, gpu_return_k,C[(uint)(gpu_return_i + gpu_return_j * gpu_gp_size1_0)]);
+          printf("%d,%d,%d,%f\n", gpu_global_id, gpu_return_k,gpu_return_i + gpu_return_j * gpu_gp_size1_0,C[(uint)(gpu_return_i + gpu_return_j * gpu_gp_size1_0)]);
           gpu_return_k=gpu_return_k+1;
           if(gpu_return_k==gpu_return_size){
             break;

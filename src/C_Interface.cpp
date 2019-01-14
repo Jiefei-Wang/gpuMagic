@@ -32,11 +32,35 @@ void getDeviceInfo(int * platform, int * device, char ** deviceName, int * devic
 
 
 
-void upload(int* platform, int* deviceNum, void * data, double * length, int * type, void ** address)
+SEXP upload(SEXP platform, SEXP deviceNum, SEXP data, SEXP length, SEXP type)
 {
-	deviceIdentifier id = { *platform ,*deviceNum };
-	openArray* matrix = new openArray(id, data, (size_t)*length, (dtype)*type);
-	*address = (void*)matrix;
+	deviceIdentifier id = { asInteger(platform) ,asInteger(deviceNum) };
+	void* dataAd;
+	dtype dataType =(dtype) asInteger(type);
+	message(to_string(asReal(length)));
+	switch (dataType) {
+	case dtype::c:
+		dataAd=RAW(data);
+		break;
+	case dtype::f16:
+	case dtype::f32:
+	case dtype::f64:
+	case dtype::i64:
+	case dtype::ui32:
+	case dtype::ui64:
+		dataAd=REAL(data);
+		break;
+	case dtype::i32:
+		dataAd=INTEGER(data);
+		break;
+	}
+	//openArray* matrix = new openArray(id, dataAd, (size_t)asReal(length), dataType);
+	//SEXP result = PROTECT(R_MakeExternalPtr((void *)matrix, NULL, NULL));
+	//UNPROTECT(1);
+	
+	//return(ScalarInteger(1));
+	
+	//*address = (void*)matrix;
 }
 
 void gpuMalloc(int* platform, int* deviceNum, double* length, int * type, void ** address)
@@ -184,9 +208,3 @@ void getDeviceFullInfo(int * platform, int * deviceNum) {
 }
 
 
-
-void debug(bool* test, int* length) {
-	for (int i = 0; i < *length; i++) {
-		cout << test[i] << endl;
-	}
-}
