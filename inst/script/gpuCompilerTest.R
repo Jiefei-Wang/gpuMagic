@@ -20,14 +20,17 @@ A=matrix(runif(n*m),n,m)
 B=matrix(runif(k*m),m,k)
 
 options=gpuSapply.getOption()
-options$verbose=T
+options$verbose=F
 #options$sapplyMsg$timing.R.code.compilation=T
 #fileName="inst/script/debugCode.txt"
 #options$sapplyOption$debugCode=readChar(fileName,file.info(fileName)$size)
 tic()
+for(i in 1:10)
 res_gpu=gpuSapply(1:k,testFunc,A,B,.options = options)
 #res_gpu=value(res_gpu)
 toc()
+a=matrix(0.0,20000,2000)
+
 tic()
 res_internel=A%*%B
 toc()

@@ -8,65 +8,31 @@ using namespace std;
 #include <CL/cl.h>
 #endif
 
-void gpuToR(void* Rdata, void* gpuData, dtype type, size_t length) {
-	switch (type) {
-	case dtype::c:
-		cpyData((unsigned char*)Rdata, (cl_uchar*)gpuData, length);
-		break;
-	case dtype::f16:
-		cpyData((double*)Rdata, (cl_half*)gpuData, length);
-		break;
-	case dtype::f32:
-		cpyData((double*)Rdata, (cl_float*)gpuData, length);
-		break;
-	case dtype::f64:
-		cpyData((double*)Rdata, (cl_double*)gpuData, length);
-		break;
-	case dtype::i32:
-		cpyData((int*)Rdata, (cl_int*)gpuData, length);
-		break;
-	case dtype::i64:
-		cpyData((double*)Rdata, (cl_long*)gpuData, length);
-		break;
-	case dtype::ui32:
-		cpyData((double*)Rdata, (cl_uint*)gpuData, length);
-		break;
-	case dtype::ui64:
-		cpyData((double*)Rdata, (cl_ulong*)gpuData, length);
-		break;
-	};
-}
 
-
-void RTogpu(void* gpuData, void* Rdata, dtype type, size_t length)
+size_t getTypeSize(dtype type)
 {
-	switch (type) {
-	case dtype::c:
-		cpyData((cl_uchar*)gpuData, (unsigned char*)Rdata, length);
-		break;
-	case dtype::f16:
-		cpyData((cl_half*)gpuData, (double*)Rdata, length);
-		break;
-	case dtype::f32:
-		cpyData((cl_float*)gpuData, (double*)Rdata, length);
-		break;
-	case dtype::f64:
-		cpyData((cl_double*)gpuData, (double*)Rdata, length);
-		break;
-	case dtype::i32:
-		cpyData((cl_int*)gpuData, (int*)Rdata, length);
-		break;
-	case dtype::i64:
-		cpyData((cl_long*)gpuData, (double*)Rdata, length);
-		break;
-	case dtype::ui32:
-		cpyData((cl_uint*)gpuData, (double*)Rdata, length);
-		break;
-	case dtype::ui64:
-		cpyData((cl_ulong*)gpuData, (double*)Rdata, length);
-		break;
-	};
+	switch (type)
+	{
+	case c:
+		return 1;
+	case f16:
+		return 2;
+	case f32:
+	case i32:
+	case ui32:
+		return 4;
+	case f64:
+	case i64:
+	case ui64:
+		return 8;
+	default:
+		errorHandle("Unsupported type");
+	}
+	return 0;
 }
+
+
+
 
 void errorHandle(std::string errorInfo) {
 #ifdef VS

@@ -9,7 +9,7 @@ test_that("Matrix upload and download",{
     mydata1=gpuMatrix(mydata,type[i])
     mydata1[]=0
     mydata1=download(mydata1)
-  expect_equal(as.vector(mydata1),1:k)
+  expect_equal(as.numeric(as.vector(mydata1)),1:k)
   }
 })
 

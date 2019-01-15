@@ -47,13 +47,13 @@
       size=as.double(getTypeSize(type))*length(data)
       checkGPUmemUsage(devKey,size)
       
-      res=.C(
-        "upload",curDevice[1],curDevice[2],convertDataType(data,type),
-        as.double(length(data)),getTypeNum(type),as.double(0)
-      )
+      gpuAd=.Call(
+        "upload",curDevice[1],curDevice[2],data,
+        as.double(length(data)),getTypeNum(type)
+        )
       
-      gpuAd=res[[length(res)]]
-      adKey=digest(gpuAd)
+      adKey=digest(getTrueAd(gpuAd))
+      
       internalVars$addressSizeList[[devKey]][[adKey]]=size
       internalVars$addressList[[devKey]][[adKey]]=gpuAd
       return(gpuAd)
@@ -67,55 +67,50 @@
       ##Check if the data is larger than the available memory size
       checkGPUmemUsage(devKey,size)
       
-      res=.C(
-        "gpuMalloc",curDevice[1],curDevice[2],as.double(len),getTypeNum(type),as.double(0)
+      gpuAd=.Call(
+        "gpuMalloc",curDevice[1],curDevice[2],as.double(len),getTypeNum(type)
       )
       
-      gpuAd=res[[length(res)]]
-      adKey=digest(gpuAd)
+      adKey=digest(getTrueAd(gpuAd))
       internalVars$addressSizeList[[devKey]][[adKey]]=size
       internalVars$addressList[[devKey]][[adKey]]=gpuAd
       
       return(gpuAd)
     }
     ,
-    download=function(deviceId,gpuAd,len,type){
+    download=function(deviceId,gpuAd){
       curDevice=getSelectedDevice(deviceId)
       devKey=as.character(deviceId)
-      adKey=digest(gpuAd)
+      adKey=digest(getTrueAd(gpuAd))
       if(!has.key(adKey,internalVars$addressSizeList[[devKey]]))
         stop("The GPU resources does not exist!")
       
       #General case
-      empData=convertDataType(rep(0,len),type)
-      res=.C("download",empData,gpuAd)
-      return(as.numeric(res[[1]]))
+      res=.Call("download",gpuAd)
+      return(res)
     },
     releaseAddress=function(deviceId,gpuAd){
       curDevice=getSelectedDevice(deviceId,checkInital = F)
       devKey=as.character(deviceId)
-      adKey=digest(gpuAd)
+      adKey=digest(getTrueAd(gpuAd))
       if(internalVars$unload)
         return()
       if(!hash::has.key(adKey,internalVars$addressSizeList[[devKey]])){
         return()
       }
-      .C("release",internalVars$addressList[[devKey]][[adKey]])
-      
+      .Call("release",gpuAd)
       internalVars$memoryUsage[[devKey]]=
         internalVars$memoryUsage[[devKey]]-internalVars$addressSizeList[[devKey]][[adKey]]
+      
       del(adKey,internalVars$addressSizeList[[devKey]])
       del(adKey,internalVars$addressList[[devKey]])
     },
     releaseAll=function(){
-      for(i in keys(internalVars$addressSizeList)){
-        for(j in keys(internalVars$addressList[[i]])){
-          .C("release",internalVars$addressList[[i]][[j]])
+      for(dev in keys(internalVars$addressList)){
+        for(ad in values(internalVars$addressList[[dev]])){
+          .gpuResourcesManager$releaseAddress(dev,ad)
         }
-        clear(internalVars$addressSizeList[[i]])
-        clear(internalVars$addressList[[i]])
       }
-      clear(internalVars$memoryUsage)
       gc()
       invisible()
     },
@@ -265,4 +260,8 @@ getSelectedDevice<-function(device,checkInital=T){
 isDeviceSelected<-function(device){
   devKey=as.character(device)
   has.key(devKey,.gpuResourcesManager$globalVars$curDevice)
+}
+
+getTrueAd<-function(address){
+  .Call("getTrueAd",address)
 }

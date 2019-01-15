@@ -24,11 +24,14 @@ public:
 	~openArray();
 	//set and get data
 	cl_mem* getDeviceData();
+	//The source pointer must has the same size as the data size
 	void getHostData(void *source);
 	void* getHostData();
 	dtype getDataType();
 	//Dimension
 	size_t getLength();
+	//get the total size in byte
+	size_t getTotalSize();
 	//release the host data
 	void releaseHostData();
 
@@ -36,7 +39,6 @@ public:
 private:
 	void gpuAlloc(size_t size, dtype type);
 	void gpuAlloc(void * hostData, size_t length, dtype type);
-	static int typesize(dtype type);
 	//Convert the data type to a given type(Single value)
 
 };

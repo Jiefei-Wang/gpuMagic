@@ -13,25 +13,16 @@ enum dtype {
 	ui32 = 7, ui64 = 8
 };
 
-//Convert the data type between gpu and R data
-void gpuToR(void* Rdata, void* gpuData, dtype type,size_t length);
-void RTogpu(void* gpuData, void* Rdata, dtype type, size_t length);
 
 void errorHandle(std::string errorInfo);
 void warningHandle(std::string warningInfo);
 void message(std::string msg);
 const char * getErrorString(cl_int error);
+size_t getTypeSize(dtype type);
 
 
 
 
-//#include <Rcpp.h>
-template<class T1, class T2>
-void cpyData(T1* target, T2* src, size_t n) {
-	for (size_t i = 0; i < n; i++) {
-		target[i] = (T1)src[i];
-	}
-}
 
 
 template<class T>
@@ -50,6 +41,89 @@ void print_partial_matrix(std::string title, T *M, int nrows, int ncols, int max
 		printf("...\n");
 	}
 	printf("...\n");
+}
+
+//site=0: copy from the start, site=1, copy from the end
+template<class T1, class T2>
+void cpyData(T1* target, T2* src, size_t n,int site=0) {
+	if (site == 0) {
+		for (size_t i = 0; i < n; i++) {
+			target[i] = (T1)src[i];
+		}
+	}
+	else {
+		//printf("%d", n);
+		size_t j;
+		//printf("%d\n", src[0]);
+		for (size_t i = 0; i < n; i++) {
+			j = n - i-1;
+			target[j] = (T1)src[j];
+
+			//printf("j:%d, src:%d, target:%d\n", j,src[j], target[j]);
+		}
+	}
+}
+
+
+
+//Convert the data type between gpu and R data
+template<class T>
+void RTogpu(T* Rdata, void* gpuData, dtype type, size_t length,int site=0) {
+	switch (type) {
+	case dtype::c:
+		cpyData((cl_uchar*)gpuData, Rdata, length, site);
+		break;
+	case dtype::f16:
+		cpyData((cl_half*)gpuData, Rdata, length, site);
+		break;
+	case dtype::f32:
+		cpyData((cl_float*)gpuData, Rdata, length, site);
+		break;
+	case dtype::f64:
+		cpyData((cl_double*)gpuData, Rdata, length, site);
+		break;
+	case dtype::i32:
+		cpyData((cl_int*)gpuData, Rdata, length, site);
+		break;
+	case dtype::i64:
+		cpyData((cl_long*)gpuData, Rdata, length, site);
+		break;
+	case dtype::ui32:
+		cpyData((cl_uint*)gpuData, Rdata, length, site);
+		break;
+	case dtype::ui64:
+		cpyData((cl_ulong*)gpuData, Rdata, length, site);
+		break;
+	};
+}
+template<class T>
+void gpuToR(void* gpuData, T* Rdata, dtype type, size_t length, int site = 0) {
+	switch (type) {
+	case dtype::c:
+		cpyData(Rdata, (cl_uchar*)gpuData, length, site);
+		break;
+	case dtype::f16:
+		cpyData(Rdata, (cl_half*)gpuData, length, site);
+		break;
+	case dtype::f32:
+		cpyData(Rdata, (cl_float*)gpuData, length, site);
+		break;
+	case dtype::f64:
+		cpyData(Rdata, (cl_double*)gpuData, length, site);
+		break;
+	case dtype::i32:
+		cpyData(Rdata, (cl_int*)gpuData, length, site);
+		break;
+	case dtype::i64:
+		cpyData(Rdata, (cl_long*)gpuData, length, site);
+		break;
+	case dtype::ui32:
+		cpyData(Rdata, (cl_uint*)gpuData, length, site);
+		break;
+	case dtype::ui64:
+		cpyData(Rdata, (cl_ulong*)gpuData, length, site);
+		break;
+	};
 }
 
 

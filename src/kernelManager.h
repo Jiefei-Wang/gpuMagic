@@ -55,7 +55,6 @@ public:
 	static cl_program createProgram(deviceIdentifier deviceId, programSignature programSig);
 
 
-	static void getDeviceFullInfo(deviceIdentifier deviceId);
 private:
 	static map< string, cl_program>& getProgramTable(deviceIdentifier deviceId);
 	static map< string, cl_kernel>& getKernelTable(deviceIdentifier deviceId);

@@ -139,6 +139,7 @@ gpuSapply_singleDev<-function(X,FUN,...,.macroParms=NULL,.device,.options=gpuSap
           .device=.device,.globalThreadNum=.globalThreadNum,.options=.options)
   res=GPUcode2$device_argument$return_var
   
+  
   if(.block){
     res=download(res)
     res=as.matrix(res)

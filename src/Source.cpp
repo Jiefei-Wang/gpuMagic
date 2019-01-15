@@ -5,7 +5,7 @@ int main(void) {
 	int p = 0;
 	int d = 0;
 	int s = 0;
-	getDeviceStatus(&p, &d, &s);
+	//getDeviceStatus(&p, &d, &s);
 	/*
 	int platform = 1;
 	int device = 0;

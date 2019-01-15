@@ -7,136 +7,166 @@
 #include <string> 
 using namespace std;
 
+#define asString(x) string(CHAR(asChar(x)))
 
-
-void getPlatformNum(int* platformNum)
+SEXP getPlatformNum()
 {
-	*platformNum = kernelManager::getPlatformNum();
+	SEXP platformNum = ScalarInteger(kernelManager::getPlatformNum());
+	return(platformNum);
 }
-void getDeviceNum(int * platform, int* deviceNum)
+SEXP getDeviceNum(SEXP platform)
 {
-	*deviceNum = kernelManager::getDeviceNum(*platform);
+	SEXP deviceNum = ScalarInteger(kernelManager::getDeviceNum(asInteger(platform)));
+	return(deviceNum);
 }
-void getDeviceInfo(int * platform, int * device, char ** deviceName, int * deviceType, double * global_memory, double * local_memory, int * haslocalMemory, char ** opencl_version, int * compute_unit_num)
+SEXP getDeviceInfo(SEXP platform, SEXP device)
 {
-	deviceIdentifier id = { *platform ,*device };
+	deviceIdentifier id = { asInteger(platform) ,asInteger(device) };
 	deviceInfo info = kernelManager::getDeviceInfo(id);
-	strcpy(*deviceName, info.device_name.c_str());
-	*deviceType = info.device_type;
-	*global_memory = (double)info.global_memory;
-	*local_memory = (double)info.local_memory;
-	*haslocalMemory = info.has_local_memory;
-	strcpy(*opencl_version, info.opencl_version.c_str());
-	*compute_unit_num = info.compute_unit_num;
+	SEXP info_R = PROTECT(allocVector(VECSXP, 7));
+
+	SET_VECTOR_ELT(info_R, 0, PROTECT(mkString(info.device_name.c_str())));
+	SET_VECTOR_ELT(info_R, 1, PROTECT(ScalarInteger(info.device_type)));
+	SET_VECTOR_ELT(info_R, 2, PROTECT(ScalarReal(info.global_memory)));
+	SET_VECTOR_ELT(info_R, 3, PROTECT(ScalarReal(info.local_memory)));
+	SET_VECTOR_ELT(info_R, 4, PROTECT(ScalarLogical(info.has_local_memory)));
+	SET_VECTOR_ELT(info_R, 5, PROTECT(mkString(info.opencl_version.c_str())));
+	SET_VECTOR_ELT(info_R, 6, PROTECT(ScalarInteger(info.compute_unit_num)));
+
+	unprotect(8);
+	return(info_R);
 }
 
-
-
-SEXP upload(SEXP platform, SEXP deviceNum, SEXP data, SEXP length, SEXP type)
+SEXP upload(SEXP platform, SEXP device, SEXP data, SEXP length, SEXP type)
 {
-	deviceIdentifier id = { asInteger(platform) ,asInteger(deviceNum) };
-	void* dataAd;
-	dtype dataType =(dtype) asInteger(type);
-	message(to_string(asReal(length)));
-	switch (dataType) {
-	case dtype::c:
-		dataAd=RAW(data);
+	deviceIdentifier id = { asInteger(platform) ,asInteger(device) };
+	dtype dataType = (dtype)asInteger(type);
+	size_t dataLength = asReal(length);
+
+	//printf("%d", TYPEOF(data));
+	//
+	void* gpuData =malloc(dataLength*getTypeSize(dataType));
+	switch (TYPEOF(data)) {
+	case LGLSXP:
+		RTogpu(LOGICAL(data), gpuData, dataType, dataLength);
 		break;
+	case INTSXP:
+		RTogpu(INTEGER(data), gpuData, dataType, dataLength);
+		//print_partial_matrix("host", (double*)gpuData, 1, dataLength);
+		break;
+	case REALSXP:
+		//printf("I see you!");
+		RTogpu(REAL(data), gpuData, dataType, dataLength);
+		break;
+	case RAWSXP:
+		RTogpu(RAW(data), gpuData, dataType, dataLength);
+		break;
+	default:
+		error("Unsupported data structure!");
+	}
+	openArray* matrix = new openArray(id, gpuData, dataLength, dataType);
+	SEXP result = R_MakeExternalPtr((void *)matrix, R_NilValue, R_NilValue);
+	return(result);
+}
+
+SEXP gpuMalloc(SEXP platform, SEXP device, SEXP length, SEXP type)
+{
+	deviceIdentifier id = { asInteger(platform) ,asInteger(device) };
+	openArray* matrix = new openArray(id, asReal(length), (dtype)asInteger(type));
+	SEXP result = R_MakeExternalPtr((void *)matrix, R_NilValue, R_NilValue);
+	return(result);
+}
+
+//c = 1, f16 = 2, f32 = 3, f64 = 4, i32 = 5, i64 = 6,
+//ui32 = 7, ui64 = 8
+SEXP download(SEXP address) {
+	openArray* matrix = (openArray*)R_ExternalPtrAddr(address);
+	dtype type = matrix->getDataType();
+	size_t length = matrix->getLength();
+	
+	//The gpu date should be transfer to an R-compatible type
+	//void* host_data = matrix->getHostData();
+	SEXP res;
+	switch (type) {
 	case dtype::f16:
 	case dtype::f32:
 	case dtype::f64:
 	case dtype::i64:
 	case dtype::ui32:
 	case dtype::ui64:
-		dataAd=REAL(data);
+		res = PROTECT(allocVector(REALSXP, length));
+		matrix->getHostData(REAL(res));
+		gpuToR(REAL(res), REAL(res), type, length,1);
 		break;
 	case dtype::i32:
-		dataAd=INTEGER(data);
+	case dtype::c:
+		res = PROTECT(allocVector(INTSXP, length));
+		matrix->getHostData(INTEGER(res));
+		gpuToR(INTEGER(res), INTEGER(res), type, length,1);
 		break;
 	}
-	//openArray* matrix = new openArray(id, dataAd, (size_t)asReal(length), dataType);
-	//SEXP result = PROTECT(R_MakeExternalPtr((void *)matrix, NULL, NULL));
-	//UNPROTECT(1);
-	
-	//return(ScalarInteger(1));
-	
-	//*address = (void*)matrix;
-}
 
-void gpuMalloc(int* platform, int* deviceNum, double* length, int * type, void ** address)
-{
-	deviceIdentifier id = { *platform ,*deviceNum };
-	openArray* matrix = new openArray(id, (size_t)*length, (dtype)*type);
-	*address = (void*)matrix;
-}
-
-
-void download(void* data, void** address) {
-	openArray* matrix = *(openArray**)address;
-	dtype type = matrix->getDataType();
-	//These two type can be directly send to R
-	/*if (type == dtype::f64 || type == dtype::i32) {
-		matrix->getHostData(data);
-		return;
-	}*/
-	//The gpu date should be transfer to an R-compatible type
-	void* host_data = matrix->getHostData();
-	//print_partial_matrix("test:", (cl_int*)host_data, matrix->dims(0), matrix->dims(1));
-	gpuToR(data, host_data, type, matrix->getLength());
-	matrix->releaseHostData();
+	UNPROTECT(1);
+	return(res);
 }
 
 
 
-void release(void** address) {
-	delete *(openArray**)address;
+SEXP release(SEXP address) {
+	openArray* matrix = (openArray*)R_ExternalPtrAddr(address);
+	delete matrix;
+	return(R_NilValue);
 }
 
-void hasKernel(int* platform, int* deviceNum, char** signature, char** kernel, bool* res) {
-	deviceIdentifier id = { *platform ,*deviceNum };
-	programSignature sig = { string(*signature) ,string(),string(),string(*kernel) };
-	*res = kernelManager::hasKernel(id, sig);
+SEXP hasKernel(SEXP platform, SEXP device, SEXP signature, SEXP kernel) {
+	deviceIdentifier id = { asInteger(platform) ,asInteger(device) };
+	programSignature sig = { asString(signature) ,string(),string(),asString(kernel) };
+	SEXP res = ScalarLogical(kernelManager::hasKernel(id, sig));
+	return(res);
 }
 
 
 
-void createKernel(int* platform, int* deviceNum, char** signature, char** flag, char** code, char** kernel) {
-	deviceIdentifier id = { *platform ,*deviceNum };
-	programSignature sig = { string(*signature) ,string(*flag),string(*code),string(*kernel) };
+SEXP createKernel(SEXP platform, SEXP device, SEXP signature, SEXP flag, SEXP code, SEXP kernel) {
+	deviceIdentifier id = { asInteger(platform) ,asInteger(device) };
+	programSignature sig = { asString(signature) ,asString(flag),asString(code),asString(kernel) };
 	//message(std::string(*code));
 	kernelManager::createKernel(id, sig);
+	return(NILSXP);
 }
 
 
 
-void setParameter(int* platform, int* deviceNum, char** signature, char** kernel, void** data_address, int *parm_index) {
-	deviceIdentifier id = { *platform ,*deviceNum };
-	programSignature sig = { string(*signature),string(),string(),string(*kernel) };
+SEXP setParameter(SEXP platform, SEXP device, SEXP signature, SEXP kernel, SEXP data_address, SEXP parm_index) {
+	deviceIdentifier id = { asInteger(platform) ,asInteger(device) };
+	programSignature sig = { asString(signature),string(),string(),asString(kernel) };
 	cl_kernel dev_kernel = kernelManager::getKernel(id, sig);
-	openArray* matrix = *(openArray**)data_address;
-	cl_int error = clSetKernelArg(dev_kernel, *parm_index, sizeof(cl_mem), matrix->getDeviceData());
+	openArray* matrix = (openArray*)R_ExternalPtrAddr(data_address);
+	cl_int error = clSetKernelArg(dev_kernel, asInteger(parm_index), sizeof(cl_mem), matrix->getDeviceData());
 	if (error != CL_SUCCESS)
 		errorHandle(string("kernel parameter uploading failure, error info:") + string(getErrorString(error)));
+	return(NILSXP);
 }
 
-void setSharedParameter(int* platform, int* deviceNum, char** signature, char** kernel, int* size, int *parm_index) {
-	deviceIdentifier id = { *platform ,*deviceNum };
-	programSignature sig = { string(*signature) ,string(),string(),string(*kernel) };
+SEXP setSharedParameter(SEXP platform, SEXP device, SEXP signature, SEXP kernel, SEXP size, SEXP parm_index) {
+	deviceIdentifier id = { asInteger(platform) ,asInteger(device) };
+	programSignature sig = { asString(signature),string(),string(),asString(kernel) };
 	cl_kernel dev_kernel = kernelManager::getKernel(id, sig);
-	cl_int error = clSetKernelArg(dev_kernel, *parm_index, *size, NULL);
+	cl_int error = clSetKernelArg(dev_kernel, asInteger(parm_index), asInteger(size), NULL);
 	//message(to_string(*size));
 	if (error != CL_SUCCESS)
 		errorHandle(string("kernel shared memory creating failure, error info:") + string(getErrorString(error)));
+	return(NILSXP);
 }
 
 
-void launchKernel(int* platform, int* deviceNum, char** signature, char** kernel, int* blockSize, int* threadSize) {
-	deviceIdentifier id = { *platform ,*deviceNum };
+SEXP launchKernel(SEXP platform, SEXP device, SEXP signature, SEXP kernel, SEXP blockSize, SEXP threadSize) {
+	deviceIdentifier id = { asInteger(platform) ,asInteger(device) };
 	deviceContext& dc = kernelManager::getDevice(id);
-	programSignature sig = { string(*signature) ,string(),string(),string(*kernel) };
+	programSignature sig = { asString(signature),string(),string(),asString(kernel) };
 	cl_kernel dev_kernel = kernelManager::getKernel(id, sig);
-	size_t global_item_size = *blockSize; // Process the entire lists
-	size_t local_item_size = *threadSize;
+	size_t global_item_size = asInteger(blockSize); // Process the entire lists
+	size_t local_item_size = asInteger(threadSize);
 	cl_int error;
 	if (local_item_size == 0) {
 		error = clEnqueueNDRangeKernel(dc.command_queue, dev_kernel, 1, NULL,
@@ -151,60 +181,66 @@ void launchKernel(int* platform, int* deviceNum, char** signature, char** kernel
 	error=clFlush(dc.command_queue);
 	if (error != CL_SUCCESS)
 		errorHandle(string("kernel parameter uploading failure, error info:") + string(getErrorString(error)));
+	return(NILSXP);
 
 }
 
-void getPreferredGroupSize(int * platform, int * deviceNum, char ** signature, char ** kernel,double* res)
+SEXP getPreferredGroupSize(SEXP platform, SEXP device, SEXP signature, SEXP kernel)
 {
-	deviceIdentifier id = { *platform ,*deviceNum };
-	programSignature sig = { string(*signature) ,string(),string(),string(*kernel) };
-	cl_device_id device = kernelManager::getDeviceId(id);
+	deviceIdentifier id = { asInteger(platform) ,asInteger(device) };
+	programSignature sig = { asString(signature),string(),string(),asString(kernel) };
+	cl_device_id cl_device = kernelManager::getDeviceId(id);
 	cl_kernel dev_kernel = kernelManager::getKernel(id, sig);
 	size_t prefferedSize;
-	cl_int error = clGetKernelWorkGroupInfo(dev_kernel, device, CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE,
+	cl_int error = clGetKernelWorkGroupInfo(dev_kernel, cl_device, CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE,
 		sizeof(size_t), &prefferedSize, NULL);
 	if (error != CL_SUCCESS)
 		errorHandle(string("An error occured when query the preffered worker size, error info:") + string(getErrorString(error)));
-	*res = prefferedSize;
+	SEXP res = ScalarInteger(prefferedSize);
+	return(res);
 }
 
-void getDeviceStatus(int * platform, int * deviceNum, int * status)
+SEXP getDeviceStatus(SEXP platform, SEXP device)
 {
-	deviceIdentifier id = { *platform ,*deviceNum };
+	deviceIdentifier id = { asInteger(platform) ,asInteger(device) };
 	deviceContext& dc = kernelManager::getDevice(id);
+	int status;
 	cl_int cl_status;
 	if (dc.queue_event == NULL) {
-		*status = 0;
-		return;
+		status = 0;
+		return(ScalarInteger(status));
 	}
 	clGetEventInfo(dc.queue_event, CL_EVENT_COMMAND_EXECUTION_STATUS, sizeof(cl_int), &cl_status, NULL);
 
 	switch (cl_status) {
 	case CL_QUEUED:
-		*status = 3;
+		status = 3;
 		break;
 	case CL_SUBMITTED:
-		*status = 2;
+		status = 2;
 		break;
 	case CL_RUNNING:
-		*status = 1;
+		status = 1;
 		break;
 	case CL_COMPLETE:
-		*status = 0;
+		status = 0;
 		break;
 	default:
-		*status = cl_status;
+		status = cl_status;
 	}
+	return(ScalarInteger(status));
+}
+
+SEXP getTrueAd(SEXP ad)
+{
+	double* address=(double*)R_ExternalPtrAddr(ad);
+	double ad_double = 0;
+	memcpy(&ad_double, &address, sizeof(double*));
+	return(ScalarReal(ad_double));
 }
 
 
 
 
-
-
-void getDeviceFullInfo(int * platform, int * deviceNum) {
-	deviceIdentifier id = { *platform ,*deviceNum };
-	kernelManager::getDeviceFullInfo(id);
-}
 
 

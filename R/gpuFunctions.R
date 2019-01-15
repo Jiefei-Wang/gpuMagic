@@ -73,14 +73,12 @@ convertDataType<-function(data,type){
 
 
 getPlatformNum<-function(){
-  platform=0L
-  res=.C("getPlatformNum",platform)
-  res[[1]]
+  res=.Call("getPlatformNum")
+  res
 }
 getDeviceNum<-function(platform){
-  device=0L
-  res=.C("getDeviceNum",as.integer(platform),device)
-  res[[2]]
+  res=.Call("getDeviceNum",as.integer(platform))
+  res
 }
 getSingleDeviceInfo<-function(platform,device){
   deviceName=paste0(rep(" ",100),collapse = "")
@@ -90,17 +88,13 @@ getSingleDeviceInfo<-function(platform,device){
   haslocalMemory=0L
   opencl_version=paste0(rep(" ",100),collapse = "")
   compute_unit_num=0L
-  res=.C("getDeviceInfo",as.integer(platform),as.integer(device),
-         deviceName,deviceType,
-         global_memory,local_memory,haslocalMemory,
-         opencl_version,compute_unit_num
-  )
-  deviceInfo=data.frame(
-    id=NA,platform=platform,device=device,
-    deviceName=trimws(res[[3]]),deviceType=res[[4]],
-    globalMemory=res[[5]],localMemory=res[[6]],haslocalMemory=res[[7]],
-    opencl_version=trimws(res[[8]]),compute_unit_num=res[[9]],stringsAsFactors=F
-  )
+  deviceInfo=.Call("getDeviceInfo",as.integer(platform),as.integer(device))
+  names(deviceInfo)=c("deviceName","deviceType",
+                      "globalMemory","localMemory","haslocalMemory",
+                      "opencl_version","compute_unit_num")
+  deviceInfo=as.data.frame(deviceInfo,stringsAsFactors=FALSE)
+  deviceInfo=cbind(data.frame(id=NA,platform=platform,device=device),deviceInfo)
+  
   deviceInfo$deviceType=switch(as.character(deviceInfo$deviceType),"0"="CPU","1"="GPU","2"="other")
   
   deviceInfo
@@ -162,8 +156,7 @@ setDevice=function(i){
 #' @export
 getJobStatus=function(i){
   device=getSelectedDevice(i)
-  res=.C("getDeviceStatus",device[1],device[2],1L)
-  status=res[[length(res)]]
+  status=.Call("getDeviceStatus",device[1],device[2])
   switch(as.character(status),
          "3"="queued",
          "2"="submitted",

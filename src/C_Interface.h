@@ -5,46 +5,46 @@
 
 
 extern "C" LibExport
-void getPlatformNum(int* platformNum);
+SEXP getPlatformNum();
 extern "C" LibExport
-void getDeviceNum(int* platform, int* deviceNum);
+SEXP getDeviceNum(SEXP platform);
 extern "C" LibExport
-void getDeviceInfo(int* platform, int* device,
-	char** deviceName,int* deviceType,double* global_memory,
-	double* local_memory,int* haslocalMemory,char** opencl_version,int* compute_unit_num);
+SEXP getDeviceInfo(SEXP platform, SEXP device);
 
-
+//char** deviceName,int* deviceType,double* global_memory,
+//double* local_memory, int* haslocalMemory, char** opencl_version, int* compute_unit_num
 
 extern "C" LibExport
 SEXP upload(SEXP platform, SEXP deviceNum, SEXP data, SEXP length, SEXP type);
 extern "C" LibExport
-void gpuMalloc(int* platform, int* deviceNum,double* length, int* type, void** address);
+SEXP gpuMalloc(SEXP platform, SEXP deviceNum, SEXP length, SEXP type);
 
 extern "C" LibExport
-void download(void* data, void** address);
+SEXP download(SEXP address);
 
 
 extern "C" LibExport
-void release(void** address);
+SEXP release(SEXP address);
 extern "C" LibExport
-void hasKernel(int* platform, int* deviceNum,char** signature, char** kernel, bool* res);
+SEXP hasKernel(SEXP platform, SEXP deviceNum, SEXP signature, SEXP kernel);
 
 extern "C" LibExport
-void createKernel(int* platform, int* deviceNum,char** signature, char** flag, char** code, char** kernel);
+SEXP createKernel(SEXP platform, SEXP deviceNum, SEXP signature, SEXP flag, SEXP code, SEXP kernel);
 extern "C" LibExport
-void setParameter(int* platform, int* deviceNum, char** signature, char** kernel, void** data_address, int *parm_index);
+SEXP setParameter(SEXP platform, SEXP deviceNum, SEXP signature, SEXP kernel, SEXP data_address, SEXP parm_index);
 extern "C" LibExport
-void setSharedParameter(int* platform, int* deviceNum, char** signature, char** kernel, int* size, int *parm_index);
+SEXP setSharedParameter(SEXP platform, SEXP deviceNum, SEXP signature, SEXP kernel, SEXP size, SEXP parm_index);
 extern "C" LibExport
-void launchKernel(int* platform, int* deviceNum, char** signature, char** kernel, int* blockSize, int* threadSize);
+SEXP launchKernel(SEXP platform, SEXP deviceNum, SEXP signature, SEXP kernel, SEXP blockSize, SEXP threadSize);
 
 extern "C" LibExport
-void getPreferredGroupSize(int* platform, int* deviceNum, char** signature, char** kernel, double* res);
+SEXP getPreferredGroupSize(SEXP platform, SEXP deviceNum, SEXP signature, SEXP kernel);
 extern "C" LibExport
-void getDeviceStatus(int* platform, int* deviceNum, int* status);
+SEXP getDeviceStatus(SEXP platform, SEXP deviceNum);
 
+//Get the address and return it to R in double format
 extern "C" LibExport
-void getDeviceFullInfo(int* platform, int* deviceNum);
+SEXP getTrueAd(SEXP ad);
 
 //extern "C" LibExport
 //SEXP test();

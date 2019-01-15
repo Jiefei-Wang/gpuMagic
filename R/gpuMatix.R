@@ -15,6 +15,7 @@ gpuMatrix<-function(data,type="auto",device="auto"){
   }
   if(length(device)>1)
     stop("Only one device is supported")
+  
   #check if the device has been initialized
   getSelectedDevice(device)
    

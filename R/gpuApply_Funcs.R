@@ -56,8 +56,15 @@ getVarSizeInfo_C_level<-function(sizeMatrix){
     matrixOffset[i]=curoffSet
     curoffSet=curoffSet+curInfo$totalSize
   }
+  
+  matrixNum=nrow(sizeMatrix)
+  if(is.null(matrixOffset)) matrixOffset=1
+  if(is.null(size1)) size1=1
+  if(is.null(size2)) size2=1
+  if(is.null(curoffSet)) curoffSet=1
+  if(is.null(matrixNum)) matrixNum=1
   res=list(matrixOffset=matrixOffset,size1=size1,size2=size2,
-           totalSize=curoffSet,matrixNum=nrow(sizeMatrix))
+           totalSize=curoffSet,matrixNum=matrixNum)
   return(res)
 }
 fillGPUdata<-function(GPUcode1,.options,.device){
