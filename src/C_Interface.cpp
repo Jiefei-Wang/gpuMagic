@@ -1,10 +1,10 @@
 
-#define _CRT_SECURE_NO_WARNINGS
 #include "C_Interface.h"
 #include "Tools.h"
 #include "kernelManager.h"
 #include "openArray.h"
 #include <string> 
+#include <typeinfo>
 using namespace std;
 
 #define asString(x) string(CHAR(asChar(x)))
@@ -14,11 +14,13 @@ SEXP getPlatformNum()
 	SEXP platformNum = ScalarInteger(kernelManager::getPlatformNum());
 	return(platformNum);
 }
+
 SEXP getDeviceNum(SEXP platform)
 {
 	SEXP deviceNum = ScalarInteger(kernelManager::getDeviceNum(asInteger(platform)));
 	return(deviceNum);
 }
+
 SEXP getDeviceInfo(SEXP platform, SEXP device)
 {
 	deviceIdentifier id = { asInteger(platform) ,asInteger(device) };
@@ -37,6 +39,7 @@ SEXP getDeviceInfo(SEXP platform, SEXP device)
 	return(info_R);
 }
 
+
 SEXP upload(SEXP platform, SEXP device, SEXP data, SEXP length, SEXP type)
 {
 	deviceIdentifier id = { asInteger(platform) ,asInteger(device) };
@@ -45,18 +48,31 @@ SEXP upload(SEXP platform, SEXP device, SEXP data, SEXP length, SEXP type)
 
 	//printf("%d", TYPEOF(data));
 	//
-	void* gpuData =malloc(dataLength*getTypeSize(dataType));
+	bool needMalloc = true;
+	void* gpuData;
+	if (typeid(int) == typeid(cl_int) && TYPEOF(data) == INTSXP&&dataType ==dtype::i32) {
+		needMalloc = false;
+		gpuData = INTEGER(data);
+	}
+	if (typeid(double) == typeid(cl_double) && TYPEOF(data) == REALSXP&&dataType == dtype::f64) {
+		needMalloc = false;
+		gpuData = REAL(data);
+	}
+	if (needMalloc) {
+		gpuData = malloc(dataLength*getTypeSize(dataType));
+	}
+
 	switch (TYPEOF(data)) {
 	case LGLSXP:
 		RTogpu(LOGICAL(data), gpuData, dataType, dataLength);
 		break;
 	case INTSXP:
-		RTogpu(INTEGER(data), gpuData, dataType, dataLength);
-		//print_partial_matrix("host", (double*)gpuData, 1, dataLength);
+		if(needMalloc)
+			RTogpu(INTEGER(data), gpuData, dataType, dataLength);
 		break;
 	case REALSXP:
-		//printf("I see you!");
-		RTogpu(REAL(data), gpuData, dataType, dataLength);
+		if (needMalloc)
+			RTogpu(REAL(data), gpuData, dataType, dataLength);
 		break;
 	case RAWSXP:
 		RTogpu(RAW(data), gpuData, dataType, dataLength);
@@ -66,8 +82,11 @@ SEXP upload(SEXP platform, SEXP device, SEXP data, SEXP length, SEXP type)
 	}
 	openArray* matrix = new openArray(id, gpuData, dataLength, dataType);
 	SEXP result = R_MakeExternalPtr((void *)matrix, R_NilValue, R_NilValue);
+	if(needMalloc)
+		free(gpuData);
 	return(result);
 }
+
 
 SEXP gpuMalloc(SEXP platform, SEXP device, SEXP length, SEXP type)
 {
@@ -79,6 +98,7 @@ SEXP gpuMalloc(SEXP platform, SEXP device, SEXP length, SEXP type)
 
 //c = 1, f16 = 2, f32 = 3, f64 = 4, i32 = 5, i64 = 6,
 //ui32 = 7, ui64 = 8
+
 SEXP download(SEXP address) {
 	openArray* matrix = (openArray*)R_ExternalPtrAddr(address);
 	dtype type = matrix->getDataType();
@@ -87,6 +107,7 @@ SEXP download(SEXP address) {
 	//The gpu date should be transfer to an R-compatible type
 	//void* host_data = matrix->getHostData();
 	SEXP res;
+
 	switch (type) {
 	case dtype::f16:
 	case dtype::f32:
@@ -96,14 +117,22 @@ SEXP download(SEXP address) {
 	case dtype::ui64:
 		res = PROTECT(allocVector(REALSXP, length));
 		matrix->getHostData(REAL(res));
-		gpuToR(REAL(res), REAL(res), type, length,1);
+		if (type == dtype::f64&&typeid(double) == typeid(cl_double))
+			break;
+		//printf("type conversion");
+		gpuToR(REAL(res), REAL(res), type, length, 1);
 		break;
 	case dtype::i32:
 	case dtype::c:
 		res = PROTECT(allocVector(INTSXP, length));
 		matrix->getHostData(INTEGER(res));
-		gpuToR(INTEGER(res), INTEGER(res), type, length,1);
+		if (type == dtype::i32&&typeid(int) == typeid(cl_int))
+			break;
+		//printf("type conversion");
+		gpuToR(INTEGER(res), INTEGER(res), type, length, 1);
 		break;
+	default:
+		errorHandle("An unexpected data type has been found, please contact author for the help!");
 	}
 
 	UNPROTECT(1);
@@ -112,11 +141,13 @@ SEXP download(SEXP address) {
 
 
 
+
 SEXP release(SEXP address) {
 	openArray* matrix = (openArray*)R_ExternalPtrAddr(address);
 	delete matrix;
 	return(R_NilValue);
 }
+
 
 SEXP hasKernel(SEXP platform, SEXP device, SEXP signature, SEXP kernel) {
 	deviceIdentifier id = { asInteger(platform) ,asInteger(device) };
@@ -127,6 +158,7 @@ SEXP hasKernel(SEXP platform, SEXP device, SEXP signature, SEXP kernel) {
 
 
 
+
 SEXP createKernel(SEXP platform, SEXP device, SEXP signature, SEXP flag, SEXP code, SEXP kernel) {
 	deviceIdentifier id = { asInteger(platform) ,asInteger(device) };
 	programSignature sig = { asString(signature) ,asString(flag),asString(code),asString(kernel) };
@@ -134,6 +166,7 @@ SEXP createKernel(SEXP platform, SEXP device, SEXP signature, SEXP flag, SEXP co
 	kernelManager::createKernel(id, sig);
 	return(NILSXP);
 }
+
 
 
 
@@ -148,6 +181,7 @@ SEXP setParameter(SEXP platform, SEXP device, SEXP signature, SEXP kernel, SEXP 
 	return(NILSXP);
 }
 
+
 SEXP setSharedParameter(SEXP platform, SEXP device, SEXP signature, SEXP kernel, SEXP size, SEXP parm_index) {
 	deviceIdentifier id = { asInteger(platform) ,asInteger(device) };
 	programSignature sig = { asString(signature),string(),string(),asString(kernel) };
@@ -158,6 +192,7 @@ SEXP setSharedParameter(SEXP platform, SEXP device, SEXP signature, SEXP kernel,
 		errorHandle(string("kernel shared memory creating failure, error info:") + string(getErrorString(error)));
 	return(NILSXP);
 }
+
 
 
 SEXP launchKernel(SEXP platform, SEXP device, SEXP signature, SEXP kernel, SEXP blockSize, SEXP threadSize) {
@@ -185,6 +220,7 @@ SEXP launchKernel(SEXP platform, SEXP device, SEXP signature, SEXP kernel, SEXP 
 
 }
 
+
 SEXP getPreferredGroupSize(SEXP platform, SEXP device, SEXP signature, SEXP kernel)
 {
 	deviceIdentifier id = { asInteger(platform) ,asInteger(device) };
@@ -199,6 +235,7 @@ SEXP getPreferredGroupSize(SEXP platform, SEXP device, SEXP signature, SEXP kern
 	SEXP res = ScalarInteger(prefferedSize);
 	return(res);
 }
+
 
 SEXP getDeviceStatus(SEXP platform, SEXP device)
 {
@@ -231,12 +268,19 @@ SEXP getDeviceStatus(SEXP platform, SEXP device)
 	return(ScalarInteger(status));
 }
 
+
 SEXP getTrueAd(SEXP ad)
 {
 	double* address=(double*)R_ExternalPtrAddr(ad);
 	double ad_double = 0;
 	memcpy(&ad_double, &address, sizeof(double*));
 	return(ScalarReal(ad_double));
+}
+
+SEXP asMatrix(SEXP data, SEXP dim)
+{
+	setAttrib(data, R_DimSymbol, dim);
+	return(NILSXP);
 }
 
 

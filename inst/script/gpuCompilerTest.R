@@ -7,13 +7,19 @@ library("tictoc")
 #setDevice(c(1,3))
 #gpuMagic.option$setDefaultFloat("double")
 testFunc<-function(ind,A,B){
-  C=matrix(0,nrow(A),1)
+  C=A%*%B[,ind]
+  #C=matrix(0,nrow(A),1)
   return(C)
 }
 
-n=20000
-m=1000
-k=2000
+#n=20000
+#m=1000
+#k=2000
+
+
+n=1024
+m=10000
+k=1024
 
 
 A=matrix(runif(n*m),n,m)
@@ -24,8 +30,10 @@ options$verbose=F
 #options$sapplyMsg$timing.R.code.compilation=T
 #fileName="inst/script/debugCode.txt"
 #options$sapplyOption$debugCode=readChar(fileName,file.info(fileName)$size)
+
+setDevice(c(1,3))
 tic()
-for(i in 1:10)
+#for(i in 1:10)
 res_gpu=gpuSapply(1:k,testFunc,A,B,.options = options)
 #res_gpu=value(res_gpu)
 toc()

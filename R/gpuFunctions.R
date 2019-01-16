@@ -73,11 +73,11 @@ convertDataType<-function(data,type){
 
 
 getPlatformNum<-function(){
-  res=.Call("getPlatformNum")
+  res=.Call(C_getPlatformNum)
   res
 }
 getDeviceNum<-function(platform){
-  res=.Call("getDeviceNum",as.integer(platform))
+  res=.Call(C_getDeviceNum,as.integer(platform))
   res
 }
 getSingleDeviceInfo<-function(platform,device){
@@ -88,7 +88,7 @@ getSingleDeviceInfo<-function(platform,device){
   haslocalMemory=0L
   opencl_version=paste0(rep(" ",100),collapse = "")
   compute_unit_num=0L
-  deviceInfo=.Call("getDeviceInfo",as.integer(platform),as.integer(device))
+  deviceInfo=.Call(C_getDeviceInfo,as.integer(platform),as.integer(device))
   names(deviceInfo)=c("deviceName","deviceType",
                       "globalMemory","localMemory","haslocalMemory",
                       "opencl_version","compute_unit_num")
@@ -136,7 +136,7 @@ getDeviceInfo=function(i){
 #' Get the current used device
 #' @export
 getCurDevice=function(){
-  curInd=.gpuResourcesManager$globalVars$curDeviceIndex
+  curInd=as.integer(keys(.gpuResourcesManager$globalVars$curDevice))
   for(i in curInd){
     getDeviceInfo(i)
     cat("\n\n")
@@ -156,7 +156,7 @@ setDevice=function(i){
 #' @export
 getJobStatus=function(i){
   device=getSelectedDevice(i)
-  status=.Call("getDeviceStatus",device[1],device[2])
+  status=.Call(C_getDeviceStatus,device[1],device[2])
   switch(as.character(status),
          "3"="queued",
          "2"="submitted",

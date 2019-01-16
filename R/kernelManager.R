@@ -61,7 +61,7 @@
   if(!hasKernel(device,sig_hash,kernel)){
     if(verbose||kernelMsg$compilation.msg)
       message("OpenCL compiler message: The kernel does not exist and will be created")
-    .Call("createKernel",device[1],device[2],sig_hash,kernelOption$flag,src,kernel)
+    .Call(C_createKernel,device[1],device[2],sig_hash,kernelOption$flag,src,kernel)
   }
   #Compute the usage of the shared memory and global memory
   #upload the parameters
@@ -71,12 +71,12 @@
     if(class(parms[[i]])=="list"){
       share_memory=share_memory+parms[[i]]$size
       
-      .Call("setSharedParameter",device[1],device[2],sig_hash,kernel,
+      .Call(C_setSharedParameter,device[1],device[2],sig_hash,kernel,
          as.integer(parms[[i]]$size),as.integer(i-1))
     }else{
       global_memory=global_memory+getSize(parms[[i]])
       #message(getSize(parms[[i]]))
-      .Call("setParameter",device[1],device[2],sig_hash,kernel,
+      .Call(C_setParameter,device[1],device[2],sig_hash,kernel,
          .getAddress(parms[[i]]),as.integer(i-1))
     }
   }
@@ -106,7 +106,7 @@
     message(paste0("Thread number per block: ",localThreadNum_output))
   }
   
-  .Call("launchKernel",device[1],device[2],sig_hash,kernel,as.integer(.globalThreadNum),as.integer(localThreadNum))
+  .Call(C_launchKernel,device[1],device[2],sig_hash,kernel,as.integer(.globalThreadNum),as.integer(localThreadNum))
   
   invisible()
 }
@@ -161,11 +161,11 @@ readCode<-function(src){
 
 #Check if the kernel is already exist
 hasKernel<-function(device,sig,kernel){
-  res=.Call("hasKernel",device[1],device[2],sig,kernel)
+  res=.Call(C_hasKernel,device[1],device[2],sig,kernel)
   res
 }
 
 getGroupSize<-function(device,sig,kernel){
-  res=.Call("getPreferredGroupSize",device[1],device[2],sig,kernel)
+  res=.Call(C_getPreferredGroupSize,device[1],device[2],sig,kernel)
   res
 }

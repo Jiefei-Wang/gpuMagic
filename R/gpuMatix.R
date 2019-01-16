@@ -122,7 +122,8 @@ setMethod(
   f="download",
   signature = "gpuMatrix",
   definition = function(obj){
-    obj@data=matrix(obj@gpuAddress$download(),.nrow(obj),.ncol(obj))
+    obj@data=obj@gpuAddress$download()
+    .Call(C_asMatrix,obj@data,as.integer(.dim(obj)))
     obj
   }
 )

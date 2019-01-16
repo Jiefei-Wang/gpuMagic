@@ -86,7 +86,7 @@
         stop("The GPU resources does not exist!")
       
       #General case
-      res=.Call("download",gpuAd)
+      res=.Call(C_download,gpuAd)
       return(res)
     },
     releaseAddress=function(deviceId,gpuAd){
@@ -98,7 +98,7 @@
       if(!hash::has.key(adKey,internalVars$addressSizeList[[devKey]])){
         return()
       }
-      .Call("release",gpuAd)
+      .Call(C_release,gpuAd)
       internalVars$memoryUsage[[devKey]]=
         internalVars$memoryUsage[[devKey]]-internalVars$addressSizeList[[devKey]][[adKey]]
       
@@ -140,10 +140,12 @@
       message("Device memory usage:")
       message(paste(deviceList,usedMem_char,maxMem_char,sep=" ",collapse = "\n"))
     },
-    setMaxMemLimit=function(mem=0){
-      if(mem==0) mem=10^9
-      tmp=internalVars$totalMemory
-      internalVars$totalMemory=mem
+    setMaxMemLimit=function(device,mem){
+      device=as.character(device)
+      if(!has.key(device,internalVars$totalMemory))
+        stop("The device has not been initialized")
+      tmp=internalVars$totalMemory[[device]]
+      internalVars$totalMemory[[device]]=mem
       tmp
     },
     globalVars=globalVars,
@@ -263,5 +265,5 @@ isDeviceSelected<-function(device){
 }
 
 getTrueAd<-function(address){
-  .Call("getTrueAd",address)
+  .Call(C_getTrueAd,address)
 }

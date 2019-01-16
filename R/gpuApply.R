@@ -7,62 +7,14 @@ gpuSapply<-function(X,FUN,...,.macroParms=NULL,.device="auto",loading="auto",.op
   }else{
     .device=as.integer(.device)
   }
-  jobsNum=length(X)
+  
   deviceNum=length(.device)
   #If the number of device is 1, just call the single device function
   if(deviceNum==1){
     res=gpuSapply_singleDev(X,FUN,...,.macroParms=.macroParms,.device=.device,.options=.options)
-    return(res)
+  }else{
+    res=gpuSapply_multiDev(X,FUN,...,.macroParms=.macroParms,.device=.device,loading="auto",.options=.options)
   }
-  #If the number of device is larger than 1, parallel the process
-  #Find the loading for each device
-  if(loading=="auto"||length(loading)!=deviceNum){
-    loading=rep(1,deviceNum)
-  }
-  loading=loading/sum(loading)
-  
-  #Create job blocks
-  jobs=c()
-  startInd=0
-  for(i in seq_len(deviceNum)){
-    endInd=min(startInd+ceiling(jobsNum*loading[i]),jobsNum)
-    jobs=rbind(jobs,c(startInd,endInd))
-    startInd=min(endInd,jobsNum)
-  }
-  
-  #Parallel the jobs
-  parallelSet=list()
-  for(i in seq_len(deviceNum)){
-    start=jobs[i,1]
-    end=jobs[i,2]
-    if(end-start==0){
-      parallelSet[[i]]=NULL
-    }else{
-      parallelSet[[i]]=
-          gpuSapply_singleDev(
-            X[(start+1):end],FUN,...,
-            .macroParms=.macroParms,.device=.device[i],.options=.options,.block=F)
-    }
-  }
-  #Get the result back
-  unfinishedDevice=seq_len(deviceNum)
-  unfinishedDeviceNum=deviceNum
-  while(unfinishedDeviceNum!=0){
-    for(i in seq_len(deviceNum)){
-      ind=unfinishedDevice[i]
-      if(ind==0)
-        next
-      curDev=.device(parallelSet[[ind]])
-      if(getJobStatus(curDev)=="complete"){
-        unfinishedDevice[i]=0
-        unfinishedDeviceNum=unfinishedDeviceNum-1
-        parallelSet[[i]]=as.vector(download(parallelSet[[i]]))
-      }
-    }
-  }
-  res=unlist(parallelSet)
-  if(length(res)!=jobsNum)
-    res=matrix(res,ncol=jobsNum)
   return(res)
 }
 
@@ -146,6 +98,69 @@ gpuSapply_singleDev<-function(X,FUN,...,.macroParms=NULL,.device,.options=gpuSap
   }
   return(res)
 }
+
+gpuSapply_multiDev<-function(X,FUN,...,.macroParms=NULL,.device,loading="auto",.options=gpuSapply.getOption(),.block=T){
+  deviceNum=length(.device)
+  jobsNum=length(X)
+  #If the number of device is larger than 1, parallel the process
+  #Find the loading for each device
+  if(loading=="auto"||length(loading)!=deviceNum){
+    loading=rep(1,deviceNum)
+  }
+  loading=loading/sum(loading)
+  
+  #Create job blocks
+  jobs=c()
+  startInd=0
+  for(i in seq_len(deviceNum)){
+    endInd=min(startInd+ceiling(jobsNum*loading[i]),jobsNum)
+    jobs=rbind(jobs,c(startInd,endInd))
+    startInd=min(endInd,jobsNum)
+  }
+  
+  #Parallel the jobs
+  parallelSet=list()
+  for(i in seq_len(deviceNum)){
+    start=jobs[i,1]
+    end=jobs[i,2]
+    if(end-start==0){
+      parallelSet[[i]]=NULL
+    }else{
+      parallelSet[[i]]=
+        gpuSapply_singleDev(
+          X[(start+1):end],FUN,...,
+          .macroParms=.macroParms,.device=.device[i],.options=.options,.block=F)
+    }
+  }
+  #Get the result back
+  unfinishedDevice=seq_len(deviceNum)
+  unfinishedDeviceNum=deviceNum
+  while(unfinishedDeviceNum!=0){
+    for(i in seq_len(deviceNum)){
+      ind=unfinishedDevice[i]
+      if(ind==0)
+        next
+      curDev=.device(parallelSet[[ind]])
+      if(getJobStatus(curDev)=="complete"){
+        unfinishedDevice[i]=0
+        unfinishedDeviceNum=unfinishedDeviceNum-1
+        parallelSet[[i]]=as.vector(download(parallelSet[[i]]))
+      }
+    }
+  }
+  res=unlist(parallelSet)
+  dim=c(0,0)
+  dim[1]=length(res)/jobsNum
+  dim[2]=jobsNum
+  .Call(C_asMatrix,res,as.integer(dim))
+  return(res)
+}
+
+
+
+
+
+
 
 #' @export
 gpuSapply.getOption<-function(){
