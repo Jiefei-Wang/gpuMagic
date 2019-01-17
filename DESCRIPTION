@@ -1,16 +1,17 @@
 Package: gpuMagic
 Type: Package
-Title: An R interface to create OpenCl function
+Title: An R interface to ultilize the power of GPU
 Version: 0.1.0
 Date: 2018-10-07
 Author: Jiefei Wang
-Maintainer: Who to complain to <yourfault@somewhere.net>
+Maintainer: Jiefei Wang <jwang96@buffalo.edu>
 Description: More about what it does (maybe more than one line)
 License: What license is it under?
 LinkingTo: Rcpp
 Imports: Rcpp, hash
 SystemRequirements: C++11
 RoxygenNote: 6.1.1
+Roxygen: list(markdown = TRUE)
 Suggests: testthat,
     knitr,
     rmarkdown

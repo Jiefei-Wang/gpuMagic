@@ -163,6 +163,7 @@ SEXP createKernel(SEXP platform, SEXP device, SEXP signature, SEXP flag, SEXP co
 	deviceIdentifier id = { asInteger(platform) ,asInteger(device) };
 	programSignature sig = { asString(signature) ,asString(flag),asString(code),asString(kernel) };
 	//message(std::string(*code));
+	message(sig.compiler_flag);
 	kernelManager::createKernel(id, sig);
 	return(NILSXP);
 }

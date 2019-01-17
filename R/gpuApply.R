@@ -1,5 +1,22 @@
 gpuApplyFuncList=hash()
 
+
+#' A GPU version sapply function
+#' 
+#' Please refer to sapply to see the basic usage
+#' 
+#' This function compile the R code and run it on the openCL-compatible devices. The usage is similar to the sapply function with 
+#' some addtional opencl-related arguments.
+#' 
+#' @param X a vector that `FUN` will loop over.
+#' @param FUN The function to be applied to each elemtn of `X`
+#' @param ... optional arguments to `FUN`
+#' @.macroParms 
+#' The function argument that will be treated as macro in the code. 
+#' If an argument is treated as macro, its value cannot be changed by the code
+#' @.device The device that the function will be excuted. Running the code on Multiple devices is supported but is still under development
+#' @loading The loading of each device, only useful when having multiple devices.
+#' 
 #' @export
 gpuSapply<-function(X,FUN,...,.macroParms=NULL,.device="auto",loading="auto",.options=gpuSapply.getOption()){
   if(.device=="auto"){
@@ -70,7 +87,7 @@ gpuSapply_singleDev<-function(X,FUN,...,.macroParms=NULL,.device,.options=gpuSap
   
   if(optimization$thread.number==TRUE){
     if(.options$kernelOption$localThreadNum=="Auto")
-      kernelNum=as.numeric(gpuMagic$getOptions("default.thread.num",F))
+      kernelNum=as.numeric(gpuMagic.getOptions("default.thread.num"))
     else
       kernelNum=.options$kernelOption$localThreadNum
     

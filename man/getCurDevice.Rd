@@ -2,10 +2,10 @@
 % Please edit documentation in R/gpuFunctions.R
 \name{getCurDevice}
 \alias{getCurDevice}
-\title{Get the current used device}
+\title{Get the information of the current devices}
 \usage{
 getCurDevice()
 }
 \description{
-Get the current used device
+Get the information of the current devices
 }

@@ -167,16 +167,83 @@ GPUVar<-local({
 
 
 
-#These function does not have any meaning, just for making sure the GPU code can also be ran on CPU
+#' Create a scalar variable
+#' 
+#' The function will create a scalar variable, it is only useful in the openCL functions. 
+#' It can also be called in R, but its argument will not take any effect.
+#' 
+#' @param precision The variable type, please refer to `gpuMagic.getAvailableType()` to see the available data type.
+#' @param constDef 
+#' Specify if the variable can be redefined. The package will automatically update the variable definition when it is needed, 
+#' if you do not need this feature, you can manually turn the feature off. 
+#' It is useful in some special cases such as turning off the auto update to do the integer division
+#' (By default, the package will convert the variable to the default float type before doing the division).
+#' 
+#' @return a variable initialize with 0.
+#' @export
 gNumber<-function(precision=GPUVar$default_float,constDef=FALSE){
   return(0)
 }
+#' Create a matrix
+#' 
+#' The function create a matrix, it is only useful in the openCL functions. 
+#' it can also be called in R, but its argument may or may not take any effect.
+#' 
+#' @param nrow,ncol The matrix dimension.
+#' @param precision The variable type, please refer to `gpuMagic.getAvailableType()` to see the available data type.
+#' @param constDef 
+#' Specify if the variable can be redefined. The package will automatically update the variable definition when it is needed, 
+#' if you do not need this feature, you can manually turn the feature off. 
+#' It is useful in some special cases such as turning off the auto update to do the integer division
+#' (By default, the package will convert the variable to the default float type before doing the division).
+#' @param shared If the matrix is shared by all the workers in a work group. Do not use it if you don't know its meaning.
+#' @param location The physical memory location of the matrix, it can be either "global" or "local". Do not use it if you don't know its meaning.
+#' 
+#' @return a matrix initialize with 0.
+#' @export
 gMatrix<-function(nrow=1,ncol=1,precision=GPUVar$default_float,constDef=FALSE,shared=FALSE,location="global"){
   return(matrix(NA,nrow,ncol))
 }
+#' TODO 
 resize<-function(data,nrow,ncol){
   return(matrix(data,nrow,ncol))
 }
+#' Get a reference of the subset of a matrix 
+#' 
+#' The function will get a reference of the matrix subset. This is a 0-copy method, 
+#' which means any change in the reference variable will cause the change in the original matrix.
+#' The function is useful when the GPU memory is limited or you do not want to create a copy the data. 
+#' DO NOT call this function in R, this is for openCL code only(eg. gpuSapply).
+#' 
+#' The package implement this function purely using the code. it will not actually be called on device side. 
+#' For example, if we have the following code:
+#' 
+#' \preformatted{
+#' #Alternative of B=A[ind]
+#' B=subRef(A,ind)
+#' a=B[2]
+#' }
+#' 
+#' In the compilation stage, the code will be changed to
+#' 
+#' \preformatted{
+#' a=A[ind[2]]
+#' }
+#' 
+#' The variable B does not exist in the code after the compilation and therefore no memory is allocated for it. 
+#' 
+#' @section Warning:
+#' Since this feature is implemented like a macro, 
+#' so the value of `ind` in `B=subRef(A,ind)` can be different from the value of `ind` in `a=A[ind[2]]`. 
+#' It is a good practice to keep them same while using the subset reference.
+#'  
+#' 
+#' @param variable the matrix you want to subset
+#' @param i the index of a vector or the row index of a matrix
+#' @param j (Optional) The column index of a matrix
+#' 
+#' @return A reference to the subset of a matrix
+#' @export
 subRef<-function(variable,i="",j=""){
   if(i==""&&j=="")
     return(variable[,,drop=F])
@@ -186,6 +253,10 @@ subRef<-function(variable,i="",j=""){
     return(variable[i,,drop=F])
   return(variable[i,j,drop=F])
 }
+#' Return the result without memory copy
+#' 
+#' The usage of the `return.nocpy` is same as `return`. This feature is for openCL code only, please not use it in R function.
+#' @export
 return.nocpy<-function(x){
   stop("You cannot use the reference return in R code")
 }

@@ -7,7 +7,7 @@
 setDevice(i)
 }
 \arguments{
-\item{i}{numeric The device index}
+\item{i}{integer The device index}
 }
 \description{
 Set which device will be used in the opencl, call 'getDeviceList()' first to figure out the index before use this function

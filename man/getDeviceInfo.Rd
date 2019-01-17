@@ -7,7 +7,7 @@
 getDeviceInfo(i)
 }
 \arguments{
-\item{i}{numeric The device index}
+\item{i}{integer The device index}
 }
 \description{
 Get the ith device information, call 'getDeviceList()' first to figure out the index before use this function

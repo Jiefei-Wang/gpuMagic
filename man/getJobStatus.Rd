@@ -7,7 +7,7 @@
 getJobStatus(i)
 }
 \arguments{
-\item{i}{numeric The device index}
+\item{i}{integer The device index}
 }
 \description{
 Query the current job status in a device
