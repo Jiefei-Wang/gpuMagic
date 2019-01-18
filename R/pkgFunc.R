@@ -256,6 +256,8 @@ subRef<-function(variable,i="",j=""){
 #' Return the result without memory copy
 #' 
 #' The usage of the `return.nocpy` is same as `return`. This feature is for openCL code only, please not use it in R function.
+#' 
+#' @param x The return value
 #' @export
 return.nocpy<-function(x){
   stop("You cannot use the reference return in R code")

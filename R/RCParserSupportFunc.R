@@ -46,26 +46,50 @@ CSimplify<-function(Exp,C=TRUE){
     code=gsub("gpu_cast_(float|double|uint|int|long|ulong)","\\(\\1\\)",code)
   return(code)
 }
+#' Internal usage only, the package export this function only for the other package to access.
+#' 
+#' @param x Internal usage only
+#' @family internal cast functions
 #' @export
 gpu_cast_float<-function(x){
   as.double(x)
 }
+#' Internal usage only, the package export this function only for the other package to access.
+#' 
+#' @param x Internal usage only
+#' @family internal cast functions
 #' @export
 gpu_cast_double<-function(x){
   as.double(x)
 }
+#' Internal usage only, the package export this function only for the other package to access.
+#' 
+#' @param x Internal usage only
+#' @family internal cast functions
 #' @export
 gpu_cast_uint<-function(x){
   trunc(x)
 }
+#' Internal usage only, the package export this function only for the other package to access.
+#' 
+#' @param x Internal usage only
+#' @family internal cast functions
 #' @export
 gpu_cast_int<-function(x){
   trunc(x)
 }
+#' Internal usage only, the package export this function only for the other package to access.
+#' 
+#' @param x Internal usage only
+#' @family internal cast functions
 #' @export
 gpu_cast_long<-function(x){
   trunc(x)
 }
+#' Internal usage only, the package export this function only for the other package to access.
+#' 
+#' @param x Internal usage only
+#' @family internal cast functions
 #' @export
 gpu_cast_ulong<-function(x){
   trunc(x)

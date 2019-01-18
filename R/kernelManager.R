@@ -111,6 +111,7 @@
   invisible()
 }
 
+#' Get the openCL compilation options
 #' @export
 kernel.getOption<-function(){
   curOp=list()

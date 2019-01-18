@@ -38,7 +38,7 @@ In the compilation stage, the code will be changed to
 a=A[ind[2]]
 }
 
-The variable B does not exist in the code and therefore no memory is allocated for it.
+The variable B does not exist in the code after the compilation and therefore no memory is allocated for it.
 }
 \section{Warning}{
 

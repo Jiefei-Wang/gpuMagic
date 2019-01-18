@@ -5,10 +5,24 @@ Version: 0.1.0
 Date: 2018-10-07
 Author: Jiefei Wang
 Maintainer: Jiefei Wang <jwang96@buffalo.edu>
-Description: More about what it does (maybe more than one line)
-License: What license is it under?
+Description: The package compiles the R function and uses GPU to run the code.
+License: GPL-3
 LinkingTo: Rcpp
-Imports: Rcpp, hash
+Depends: 
+  R (>= 3.0.0),
+  methods,
+  utils
+Imports: Rcpp, 
+  Deriv, 
+  DescTools, 
+  digest, 
+  future, 
+  pryr, 
+  stringr, 
+  BiocGenerics,
+  hash
+biocViews:
+BugReports:https://github.com/Jiefei-Wang/gpuMagic/issues
 SystemRequirements: C++11
 RoxygenNote: 6.1.1
 Roxygen: list(markdown = TRUE)

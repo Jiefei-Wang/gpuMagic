@@ -1,12 +1,18 @@
 ---
 title: "gpuMagic quick start guide"
-author: "Jiefei Wang"
+author: 
+- name: Jiefei Wang
+  affiliation: Roswell Park Comprehensive Cancer Center, Buffalo, NY
 date: "`r Sys.Date()`"
-output: rmarkdown::html_vignette
+output:
+    BiocStyle::html_document:
+        toc: true
+        toc_float: true
 vignette: >
-  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteIndexEntry{quickStart}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
+package: gpuMagic
 ---
 
 ```{r setup, include = FALSE}
@@ -14,7 +20,8 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
-devtools::load_all() 
+library("gpuMagic")
+#devtools::load_all() 
 ```
 # Introduction
 The gpuMagic package is designed for ultilizing the computing power of modern GPU. The package has the ability to compile the R code and implement the code on a GPU kernel. Therefore, it is easy for the user to design their own algorithm in pure R language and run the code in GPU. The package uses openCL as its parallel language so CPU parallel is also supported.

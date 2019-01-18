@@ -48,7 +48,7 @@
       checkGPUmemUsage(devKey,size)
       
       gpuAd=.Call(
-        "upload",curDevice[1],curDevice[2],data,
+        C_upload,curDevice[1],curDevice[2],data,
         as.double(length(data)),getTypeNum(type)
         )
       
@@ -68,7 +68,7 @@
       checkGPUmemUsage(devKey,size)
       
       gpuAd=.Call(
-        "gpuMalloc",curDevice[1],curDevice[2],as.double(len),getTypeNum(type)
+        C_gpuMalloc,curDevice[1],curDevice[2],as.double(len),getTypeNum(type)
       )
       
       adKey=digest(getTrueAd(gpuAd))

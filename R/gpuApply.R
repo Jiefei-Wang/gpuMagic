@@ -11,11 +11,12 @@ gpuApplyFuncList=hash()
 #' @param X a vector that `FUN` will loop over.
 #' @param FUN The function to be applied to each elemtn of `X`
 #' @param ... optional arguments to `FUN`
-#' @.macroParms 
+#' @param .macroParms 
 #' The function argument that will be treated as macro in the code. 
 #' If an argument is treated as macro, its value cannot be changed by the code
-#' @.device The device that the function will be excuted. Running the code on Multiple devices is supported but is still under development
-#' @loading The loading of each device, only useful when having multiple devices.
+#' @param .device The device that the function will be excuted. Running the code on Multiple devices is supported but is still under development
+#' @param loading The loading of each device, only useful when having multiple devices.
+#' @param .options The package and openCL compilation options, please call `gpuSapply.getOption()` to get all the available options
 #' 
 #' @export
 gpuSapply<-function(X,FUN,...,.macroParms=NULL,.device="auto",loading="auto",.options=gpuSapply.getOption()){
@@ -178,7 +179,10 @@ gpuSapply_multiDev<-function(X,FUN,...,.macroParms=NULL,.device,loading="auto",.
 
 
 
-
+#' Get the package compilation options
+#' 
+#' Get the package compilation options, the openCl compilation options(`kernel.getOption()`) are also included.
+#' 
 #' @export
 gpuSapply.getOption<-function(){
   curOp=kernel.getOption()
@@ -201,7 +205,9 @@ gpuSapply.getOption<-function(){
   return(curOp)
 }
 
-#This function is for user to call
+#' Compile the R function without excute it in the device.
+#' 
+#' @inheritParams gpuSapply
 #' @export
 compileGPUCode<-function(X,FUN,...,.macroParms=NULL,.options=gpuSapply.getOption()){
   parms=list(...)

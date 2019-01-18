@@ -6,6 +6,7 @@
 #' @importFrom DescTools StrAlign
 #' @importFrom future future value
 #' @import hash
+#' @import methods
 #' @useDynLib gpuMagic, .registration = TRUE,  .fixes = "C_"
 
 .onDetach<-function(libpath){
