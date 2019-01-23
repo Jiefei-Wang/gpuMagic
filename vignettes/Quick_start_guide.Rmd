@@ -21,7 +21,6 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 library("gpuMagic")
-#devtools::load_all() 
 ```
 # Introduction
 The gpuMagic package is designed for ultilizing the computing power of modern GPU. The package has the ability to compile the R code and implement the code on a GPU kernel. Therefore, it is easy for the user to design their own algorithm in pure R language and run the code in GPU. The package uses openCL as its parallel language so CPU parallel is also supported.
@@ -32,7 +31,7 @@ To getting started, it is always a good practice to check your GPU avalability.
 ```{r}
 getDeviceList()
 ```
-The devices listed above shows you the current avalable device in your computer, if you cannot see the device in your computer, you need to install the openCL driver obtained from the corresponding vender. The default device is the device 1, if you have multiple devices, you can query and choose your device by
+The devices listed above shows you the current avalable device in your computer, if you cannot see the device in your computer, you need to install the openCL driver obtained from the corresponding vender. The default device is the device 1, if you have multiple devices, you can query and change your device by
 ```{r}
 getDeviceInfo(1)
 setDevice(1)
@@ -73,9 +72,9 @@ max(abs(C_sapply-C_internel))
 ```
 As you see here, the result from sapply is consistent with the result from the R internal matrix multiplication function. To run the above function in GPU, it can be simply achieved by changing **sapply** to **gpuSapply**
 ```{r}
-C_gpu=gpuSapply(1:k,matMul,A,B)
+#C_gpu=gpuSapply(1:k,matMul,A,B)
 #Compute error
-max(abs(C_gpu-C_internel))
+#max(abs(C_gpu-C_internel))
 ```
 That is all you need to do to run the GPU code! We can try a larger sample size to see the speed differences between GPU and R code.
 ```{r}
@@ -84,9 +83,9 @@ m=2000
 k=2000
 A=matrix(runif(n*m),n,m)
 B=matrix(runif(n*m),m,k)
-system.time(
-  gpuSapply(1:k,matMul,A,B)
-)
+#system.time(
+  #gpuSapply(1:k,matMul,A,B)
+#)
 system.time(
   A%*%B
 )

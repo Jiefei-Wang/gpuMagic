@@ -3,6 +3,8 @@
 \docType{methods}
 \name{[,gpuMatrix,ANY,ANY,missing-method}
 \alias{[,gpuMatrix,ANY,ANY,missing-method}
+\alias{[,gpuMatrix-method}
+\alias{[}
 \alias{[<-,gpuMatrix,ANY,ANY,numeric-method}
 \title{extract/set parts of the data in gpuMatrix object}
 \usage{

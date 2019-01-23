@@ -1,3 +1,4 @@
+.profileExplicitDefine=c("gMatrix","gNumber","subRef",":","seq")
 #If the variable does not exist
 #The inherit table determine whether the property can be passed through the equal sign
 #If the variable exist
@@ -12,24 +13,19 @@ inherit$newVar$implicit=list()
 inherit$extVar$explicit=list()
 inherit$extVar$implicit=list()
 
-#Default setting
-inherit$newVar$explicit$default=TRUE
-inherit$newVar$implicit$default=FALSE
-inherit$extVar$explicit$default=TRUE
-inherit$extVar$implicit$default=FALSE
+inherit$newVar$implicit=c("precisionType","dataType","size1","size2","value")
+
 
 #default
 
 #special treatment
 var="precisionType"
 inherit$newVar$explicit[[var]]=TRUE
-inherit$newVar$implicit[[var]]=TRUE
 inherit$extVar$explicit[[var]]=FALSE
 inherit$extVar$implicit[[var]]=FALSE
 
 var="var"
 inherit$newVar$explicit[[var]]=FALSE
-inherit$newVar$implicit[[var]]=FALSE
 inherit$extVar$explicit[[var]]=FALSE
 inherit$extVar$implicit[[var]]=FALSE
 
@@ -37,105 +33,61 @@ inherit$extVar$implicit[[var]]=FALSE
 
 var="dataType"
 inherit$newVar$explicit[[var]]=TRUE
-inherit$newVar$implicit[[var]]=TRUE
 inherit$extVar$explicit[[var]]=TRUE
 inherit$extVar$implicit[[var]]=TRUE
 
 
 var="size1"
 inherit$newVar$explicit[[var]]=TRUE
-inherit$newVar$implicit[[var]]=TRUE
 inherit$extVar$explicit[[var]]=TRUE
 inherit$extVar$implicit[[var]]=TRUE
 
 var="size2"
 inherit$newVar$explicit[[var]]=TRUE
-inherit$newVar$implicit[[var]]=TRUE
 inherit$extVar$explicit[[var]]=TRUE
 inherit$extVar$implicit[[var]]=TRUE
 
 var="value"
 inherit$newVar$explicit[[var]]=TRUE
-inherit$newVar$implicit[[var]]=TRUE
-inherit$extVar$explicit[[var]]=TRUE
-inherit$extVar$implicit[[var]]=TRUE
-
-var="shared"
-
-var="location"
-
-var="version"
-inherit$newVar$explicit[[var]]=FALSE
-inherit$newVar$implicit[[var]]=FALSE
-inherit$extVar$explicit[[var]]=FALSE
-inherit$extVar$implicit[[var]]=FALSE
-
-var="address"
-inherit$newVar$explicit[[var]]=FALSE
-inherit$newVar$implicit[[var]]=FALSE
-inherit$extVar$explicit[[var]]=FALSE
-inherit$extVar$implicit[[var]]=FALSE
-
-
-var="compileSize1"
-inherit$newVar$explicit[[var]]=TRUE
-inherit$newVar$implicit[[var]]=TRUE
-inherit$extVar$explicit[[var]]=TRUE
-inherit$extVar$implicit[[var]]=TRUE
-
-var="compileSize2"
-inherit$newVar$explicit[[var]]=TRUE
-inherit$newVar$implicit[[var]]=TRUE
-inherit$extVar$explicit[[var]]=TRUE
-inherit$extVar$implicit[[var]]=TRUE
-
-var="compileValue"
-inherit$newVar$explicit[[var]]=TRUE
-inherit$newVar$implicit[[var]]=TRUE
 inherit$extVar$explicit[[var]]=TRUE
 inherit$extVar$implicit[[var]]=TRUE
 
 var="transpose"
 inherit$newVar$explicit[[var]]=TRUE
-inherit$newVar$implicit[[var]]=TRUE
 inherit$extVar$explicit[[var]]=TRUE
 inherit$extVar$implicit[[var]]=TRUE
 
-var="require"
-inherit$newVar$explicit[[var]]=FALSE
-inherit$newVar$implicit[[var]]=FALSE
-inherit$extVar$explicit[[var]]=FALSE
+var="shared"
+inherit$newVar$explicit[[var]]=TRUE
+inherit$extVar$explicit[[var]]=TRUE
 inherit$extVar$implicit[[var]]=FALSE
+
+
+var="location"
+inherit$newVar$explicit[[var]]=TRUE
+inherit$extVar$explicit[[var]]=TRUE
+inherit$extVar$implicit[[var]]=FALSE
+
 
 var="constVal"
+inherit$newVar$explicit[[var]]=TRUE
+inherit$extVar$explicit[[var]]=TRUE
+inherit$extVar$implicit[[var]]=FALSE
+
 
 var="constDef"
+inherit$newVar$explicit[[var]]=TRUE
+inherit$extVar$explicit[[var]]=TRUE
+inherit$extVar$implicit[[var]]=FALSE
+
 
 var="initialization"
-
-var="isRef"
 inherit$newVar$explicit[[var]]=TRUE
-inherit$newVar$implicit[[var]]=FALSE
-inherit$extVar$explicit[[var]]=FALSE
+inherit$extVar$explicit[[var]]=TRUE
 inherit$extVar$implicit[[var]]=FALSE
 
-var="ref"
-inherit$newVar$explicit[[var]]=TRUE
-inherit$newVar$implicit[[var]]=FALSE
-inherit$extVar$explicit[[var]]=FALSE
-inherit$extVar$implicit[[var]]=FALSE
 
-var="isSeq"
-inherit$newVar$explicit[[var]]=TRUE
-inherit$newVar$implicit[[var]]=FALSE
-inherit$extVar$explicit[[var]]=FALSE
-inherit$extVar$implicit[[var]]=FALSE
 
-var="seq"
-inherit$newVar$explicit[[var]]=TRUE
-inherit$newVar$implicit[[var]]=FALSE
-inherit$extVar$explicit[[var]]=FALSE
-inherit$extVar$implicit[[var]]=FALSE
 
 
 
@@ -175,18 +127,6 @@ var="value"
 inheritAct$explicit[[var]]=list(act="version bump",warningLevel=0)
 inheritAct$implicit[[var]]=list(act="version bump",warningLevel=0)
 
-var="compileSize1"
-inheritAct$explicit[[var]]=list(act="version bump")
-inheritAct$implicit[[var]]=list(act="version bump")
-
-var="compileSize2"
-inheritAct$explicit[[var]]=list(act="version bump")
-inheritAct$implicit[[var]]=list(act="version bump")
-
-var="compileValue"
-inheritAct$explicit[[var]]=list(act="version bump",warningLevel=0)
-inheritAct$implicit[[var]]=list(act="version bump",warningLevel=0)
-
 var="transpose"
 inheritAct$explicit[[var]]=list(act="version bump")
 inheritAct$implicit[[var]]=list(act="version bump")
@@ -206,7 +146,14 @@ inheritAct$explicit[[var]]=list(act="rename var")
 var="initialization"
 inheritAct$explicit[[var]]=list(act="rename var")
 
+var="isSpecial"
+inheritAct$explicit[[var]]=list(act="rename var")
 
+var="specialType"
+inheritAct$explicit[[var]]=list(act="rename var")
+
+var="specialContent"
+inheritAct$explicit[[var]]=list(act="rename var")
 # explicit TRUE
 # implicit TRUE
 # var="dataType"

@@ -9,11 +9,29 @@ GPUVar<-local({
   GPUVar_env$default_index_type="uint"
   GPUVar_env$default_float="double"
   GPUVar_env$default_int="int"
+  GPUVar_env$default_size_type="uint"
+  
+  #matrix size info
+  GPUVar_env$global_private_size="gpu_gp_size_arg"
+  GPUVar_env$global_share_size="gpu_gs_size_arg"
+  GPUVar_env$local_share_size="gpu_ls_size_arg"
+  
+  #matrix number info
+  GPUVar_env$global_private_matrixNum="gpu_gp_matrixNum"
+  GPUVar_env$global_share_matrixNum="gpu_gs_matrixNum"
+  GPUVar_env$local_share_matrixNum="gpu_ls_matrixNum"
+  GPUVar_env$local_private_matrixNum="gpu_lp_matrixNum"
+  
+  #matrix transpose info
+  GPUVar_env$gp_transpose="gpu_gp_transpose"
+  GPUVar_env$gs_transpose="gpu_gs_transpose"
+  GPUVar_env$lp_transpose="gpu_lp_transpose"
+  GPUVar_env$ls_transpose="gpu_ls_transpose"
+  
   
   #worker private data, loacted in global memory
   GPUVar_env$global_private_data="gpu_gp_data"
   GPUVar_env$global_private_totalSize="gpu_gp_totalSize"
-  GPUVar_env$global_private_matrixNum="gpu_gp_matrixNum"
   
   #Per worker length
   GPUVar_env$global_private_size1="gpu_gp_size1"
@@ -89,8 +107,17 @@ GPUVar<-local({
 })
 
 
+
+
+.elementFuncs=c(
+  "+","-","*","/"
+  )
+.elementTransformation=c(
+  "floor","ceiling"
+)
+.elementOp=c(.elementFuncs,.elementTransformation)
+
 #' @include RProfilerFunc.R
-.profileExplicitDefine=c("gMatrix","gNumber","subRef",":","seq")
 
 .profileFuncs=list()
 .profileFuncs[["nrow"]]=profile_size
@@ -129,10 +156,6 @@ GPUVar<-local({
 
 #' @include RCParserFunc.R
 .cFuncs=list()
-.cFuncs[["<-+"]]=C_arithmaticOP_right
-.cFuncs[["<--"]]=C_arithmaticOP_right
-.cFuncs[["<-*"]]=C_arithmaticOP_right
-.cFuncs[["<-/"]]=C_arithmaticOP_right
 .cFuncs[["<->"]]=C_arithmaticOP_right
 .cFuncs[["<->="]]=C_arithmaticOP_right
 .cFuncs[["<-<"]]=C_arithmaticOP_right
@@ -143,8 +166,6 @@ GPUVar<-local({
 .cFuncs[["<-nrow"]]= C_nrow_left_right
 .cFuncs[["<-ncol"]]= C_ncol_left_right
 .cFuncs[["<-["]]=C_subset_right
-.cFuncs[["<-floor"]]=C_floor_right
-.cFuncs[["<-ceiling"]]=C_ceil_right
 .cFuncs[["<-gMatrix"]]=C_NULL
 .cFuncs[["<-gNumber"]]=C_NULL
 .cFuncs[["<-resize"]]=C_NULL
@@ -152,6 +173,15 @@ GPUVar<-local({
 .cFuncs[["<-%*%"]]=C_matMul_right
 .cFuncs[["<-seq"]]=C_seq_right
 .cFuncs[["<-:"]]=C_oneStepSeq_right
+
+#Element op
+.cFuncs[["<-+"]]=C_element_arithmatic
+.cFuncs[["<--"]]=C_element_arithmatic
+.cFuncs[["<-*"]]=C_element_arithmatic
+.cFuncs[["<-/"]]=C_element_arithmatic
+.cFuncs[["<-floor"]]=C_element_floor
+.cFuncs[["<-ceiling"]]=C_element_ceil
+
 
 
 .cFuncs[["length<-"]]= C_length_left_right
@@ -204,7 +234,7 @@ gNumber<-function(precision=GPUVar$default_float,constDef=FALSE){
 gMatrix<-function(nrow=1,ncol=1,precision=GPUVar$default_float,constDef=FALSE,shared=FALSE,location="global"){
   return(matrix(NA,nrow,ncol))
 }
-#' TODO 
+# TODO 
 resize<-function(data,nrow,ncol){
   return(matrix(data,nrow,ncol))
 }

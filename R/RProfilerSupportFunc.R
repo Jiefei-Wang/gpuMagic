@@ -23,14 +23,11 @@ profileVar<-function(parms,macroParms){
     info$precisionType=curPrecision
     info$shared=TRUE
     info$constVal=varName[i]%in%macroParms
-    info$compileValue=info$constVal
-    info$compileSize1=TRUE
-    info$compileSize2=TRUE
     info$require=TRUE
     info$initialization=FALSE
     
     
-    if(info$compileValue){
+    if(!isNA(info$value)){
       info$value=paste0("(",varInfo$parmsTblName,"[[",i,"]])")
     }
     
@@ -78,25 +75,27 @@ matchFunArg<-function(fun,Exp){
   }
   return(funArg)
 }
+
 #Get the right expression profile
-getExpInfo<-function(varInfo,Exp,errorCheck=FALSE){
+#Return value would be a list with the following elements:
+#ExpInfo:the expression info
+#Exp: the expression
+#errorCheck: The error check item
+#extCode: the extra code that needs to be added before the expression
+getExpInfo<-function(varInfo,Exp){
   res=getExpInfo_hidden(varInfo,Exp)
   if(is.data.frame(res)){
-    ExpInfo=res
-  }else{
-    ExpInfo=res$ExpInfo
-    if(errorCheck&&!is.null(res[["errorCheck"]])){
-      checkNum=varInfo$errorCheck[[".checkNumber"]]+1
-      varInfo$errorCheck[[as.character(checkNum)]]=res$errorCheck
-    }
+    res=list(ExpInfo=res,Exp=Exp)
   }
+  if(is.null(res[["Exp"]])) res[["Exp"]]=Exp
   
+  ExpInfo=res$ExpInfo
   
   #If the variable is explicit definition
   if(is.call(Exp)&&(deparse(Exp[[1]])%in% .profileExplicitDefine))
-    return(ExpInfo)
+    return(res)
   #Some optimization
-  if(ExpInfo$compileSize1&&ExpInfo$compileSize2&&
+  if(!isNA(ExpInfo$size1)&&!isNA(ExpInfo$size2)&&
      Simplify(ExpInfo$size1)=="1"&&Simplify(ExpInfo$size2)=="1"){
     ExpInfo$dataType=T_scale
     ExpInfo$size1=1
@@ -105,7 +104,8 @@ getExpInfo<-function(varInfo,Exp,errorCheck=FALSE){
   if(ExpInfo$dataType==T_scale)
     ExpInfo$location="local"
   
-  return(ExpInfo)
+  res$ExpInfo=ExpInfo
+  return(res)
 }
 getExpInfo_hidden<-function(varInfo,Exp){
   if(isNumeric(Exp)){
@@ -131,19 +131,18 @@ getExpInfo_hidden<-function(varInfo,Exp){
   
   stop("Unknow code: ",deparse(Exp))
 }
-
-
-checkVarType<-function(leftInfo,rightInfo){
-  if(leftInfo$dataType!=rightInfo$dataType)
-    return(list(needReassign=TRUE))
-  if(leftInfo$size1!=rightInfo$size1||rightInfo$size2!=rightInfo$size2){
-    return(list(needReassign=TRUE))
+#combine the expression info from several expInfo
+combineExpInfo<-function(Exp,...){
+  parms=list(...)
+  errorCheck=NULL
+  extCode=NULL
+  for(i in seq_along(parms)){
+    curInfo=parms[[i]]
+    errorCheck=rbind(errorCheck,curInfo$errorCheck)
+    extCode=c(extCode,curInfo$extCode)
+    Exp[[i+1]]=curInfo$Exp
   }
-  if(typeInherit(leftInfo$precisionType,rightInfo$precisionType)!=leftInfo$precisionType)
-    return(list(needReassign=FALSE,needRetype=TRUE,valueUpdate=TRUE))
-  if(leftInfo$value!=rightInfo$value||leftInfo$compileValue!=rightInfo$compileValue)
-    return(list(needReassign=FALSE,needRetype=FALSE,valueUpdate=TRUE))
-  return(list(needReassign=FALSE,needRetype=FALSE,valueUpdate=FALSE))
+  return(list(errorCheck=errorCheck,extCode=extCode,Exp=Exp))
 }
 
 #Determine which type can preserve the information 
@@ -181,26 +180,8 @@ is.preservedFunc<-function(func){
   func=as.character(func)
   length(grep(GPUVar$preservedFuncPrefix,func,fixed = T))!=0
 }
-#This function determine when the variable is defined, which property can be inherit from the right expression
-copyVarInfo<-function(info,fullCopy=FALSE){
-  
-  info$version=1
-  if(fullCopy)
-    return(info)
-  
-  info$shared=FALSE
-  
-  info$require=FALSE
-  info$constVal=FALSE
-  info$constDef=FALSE
-  info$isRef=FALSE
-  info$initialization=TRUE
-  info$changed=FALSE
-  info$used=FALSE
-  
-  
-  info
-}
+
+
 #Format a single code
 formatCall<-function(Exp,generalType=FALSE){
   if(is.numeric(Exp)){
@@ -221,6 +202,13 @@ formatCall<-function(Exp,generalType=FALSE){
     }
   }
   Exp
+}
+#Test if x is an NA value,
+#support character.
+isNA<-function(x){
+  if(is.character(x))
+    return(x=="NA")
+  return(is.na(x))
 }
 #Test if an input is a number
 #x can be a character or an expression

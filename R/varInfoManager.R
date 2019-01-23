@@ -1,10 +1,23 @@
 
 getEmpVarInfoTbl<-function(){
   varInfo=list()
+  #var+version: profile
   varInfo$profile=hash()
   #current version
+  #Var: version
   varInfo$varVersion=hash()
-  varInfo
+  varInfo$printAll=function(){
+    callFunc=sys.call()
+    curInfo=eval(callFunc[[1]][[2]],envir=globalenv())
+    print.varInfo(curInfo,simplify=FALSE)
+  }
+  varInfo$PrintDef=function(){
+    callFunc=sys.call()
+    curInfo=eval(callFunc[[1]][[2]],envir=globalenv())
+    print.varInfo(curInfo,simplify=FALSE,printDef = TRUE)
+  }
+  
+  structure(varInfo,class="varInfo")
 }
 
 copyVarInfoTbl <- function(varInfo, resetVersion = T) {
@@ -23,20 +36,28 @@ copyVarInfoTbl <- function(varInfo, resetVersion = T) {
   newInfo
 }
 
+#isRef=FALSE,ref="",
+#isSeq=FALSE,seq="",redirect="NA"
+
 getEmpyTable<-function(type=""){
-  tbl=data.frame(var="NA",dataType=T_matrix,precisionType=GPUVar$default_float,
-                 size1="NA",size2="NA",value="NA",
-                 location="global",shared=FALSE,version=1,
-                 address="NA",compileSize1=FALSE,compileSize2=FALSE,compileValue=FALSE,transpose=FALSE,
-                 require=FALSE,constVal=FALSE,constDef=FALSE,initialization=TRUE,
-                 isRef=FALSE,ref="",
-                 isSeq=FALSE,seq="",redirect="NA",length="NA",totalSize="NA",
-                 
-                 stringsAsFactors=FALSE)
+  tbl=data.frame(
+    #variable documentation
+    var="NA",dataType=T_matrix,precisionType=GPUVar$default_float,
+    size1="NA",size2="NA",value="NA",transpose=FALSE,
+    version=1,
+    #Physical storage information
+    address="NA",designSize1="NA",designSize2="NA",totalSize="NA",
+    #How does a matrix align in the momery
+    storageMode="column",
+    location="global",shared=FALSE,
+    #compilation property
+    require=FALSE,constVal=FALSE,constDef=FALSE,initialization=TRUE,
+    #special type: ref,seq
+    isSpecial=FALSE,specialType="NA",specialContent="NA",
+    redirect="NA",
+    stringsAsFactors=FALSE)
   if(type==T_scale){
     tbl$dataType=T_scale
-    tbl$compileSize1=TRUE
-    tbl$compileSize2=TRUE
     tbl$size1=1
     tbl$size2=1
     tbl$location="local"
@@ -54,9 +75,9 @@ toHash<-function(key,value=NULL){
   hash(value)
 }
 
-primaryProp=c("dataType","precisionType","address","shared","location",
-                  "require","constVal","constDef","initialization",
-                  "isSeq","seq","isRef","ref","redirect")
+primaryProp=c("dataType","precisionType","address","designSize1","designSize2","totalSize",
+              "shared","location",
+              "require","constVal","constDef","initialization","redirect")
 primaryPropHash=toHash(primaryProp)
 
 
@@ -96,22 +117,37 @@ getVarInfo<-function(varInfo,varName,version="auto"){
   
   varCur_tbl[1,primaryProp]=varDef_tbl[1,primaryProp]
   
+  varCur_tbl$isSeq=varCur_tbl$specialType=="seq"
+  varCur_tbl$isRef=varCur_tbl$specialType=="ref"
+  
+  
   varCur_tbl
 }
 
+
+getAllVars<-function(varInfo){
+  keys(varInfo$varVersion)
+}
 
 
 #Set or add the variable info without any check
 #The function will take care of version 0
 setVarInfo_hidden<-function(varInfo,info){
-  info$length=Simplify(paste0("(",info$size1,")*(",info$size2,")"))
-  info$totalSize=Simplify(
-    paste0("(",info$length,")*",getTypeSize(info$precisionType)))
+  initVarDef<-function(info){
+    info$version=0
+    if(isNA(info$designSize1))
+      info$designSize1=info$size1
+    if(isNA(info$designSize2))
+      info$designSize2=info$size2
+    info$totalSize=Simplify(paste0("(",info$designSize1,")*(",info$designSize2,")"))
+    return(info)
+  }
   var_char=info$var
   version=info$version
   varDef_char=paste0(var_char,"+",0)
   varCur_char=paste0(var_char,"+",version)
   if(version!=0){
+    #Check if the variable information has been in the table
     if(hasVar(varInfo,info$var,0)){
       varDef_tbl=varInfo$profile[[varDef_char]]
       varDef_tbl[1,primaryProp]=info[1,primaryProp]
@@ -119,8 +155,8 @@ setVarInfo_hidden<-function(varInfo,info){
     }else{
       if(version!=1)
         stop("The variable definition is not found and the current version is not 1")
-      varDef_tbl=info
-      varDef_tbl$version=0
+      
+      varDef_tbl=initVarDef(info)
       varInfo$profile[[varDef_char]]=varDef_tbl
     }
     info$version=version
@@ -131,7 +167,8 @@ setVarInfo_hidden<-function(varInfo,info){
       varInfo$varVersion[[var_char]]=version
     }
   }else{
-    varInfo$profile[[varDef_char]]=info
+    varDef_tbl=initVarDef(info)
+    varInfo$profile[[varDef_char]]=varDef_tbl
   }
   return(varInfo)
 }
@@ -175,7 +212,12 @@ getVarProperty<-function(varInfo,varName,property,version="auto"){
   }else{
     var_tbl=varInfo$profile[[varCur_char]]
   }
-  value=var_tbl[[property]]
+  value=switch(property,
+         "isSeq"=var_tbl$specialType=="seq",
+         "isRef"=var_tbl$specialType=="ref",
+         var_tbl[[property]]
+         )
+  #value=var_tbl[[property]]
   return(value)
 }
 
@@ -206,19 +248,21 @@ setVarProperty<-function(varInfo,varName,property,value,version="auto"){
 
 
 
-printVarInfo<-function(varInfo,simplify=TRUE,printDef=FALSE){
-  if(!is.null(varInfo[["varInfo"]]))
-    varInfo=varInfo[["varInfo"]]
-  simplifyTbl=c("var","dataType","precisionType","size1","size2","value","ref","seq","redirect","version","address")
+print.varInfo<-function(varInfo,simplify=TRUE,printDef=FALSE){
+  simplifyTbl=c("var","dataType","precisionType","size1","size2",
+                "value","specialType","specialContent","version","address")
   info=c()
   for(i in keys(varInfo$profile)){
     var_tbl=varInfo$profile[[i]]
-    if(!printDef&&var_tbl$version==0)
+    varName=var_tbl$var
+    varVersion=var_tbl$version
+    var_tbl=getVarInfo(varInfo,varName,varVersion)
+    if(!printDef&&varVersion==0)
       next
     if(simplify)
       var_tbl=var_tbl[1,simplifyTbl]
     info=rbind(info,var_tbl)
   }
-  info
+  print(info)
 }
 

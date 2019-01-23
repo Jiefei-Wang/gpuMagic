@@ -1,44 +1,106 @@
 #==============================parser 1==========================
+#simplifySingleCode(quote({g(a)=floor(r[2]+1)+d})[[2]])
+#return: Exp, extCode
+simplifySingleCode<-function(Exp){
+  result=list()
+  leftExp=cleanExp(Exp[[2]])
+  rightExp=cleanExp(Exp[[3]])
+  ExpOp=Exp[[1]]
+  if(is.call(leftExp)){
+    #If the left expression is a matrix subset, replace it with a new variable
+    #Otherwise only replace the function argument if needed
+    if(is.call(leftExp)){
+      if(ExpOp=="="){
+        if(leftExp[[1]]!="[")
+          stop("Unsupported left expression: ", deparse(Exp))
+      }
+      res=replaceCode(leftExp)
+      result$extCode=c(result$extCode,res$extCode)
+      leftExp=res$varName
+    }
+    
+  }
+  #For the right expression, check if the function is an element-wise operation
+  #If not, create a variable to replace it
+  #right expression
+  if(is.call(rightExp)){
+    res=simplifyElementOp(rightExp,wholeReplace=TRUE)
+    result$extCode=c(result$extCode,res$extCode)
+    rightExp=res$Exp
+  }
+  
+  
+  Exp[[2]]=leftExp
+  Exp[[3]]=rightExp
+  result$Exp=Exp
+  return(result)
+}
 
-#parsedExp=parse(text="(tmp + tmp1) * tmp")[[1]]
-#Create a new variable to represent a function call
-createNewVar<-function(parsedExp){
-  parsedExp=cleanExp(parsedExp)
-  varName=GPUVar$getTmpVar()
-  curCode=c()
-  if(length(parsedExp)>1){
-    for(i in seq(2,length(parsedExp))){
-      #If the argument is also a function call
-      curArg=parsedExp[[i]]
-      curArg_char=deparse(parsedExp[[i]])
-      if(curArg_char!=""&&is.call(curArg)){
-        res=createNewVar(curArg)
-        #change the argument to a parameter
-        parsedExp[[i]]=as.symbol(res$varName)
-        curCode=c(curCode,res$code)
+#Simplify the expression from one side of = sign
+#wholeReplace:If the whole expression is allowed to be replaced
+#useElementOp: if the element operation will be preserved
+#return: Exp, extCode
+simplifyElementOp<-function(Exp,wholeReplace=FALSE,useElementOp=TRUE){
+  result=list()
+  if(!is.call(Exp))
+    return(list(Exp=Exp))
+  #Check if the expression start with the element opration
+  if(deparse(Exp[[1]])%in%.elementOp&&useElementOp){
+    for(i in seq_len(length(Exp)-1)+1){
+      curExp=Exp[[i]]
+      res=simplifyElementOp(curExp)
+      result$extCode=c(result$extCode,res$extCode)
+      Exp[[i]]=res$Exp
+    }
+  }else{
+    #If the expression is a part of a larger expression,
+    #Replace the whole expression
+    if(!wholeReplace){
+      res=replaceCode(Exp)
+      result$extCode=c(result$extCode,res$extCode)
+      Exp=res$varName
+    }else{
+      for(i in seq_len(length(Exp)-1)+1){
+        curExp=Exp[[i]]
+        if(deparse(Exp[[i]])!=""&&is.call(curExp)){
+          res=replaceCode(curExp)
+          result$extCode=c(result$extCode,res$extCode)
+          Exp[[i]]=res$varName
+        }
       }
     }
   }
-  
-  
-  if(parsedExp[[1]]=="["){
-    subsetArgs=matchBracketFunc(parsedExp)
+  result$Exp=Exp
+  result
+}
+
+#Replace the expression with a variable
+#return extCode,varName
+replaceCode<-function(Exp){
+  if(!is.call(Exp))
+    return(list(varName=Exp))
+  varName=GPUVar$getTmpVar()
+  if(Exp[[1]]=="["){
+    subsetArgs=matchBracketFunc(Exp)
     if(is.null(subsetArgs$j)){
-      replaceCode=parse(text=paste0(varName,"=subRef(",parsedExp[[2]],",",subsetArgs$i,")"))[[1]]
+      replaceCode=paste0(varName,"=subRef(",Exp[[2]],",",subsetArgs$i,")")
     }else{
-      replaceCode=parse(text=paste0(varName,"=subRef(",parsedExp[[2]],",",subsetArgs$i,",",subsetArgs$j,")"))[[1]]
+      replaceCode=paste0(varName,"=subRef(",Exp[[2]],",",subsetArgs$i,",",subsetArgs$j,")")
     }
   }else{
-    replaceCode=parse(text=paste0(varName,"=",deparse(parsedExp)))[[1]]
+    replaceCode=paste0(varName,"=",deparse(Exp))
   }
   
-  curCode=c(
-    curCode,
-    replaceCode
-  )
-  #tmpMeta$varName=curName
-  return(list(varName=varName,code=curCode))
+  replaceCode=parse(text=replaceCode)[[1]]
+  #Further simplify the code if needed
+  res=simplifySingleCode(replaceCode)
+  
+  result=list()
+  result$extCode=c(res$extCode,res$Exp)
+  result$varName=as.symbol(varName)
+  result
 }
+
 
 #Exp=quote(a[1,])
 #This function will return a list of the arguments of the [] function, the empty argments are expressed in character

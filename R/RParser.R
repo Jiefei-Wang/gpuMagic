@@ -37,65 +37,16 @@ RLevel1_parserFunc<-function(level,codeMetaInfo,curExp){
   
   if(is.call(curExp)){
     if(curExp[[1]]=="="||curExp[[1]]=="=="){
-      leftExp=cleanExp(curExp[[2]])
-      rightExp=cleanExp(curExp[[3]])
-      #Left expression
-      #Check if it is a function call
-      if(is.call(leftExp)){
-        #If the left expression is a matrix subset, replace it with a new variable
-        #Otherwise only replace the function argument if needed
-        if(leftExp[[1]]=="["){
-          res=createNewVar(leftExp)
-          result$extCode=c(result$extCode,res$code)
-          leftExp=as.symbol(res$varName)
-        }else{
-          #If the function has an argument which also is a function, replace it with a variable 
-          if(length(leftExp)>=2){
-            for(i in seq(2,length(leftExp))){
-              if(is.call(leftExp[[i]])){
-                res=createNewVar(leftExp[[i]])
-                result$extCode=c(result$extCode,res$code)
-                leftExp[[i]]=as.symbol(res$varName)
-              }
-            }
-          }
-        }
-      }
-      #For the right expression
-      #If the function has an argument which also is a function, replace it with a variable 
-      if(length(rightExp)>=2){
-        for(i in seq(2,length(rightExp))){
-          if(is.call(rightExp[[i]])){
-            res=createNewVar(rightExp[[i]])
-            result$extCode=c(result$extCode,res$code)
-            rightExp[[i]]=as.symbol(res$varName)
-          }
-        }
-      }
-      curExp[[2]]=leftExp
-      curExp[[3]]=rightExp
-      result$Exp=curExp
+      result=simplifySingleCode(curExp)
       return(result)
     }
     #General strategy for all functions call that do not appear above. E.g. f(g())
-    if(length(curExp)>1){
-      for(i in 2:length(curExp)){
-        if(deparse(curExp[[i]])!=""&&is.call(curExp[[i]])){
-          res=createNewVar(curExp[[i]])
-          result$extCode=c(result$extCode,res$code)
-          curExp[[i]]=as.symbol(res$varName)
-        }
-      }
-    }
-    result$Exp=curExp
+    result=simplifyElementOp(curExp,wholeReplace=T,useElementOp=FALSE)
     return(result)
   }else{
-    #if(curExp%in%c("next","break"))
-    #warning("An unexpected code has been found: ",deparse(curExp))
     result$Exp=curExp
     return(result)
   }
-  
   
   #Default return value
   stop("You should not be here!")

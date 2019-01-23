@@ -23,6 +23,12 @@ C_assignment_dispatch<-function(varInfo,Exp){
   #The left expression must be a symbol
   if(is.call(rightExp)&&!isNumeric(rightExp)){
     funcName=deparse(rightExp[[1]])
+    #check if it is element operation
+    if(funcName%in% .elementOp){
+      code=C_element_OP(varInfo,Exp)
+      return(code)
+    }
+    
     funcName=paste0("<-",funcName)
     func=.cFuncs[[funcName]]
     if(!is.null(func)){
@@ -39,8 +45,120 @@ C_assignment_dispatch<-function(varInfo,Exp){
   return(code)
 }
 
+#==================element functions===========================
+C_element_OP<-function(varInfo,Exp){
+  leftExp=Exp[[2]]
+  rightExp=Exp[[3]]
+  
+  leftInfo=getVarInfo(varInfo,leftExp)
+  if(leftInfo$dataType==T_scale){
+    leftElement=C_element_getCExp(varInfo,leftExp,"1","1")
+    rightElement=C_element_getCExp(varInfo,rightExp,"1","1",extCode=leftElement$extCode)
+  }else{
+    leftElement=C_element_getCExp(varInfo,leftExp,"gpu_element_i","gpu_element_j")
+    rightElement=C_element_getCExp(varInfo,rightExp,"gpu_element_i","gpu_element_j",extCode=leftElement$extCode)
+  }
+  
+  
+  extCode=rightElement$extCode
+  optCode=NULL
+  if(!is.null(extCode))
+    for(i in seq_len(nrow(extCode))){
+      optCode=rbind(optCode,paste0(GPUVar$default_index_type," ",paste0(extCode[i,],collapse="="),";"))
+    }
+  
+  assignmentCode=paste0(leftElement$value,"=",rightElement$value,";")
+  if(leftInfo$dataType==T_scale){
+    if(is.null(optCode))
+      code=assignmentCode
+    else
+      code=c("{",
+             optCode,
+             assignmentCode,
+             "}"
+             )
+  }else{
+    code=c(
+      paste0("for(",GPUVar$default_index_type," gpu_element_j=0;gpu_element_j<",
+             R_ncol(varInfo,leftExp),";gpu_element_j++){"),
+      optCode,
+      paste0("for(",GPUVar$default_index_type," gpu_element_i=0;gpu_element_i<",
+             R_nrow(varInfo,leftExp),";gpu_element_i++){"),
+      assignmentCode,
+      "}",
+      "}"
+    )
+  }
+  return(code)
+  
+  
+}
+C_element_getCExp<-function(varInfo,Exp,i,j,extCode=NULL){
+  if(isNumeric(Exp)){
+    res=list(value=toCharacter(Exp),extCode=extCode)
+    return(res)
+  }
+  
+  if(is.symbol(Exp)){
+    res=R_expression_sub(varInfo,Exp,i,j,i_C=T,j_C=T,base=0,opt=T)
+    if(!is.null(res$colOffset)){
+      if(res$colOffset!=i){
+        if(!is.null(extCode)&&res$colOffset%in%extCode[,2]){
+          ind=which(res$colOffset%in%extCode[,2])
+          opt_var=extCode[ind,1]
+          res=R_expression_sub(varInfo,Exp,i,j,i_C=T,j_C=T,base=0,optCode = list(colVar=opt_var))
+        }else{
+          opt_var=GPUVar$getTmpVar()
+          extCode=rbind(extCode,c(opt_var,res$colOffset))
+          res=R_expression_sub(varInfo,Exp,i,j,i_C=T,j_C=T,base=0,optCode = list(colVar=opt_var))
+        }
+      }
+    }
+    res$extCode=extCode
+    return(res)
+  }
+  
+  func=paste0("<-",deparse(Exp[[1]]))
+  C_func=.cFuncs[[func]]
+  if(!is.null(C_func)){
+    res=C_func(varInfo,Exp,i,j,extCode)
+    return(res)
+  }
+  stop("Unsupported function: ",deparse(Exp))
+  
+}
+
+C_element_arithmatic<-function(varInfo,Exp,i,j,extCode){
+  op=deparse(Exp[[1]])
+  leftEle=Exp[[2]]
+  rightEle=Exp[[3]]
+  left_res=C_element_getCExp(varInfo,leftEle,i,j,extCode=extCode)
+  right_res=C_element_getCExp(varInfo,rightEle,i,j,extCode=left_res$extCode)
+  
+  extCode=right_res$extCode
+  value=paste0(left_res$value,op,right_res$value)
+  if(op=="/")
+    value=paste0("(",GPUVar$default_float,")",value)
+  res=list(value=value,extCode=extCode)
+  return(res)
+}
+
+C_element_floor<-function(varInfo,Exp,i,j,extCode){
+  element=Exp[[2]]
+  res=C_element_getCExp(varInfo,element,i,j,extCode=extCode)
+  res$value=paste0("floor(",res$value,")")
+  return(res)
+}
+C_element_ceil<-function(varInfo,Exp,i,j,extCode){
+  element=Exp[[2]]
+  res=C_element_getCExp(varInfo,element,i,j,extCode=extCode)
+  res$value=paste0("ceil(",res$value,")")
+  return(res)
+}
 
 
+
+#================Regular functions==================
 
 
 #Both side is a symbol or a number
@@ -80,7 +198,6 @@ C_assignment_symbols<-function(varInfo,Exp){
 
 C_arithmaticOP_right<-function(varInfo,Exp){
   leftVar=Exp[[2]]
-  
   rightExp=Exp[[3]]
   
   leftEle=rightExp[[2]]
@@ -177,28 +294,6 @@ C_subset_right<-function(varInfo,Exp){
 }
 
 
-
-#Exp=parse(text="A=floor(B)")[[1]]
-C_floor_right<-function(varInfo,Exp){
-  floorFunc<-function(left,right){
-    paste0(left,"=floor((",GPUVar$default_float,")(",right,"))")
-  }
-  leftVar=Exp[[2]]
-  rightVar=Exp[[3]][[2]]
-  rightSize=R_length(varInfo,rightVar)
-  code=C_general_matrix_assignment(varInfo,leftVar,rightVar,rightBound = rightSize)
-  code
-}
-C_ceil_right<-function(varInfo,Exp){
-  floorFunc<-function(left,right){
-    paste0(left,"=ceil((",GPUVar$default_float,")(",right,"))")
-  }
-  leftVar=Exp[[2]]
-  rightVar=Exp[[3]][[2]]
-  rightSize=R_length(varInfo,rightVar)
-  code=C_general_matrix_assignment(varInfo,leftVar,rightVar,rightBound = rightSize)
-  code
-}
 #Exp=parse(text="return(tmp1)")[[1]]
 C_return<-function(varInfo,Exp){
   if(length(Exp)==1) return("return;")
@@ -272,35 +367,49 @@ C_seq_right<-function(varInfo,Exp){
   rightExp=Exp[[3]]
   
   leftInfo=getVarInfo(varInfo,leftVar)
-  if(leftInfo$isSeq)
-    return("")
-  
   args=matchFunArg(seq,rightExp)
-  size1=R_nrow(varInfo,leftVar)
-  subsetCode=R_oneIndex_exp_sub(varInfo,leftVar,k="gpu_seq_i",k_C =T,base=0)
-  
   
   from=args$from
+  to=args$to
   by=args$by
-    
   from_C=R_oneIndex_exp_sub(varInfo,from,k=1,k_C=TRUE)
+  to_C=R_oneIndex_exp_sub(varInfo,from,k=1,k_C=TRUE)
   by_C=R_oneIndex_exp_sub(varInfo,by,k=1,k_C=TRUE)
   
-  rightExtCode=c(from_C$extCode,by_C$extCode)
-  rightValue=Simplify(paste0(from_C$value,"+","(gpu_seq_i-1)*",by_C$value))
+  extCode=c(from_C$extCode,to_C$extCode,by_C$extCode)
   
-  code=NULL
-  if(!getVarProperty(varInfo,leftVar,"isRef",version=0)){
+  ad=leftInfo$address
+  #assign a sequence to a sequence variable
+  if(leftInfo$isSeq){
+    code=c(
+      extCode,
+      paste0(ad,"[0]=",from_C$value,";"),
+      paste0(ad,"[1]=",to_C$value,";"),
+      paste0(ad,"[2]=",by_C$value,";")
+    )
+    return(code)
+  }else{
+    #assign a sequence to a regular variable
+    
+    size1=R_nrow(varInfo,leftVar)
+    subsetCode=R_oneIndex_exp_sub(varInfo,leftVar,k="gpu_seq_i",k_C =T,base=0)
+    
+    rightExtCode=c(from_C$extCode,by_C$extCode)
+    
+    
+    rightValue=Simplify(paste0(from_C$value,"+","gpu_seq_i*",by_C$value))
+    
     code=c(
       paste0("for(",GPUVar$default_index_type,
-             " gpu_seq_i=1;gpu_seq_i<=",size1,
+             " gpu_seq_i=0;gpu_seq_i<",size1,
              ";gpu_seq_i++){"),
       subsetCode$extCode,
+      rightExtCode,
       paste0(subsetCode$value,"=",rightValue,";"),
       "}"
     )
+    return(code)
   }
-  code
 }
 C_oneStepSeq_right<-function(varInfo,Exp){
   leftVar=Exp[[2]]

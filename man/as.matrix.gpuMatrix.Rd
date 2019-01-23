@@ -4,10 +4,12 @@
 \alias{as.matrix.gpuMatrix}
 \title{Convert the gpuMatrix object into a matrix}
 \usage{
-\method{as.matrix}{gpuMatrix}(x)
+\method{as.matrix}{gpuMatrix}(x, ...)
 }
 \arguments{
 \item{x}{an gpuMatrix object}
+
+\item{...}{This argument is only for compatibility. It does not take any effect.}
 }
 \description{
 The function will convert the gpuMatrix object into a matrix,

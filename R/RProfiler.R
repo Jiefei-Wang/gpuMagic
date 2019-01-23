@@ -32,8 +32,7 @@ RProfile2<-function(profileMeta1){
   if(DEBUG){
     profileMeta1$varInfo=copyVarInfoTbl(profileMeta1$varInfo)
   }
-  profileMeta1$varInfo$errorCheck=hash()
-  profileMeta1$varInfo$errorCheck[[".checkNumber"]]=0
+  profileMeta1$varInfo$errorCheck=c()
   
   profileMeta2=parserFrame(RProfile2_parserFunc,RProfile2_checkFunc,
                            RProfile2_updateFunc,profileMeta1)
@@ -101,8 +100,6 @@ RProfile2_parserFunc<-function(level,codeMetaInfo,curExp){
       }
       return(result)
     }
-    
-    
   }
   
   
@@ -153,6 +150,6 @@ RProfile2_checkFunc<-function(curExp){
 RProfile2_updateFunc<-function(type,level,codeMetaInfo,parsedExp,code,i,res){
   result=general_updateFunc(codeMetaInfo,parsedExp,code)
   result$codeMetaInfo$varInfo=res$varInfo
-  #result$codeMetaInfo$errorCheck=res$errorCheck
+  result$codeMetaInfo$errorCheck=rbind(result$codeMetaInfo$errorCheck,res$errorCheck)
   result
 }

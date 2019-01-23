@@ -58,12 +58,14 @@ getVarSizeInfo_C_level<-function(sizeMatrix){
   }
   
   matrixNum=nrow(sizeMatrix)
-  if(is.null(matrixOffset)) matrixOffset=1
-  if(is.null(size1)) size1=1
-  if(is.null(size2)) size2=1
-  if(is.null(curoffSet)) curoffSet=1
-  if(is.null(matrixNum)) matrixNum=1
+  dim=c(size1,size2)
+  if(is.null(dim)) dim=0
+  if(is.null(matrixOffset)) matrixOffset=0
+  if(curoffSet==0) curoffSet=1
+  #if(is.null(size1)) size1=0
+  #if(is.null(size2)) size2=0
   res=list(matrixOffset=matrixOffset,size1=size1,size2=size2,
+           dim=dim,
            totalSize=curoffSet,matrixNum=matrixNum)
   return(res)
 }
@@ -74,10 +76,15 @@ fillGPUdata<-function(GPUcode1,.options,.device){
   #Convert all the parameters into the gpuMatrix objects
   for(varName in names(parms)){
     if(class(parms[[varName]])=="gpuMatrix"){
+      curInfo=getVarInfo(varInfo,varName)
+      if(curInfo$precisionType!=.type(parms[[varName]])){
+        stop("The data type of the variable ",varName," are not compatible with the code,\n",
+             "expected type: ",curInfo$precisionType,", variable type:",.type(parms[[varName]]),"\n")
+      }
       if(.device(parms[[varName]])==.device){
         next
       }else{
-        warning("You supplied a gpu memory object but it is not belong to the device that the code will be run on.")
+        warning("You supplied a gpu memory object but it does not belong to the device that the code will be run on.")
         parms[[varName]]=as.matrix(parms[[varName]])
        }
     }
@@ -88,52 +95,24 @@ fillGPUdata<-function(GPUcode1,.options,.device){
   
   
   kernel_args=list()
-  kernel_args$gp_size1=rep(0,length(varInfo$matrix_gp))
-  kernel_args$gs_size1=rep(0,length(varInfo$matrix_gs))
-  kernel_args$lp_size1=rep(0,length(varInfo$matrix_lp))
-  kernel_args$ls_size1=rep(0,length(varInfo$matrix_ls))
-  
-  kernel_args$gp_size2=rep(0,length(varInfo$matrix_gp))
-  kernel_args$gs_size2=rep(0,length(varInfo$matrix_gs))
-  kernel_args$lp_size2=rep(0,length(varInfo$matrix_lp))
-  kernel_args$ls_size2=rep(0,length(varInfo$matrix_ls))
-  
-  kernel_args$gp_offset=rep(0,length(varInfo$matrix_gp))
-  kernel_args$gs_offset=rep(0,length(varInfo$matrix_gs))
-  kernel_args$lp_offset=rep(0,length(varInfo$matrix_lp))
-  kernel_args$ls_offset=rep(0,length(varInfo$matrix_ls))
-  #gp_totalsize, gp_matrixNum, return size
-  kernel_args$sizeInfo=rep(0,3)
+  #gp_totalsize, return size
+  kernel_args$sizeInfo=rep(0,2)
   
   
   sizeInfo_gp=getVarSizeInfo_C_level(varInfo$matrix_gp)
-  kernel_args$gp_offset=sizeInfo_gp$matrixOffset
-  kernel_args$gp_size1=sizeInfo_gp$size1
-  kernel_args$gp_size2=sizeInfo_gp$size2
-  gp_size=sizeInfo_gp$totalSize
+  kernel_args$gp=sizeInfo_gp
   #Total size per worker
   kernel_args$sizeInfo[1]=sizeInfo_gp$totalSize
-  #Matrix number per worker
-  kernel_args$sizeInfo[2]=sizeInfo_gp$matrixNum
   
   
   sizeInfo_gs=getVarSizeInfo_C_level(varInfo$matrix_gs)
-  kernel_args$gs_offset=sizeInfo_gs$matrixOffset
-  kernel_args$gs_size1=sizeInfo_gs$size1
-  kernel_args$gs_size2=sizeInfo_gs$size2
-  gs_size=sizeInfo_gs$totalSize
+  kernel_args$gs=sizeInfo_gs
   
   sizeInfo_ls=getVarSizeInfo_C_level(varInfo$matrix_ls)
-  kernel_args$ls_offset=sizeInfo_ls$matrixOffset
-  kernel_args$ls_size1=sizeInfo_ls$size1
-  kernel_args$ls_size2=sizeInfo_ls$size2
-  ls_size=sizeInfo_ls$totalSize
+  kernel_args$ls=sizeInfo_ls
   
   sizeInfo_lp=getVarSizeInfo_C_level(varInfo$matrix_lp)
-  kernel_args$lp_offset=sizeInfo_lp$matrixOffset
-  kernel_args$lp_size1=sizeInfo_lp$size1
-  kernel_args$lp_size2=sizeInfo_lp$size2
-  lp_size=sizeInfo_lp$totalSize
+  kernel_args$lp=sizeInfo_lp
   
   
   if(!is.null(varInfo$returnInfo)){
@@ -143,14 +122,8 @@ fillGPUdata<-function(GPUcode1,.options,.device){
       if(sum(returnSizeVector[1]!=returnSizeVector)>0)
         warning("Multiple return size has been found!")
       
-      kernel_args$sizeInfo[3]=max(returnSizeVector)
+      kernel_args$sizeInfo[2]=max(returnSizeVector)
     }
-  }
-  
-  #add a 0 value if there is no value in the arguments
-  for(var in names(kernel_args)){
-    if(length(kernel_args[[var]])==0)
-      kernel_args[[var]]=0
   }
   
   
@@ -159,24 +132,21 @@ fillGPUdata<-function(GPUcode1,.options,.device){
   IntType=GPUVar$default_index_type
   
   device_argument=list()
-  device_argument$gp_data=gpuEmptMatrix(row=ceiling(gp_size*totalWorkerNum/4),col=1,type="int",device=.device)
-  device_argument$gp_size1=gpuMatrix(rep(kernel_args$gp_size1,totalWorkerNum),type=IntType,device=.device)
-  device_argument$gp_size2=gpuMatrix(rep(kernel_args$gp_size2,totalWorkerNum),type=IntType,device=.device)
-  device_argument$gp_offset=gpuMatrix(kernel_args$gp_offset,type=IntType,device=.device)
+  device_argument$gp_data=gpuEmptMatrix(row=ceiling(sizeInfo_gp$totalSize*totalWorkerNum/4),col=1,type="int",device=.device)
+  device_argument$gp_size=gpuMatrix(sizeInfo_gp$dim,type=IntType,device=.device)
+  device_argument$gp_offset=gpuMatrix(sizeInfo_gp$matrixOffset,type=IntType,device=.device)
   
-  device_argument$gs_data=gpuEmptMatrix(row=ceiling(gs_size/4),type="int",device=.device)
-  device_argument$gs_size1=gpuMatrix(kernel_args$gs_size1,type=IntType,device=.device)
-  device_argument$gs_size2=gpuMatrix(kernel_args$gs_size2,type=IntType,device=.device)
-  device_argument$gs_offset=gpuMatrix(kernel_args$gs_offset,type=IntType,device=.device)
+  device_argument$gs_data=gpuEmptMatrix(row=ceiling(sizeInfo_gs$totalSize/4),type="int",device=.device)
+  device_argument$gs_size=gpuMatrix(sizeInfo_gs$dim,type=IntType,device=.device)
+  device_argument$gs_offset=gpuMatrix(sizeInfo_gs$matrixOffset,type=IntType,device=.device)
   
-  device_argument$ls_data=kernel.getSharedMem(ls_size+1,type="char")
-  device_argument$ls_size1=kernel.getSharedMem(length(kernel_args$ls_size1),type=IntType)
-  device_argument$ls_size2=kernel.getSharedMem(length(kernel_args$ls_size2),type=IntType)
-  device_argument$ls_offset=kernel.getSharedMem(length(kernel_args$ls_offset),type=IntType)
+  device_argument$ls_data=kernel.getSharedMem(sizeInfo_ls$totalSize,type="char")
+  device_argument$ls_size=gpuMatrix(sizeInfo_ls$dim,type=IntType)
+  device_argument$ls_offset=gpuMatrix(sizeInfo_ls$matrixOffset,type=IntType)
   
   #The return size for each thread
-  returnSize=kernel_args$sizeInfo[3]
-  device_argument$return_var=gpuEmptMatrix(kernel_args$sizeInfo[3],totalWorkerNum,type=GPUVar$default_float,device=.device)
+  returnSize=kernel_args$sizeInfo[2]
+  device_argument$return_var=gpuEmptMatrix(kernel_args$sizeInfo[2],totalWorkerNum,type=GPUVar$default_float,device=.device)
   device_argument$sizeInfo=gpuMatrix(kernel_args$sizeInfo,type=IntType,device=.device)
   
   
@@ -198,7 +168,7 @@ completeGPUcode<-function(GPUcode){
   #The function arguments
   kernel_arg_code=c()
   for(curName in varInfo$requiredVar){
-    curInfo=getVarInfo(varInfo,curName,1)
+    curInfo=getVarInfo(varInfo,curName)
     curType=curInfo$precisionType
     kernel_arg_code=c(kernel_arg_code,paste0("global ",curType,"* ",curName))
   }
@@ -206,18 +176,18 @@ completeGPUcode<-function(GPUcode){
   
   #The working memory space
   arg_prefix_list=c(
-    "global","global","global","global",
-    "global","global","global","global",
-    "local","local","local","local",
+    "global","global","global",
+    "global","global","global",
+    "local","global","global",
     "global","global"
   )
-  arg_list=c(GPUVar$global_private_data,paste0(GPUVar$global_private_size1,"_arg"),paste0(GPUVar$global_private_size2,"_arg"),GPUVar$global_private_offset,
-             GPUVar$global_shared_data,GPUVar$global_shared_size1,GPUVar$global_shared_size2,GPUVar$global_shared_offset,
-             GPUVar$local_shared_data,GPUVar$local_shared_size1,GPUVar$local_shared_size2,GPUVar$local_shared_offset,
+  arg_list=c(GPUVar$global_private_data,GPUVar$global_private_size,GPUVar$global_private_offset,
+             GPUVar$global_shared_data,GPUVar$global_share_size,GPUVar$global_shared_offset,
+             GPUVar$local_shared_data,GPUVar$local_share_size,GPUVar$local_shared_offset,
              GPUVar$return_variable,GPUVar$size_info)
-  arg_type_list=c("char",GPUVar$default_index_type,GPUVar$default_index_type,GPUVar$default_index_type,
-                  "char",GPUVar$default_index_type,GPUVar$default_index_type,GPUVar$default_index_type,
-                  "char",GPUVar$default_index_type,GPUVar$default_index_type,GPUVar$default_index_type,
+  arg_type_list=c("char",GPUVar$default_index_type,GPUVar$default_index_type,
+                  "char",GPUVar$default_index_type,GPUVar$default_index_type,
+                  "char",GPUVar$default_index_type,GPUVar$default_index_type,
                   GPUVar$default_float,GPUVar$default_index_type)
   for(i in 1:length(arg_list)){
     curCode=paste0(arg_prefix_list[i]," ",arg_type_list[i],"* ",arg_list[i])
@@ -237,7 +207,7 @@ completeGPUcode<-function(GPUcode){
   
   #Add the double vector support if appliable
   if(GPUVar$default_float=="double")
-    code=paste0("#pragma OPENCL EXTENSION cl_khr_fp64：enable\n",code)
+    code=paste0("#pragma OPENCL EXTENSION cl_khr_fp64:enable\n",code)
   
   GPUcode$gpu_code=code
   GPUcode$kernel=kernelName
@@ -268,11 +238,12 @@ completeProfileTbl<-function(GPUExp2){
   
 }
 CheckCodeError<-function(GPUcode,parms){
-  errorCheckInfo=GPUcode$varInfo$errorCheck
-  for(i in keys(errorCheckInfo)){
-    if(!isNumeric(i)) next
-    info=errorCheckInfo[[i]]
+  errorCheckInfo=GPUcode$errorCheck
+  for(i in seq_len(nrow(errorCheckInfo))){
+    info=errorCheckInfo[i,]
+    if(info$check=="") next
     error=eval(parse(text=info$check))
+    if(is.na(error)||is.null(error)) next
     if(error){
       if(info$level=="warning"){
         warning(info$msg,": \n",info$code)

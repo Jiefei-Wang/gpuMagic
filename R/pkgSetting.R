@@ -7,6 +7,7 @@
 #' @importFrom future future value
 #' @import hash
 #' @import methods
+#' @import BiocGenerics
 #' @useDynLib gpuMagic, .registration = TRUE,  .fixes = "C_"
 
 .onDetach<-function(libpath){

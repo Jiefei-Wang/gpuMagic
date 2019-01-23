@@ -18,6 +18,7 @@ gpuApplyFuncList=hash()
 #' @param loading The loading of each device, only useful when having multiple devices.
 #' @param .options The package and openCL compilation options, please call `gpuSapply.getOption()` to get all the available options
 #' 
+#' 
 #' @export
 gpuSapply<-function(X,FUN,...,.macroParms=NULL,.device="auto",loading="auto",.options=gpuSapply.getOption()){
   if(.device=="auto"){

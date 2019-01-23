@@ -1,15 +1,15 @@
 context("Basic sapply function")
 
-N_size=100
-M_size=200
+n=100
+m=200
 
 test_that("Matrix subset",{
   testFunc<-function(ind,A){
     tmp=A[,ind]
     return(tmp)
   }
-  n=N_size
-  m=M_size
+  
+  
   A=matrix(runif(n*m),n,m)
   res_gpu=gpuSapply(1:m,testFunc,A)
   res_cpu=A
@@ -23,8 +23,8 @@ test_that("lazy reference",{
     tmp=subRef(A,,ind)
     return(tmp)
   }
-  n=N_size
-  m=M_size
+  
+  
   A=matrix(runif(n*m),n,m)
   res_gpu=gpuSapply(1:m,testFunc,A)
   res_cpu=A
@@ -40,8 +40,8 @@ test_that("Matrix subsetting, Arithmatic operation *",{
     res=tmp*tmp1
     return(res)
   }
-  n=N_size
-  m=M_size
+  
+  
   A=matrix(runif(n*m),n,m)
   B=matrix(runif(n*m),n,m)
   res_gpu=gpuSapply(1:m,testFunc,A,B)
@@ -57,8 +57,8 @@ test_that("Matrix subsetting, Arithmatic operation /",{
     res=tmp/tmp1
     return(res)
   }
-  n=N_size
-  m=M_size
+  
+  
   A=matrix(runif(n*m),n,m)+1
   B=matrix(runif(n*m),n,m)+1
   res_gpu=gpuSapply(1:m,testFunc,A,B)
@@ -74,8 +74,8 @@ test_that("Lazy reference, Arithmatic operation *",{
     res=tmp*tmp1
     return(res)
   }
-  n=N_size
-  m=M_size
+  
+  
   A=matrix(runif(n*m),n,m)
   B=matrix(runif(n*m),n,m)
   res_gpu=gpuSapply(1:m,testFunc,A,B)
@@ -92,8 +92,8 @@ test_that("Lazy reference, Arithmatic operation /",{
     res=tmp/tmp1
     return(res)
   }
-  n=N_size
-  m=M_size
+  
+  
   A=matrix(runif(n*m),n,m)+1
   B=matrix(runif(n*m),n,m)+1
   res_gpu=gpuSapply(1:m,testFunc,A,B)
@@ -109,8 +109,8 @@ test_that("Lazy reference, matrix subsetting and Arithmatic operation",{
     res=(tmp+tmp1)*tmp/tmp1
     return(res)
   }
-  n=N_size
-  m=M_size
+  
+  
   A=matrix(runif(n*m),n,m)+1
   B=matrix(runif(n*m),n,m)+1
   res_gpu=gpuSapply(1:m,testFunc,A,B)
@@ -128,8 +128,8 @@ test_that("for loop iteration",{
     }
     return(res)
   }
-  n=N_size
-  m=M_size
+  
+  
   A=matrix(runif(n*m),n,m)
   res_gpu=gpuSapply(1:m,testFunc,A)
   res_cpu=colSums(A)
@@ -147,8 +147,8 @@ test_that("for loop control code, if condition",{
     }
     return(res)
   }
-  n=N_size
-  m=M_size
+  
+  
   A=matrix(runif(n*m),n,m)
   res_gpu=gpuSapply(1:m,testFunc,A)
   res_cpu=sapply(1:m,testFunc,A)
@@ -164,8 +164,8 @@ test_that("Self assignment, Unnecessary bracket",{
     }}
     return(A[,ind])
   }
-  n=N_size
-  m=M_size
+  
+  
   A=matrix(runif(n*m),n,m)
   expect_warning(res_gpu<-gpuSapply(1:m,testFunc,A))
   res_cpu=sapply(1:m,testFunc,A)

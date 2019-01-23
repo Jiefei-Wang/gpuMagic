@@ -3,7 +3,8 @@
 \docType{methods}
 \name{ncol,gpuMatrix-method}
 \alias{ncol,gpuMatrix-method}
-\title{The Number of Rows/Columns of an gpuMatrix object}
+\alias{ncol}
+\title{gpuMatrix class}
 \usage{
 \S4method{ncol}{gpuMatrix}(x)
 }
@@ -11,5 +12,34 @@
 \item{x}{an gpuMatrix object}
 }
 \description{
-\code{nrow} and \code{ncol} return the number of rows or columns present in \code{x}
+gpuMatrix class
+}
+\details{
+\code{gpuMatrix()}: Create a matrix in an openCL device
+
+\code{gpuEmptMatrix()}: Create an empty matrix without initialization in an openCL device
+
+\code{upload()}: The function will automatically be called when an gpuMatrix object is created.
+It is only needed when you want to update value of the matrix.
+
+\code{download()}: Get the data from the device. You should explicitly call it when you want to collect the data from the device.
+
+\code{nrow()},\code{ncol()}: return the number of rows or columns present in \code{x}
+
+\code{dim()}: Retrieve the dimension of an gpuMatrix object
+
+\code{length()}: Get the length of an gpuMatrix object.
+
+Get the matrix size in byte
+}
+\examples{
+n=10
+m=20
+A=matrix(runif(n*m),n,m)
+#Create a double-type GPU matrix
+A_dev1=gpuMatrix(A,"double")
+#Create a float-type GPU matrix
+A_dev2=gpuMatrix(A,"float")
+
+
 }

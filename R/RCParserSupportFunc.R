@@ -1,31 +1,28 @@
 #==================parser 1====================
 addvariableSizeInfo<-function(sizeInfo,curVarInfo){
-  curSizeinfo=data.frame(var=curVarInfo$var,precisionType=curVarInfo$precisionType,
-                         totalSize=curVarInfo$totalSize,
-                         size1=curVarInfo$size1,size2=curVarInfo$size2,stringsAsFactors = F)
+  curSizeinfo=data.frame(
+    var=curVarInfo$var,precisionType=curVarInfo$precisionType,
+    totalSize=Simplify(paste0("(",curVarInfo$totalSize,")*",getTypeSize(curVarInfo$precisionType))),
+    size1=curVarInfo$size1,size2=curVarInfo$size2,
+    stringsAsFactors = FALSE)
     
+  
   if(curVarInfo$redirect!="NA"){
     curSizeinfo$totalSize=0
   }
   sizeInfo=rbind(sizeInfo,curSizeinfo)
   return(sizeInfo)
 }
-addVariableDeclaration<-function(curVarInfo,data,offset,offsetInd,threadOffset=0){
+addVariableDeclaration<-function(curVarInfo,data,offset,offsetInd){
   CXXtype=curVarInfo$precisionType
+  if(curVarInfo$specialType=="ref")
+    return(NULL)
   if(curVarInfo$redirect=="NA"){
-    if(threadOffset==0){
       curCode=paste0("global ",CXXtype,"* ",curVarInfo$var,"=",
                      "(global ",CXXtype,"*)(",
                      data
                      ,"+",
                      offset,"[",offsetInd,"]);")
-    }else{
-      curCode=paste0("global ",CXXtype,"* ",curVarInfo$var,"=",
-                     "(global ",CXXtype,"*)(",
-                     data
-                     ,"+",
-                     offset,"[",offsetInd,"]+",threadOffset,");")
-    }
   }else{
     curCode=paste0("#define ",curVarInfo$var," ",curVarInfo$redirect)
     #curCode=paste0("global ",CXXtype,"* ",curVarInfo$var,"=",curVarInfo$redirect,";")

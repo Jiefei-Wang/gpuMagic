@@ -1,19 +1,33 @@
 #' @include pkgFunc.R
 
-RCcompilerLevel1<-function(profileMeta3){
+RCcompilerLevel1<-function(profileMeta2){
+  GPUExp1=profileMeta2
   if(DEBUG){
-    profileMeta3$varInfo=copyVarInfoTbl(profileMeta3$varInfo)
+    GPUExp1$varInfo=copyVarInfoTbl(profileMeta2$varInfo)
   }
-  parsedExp=profileMeta3$Exp
-  varInfo=profileMeta3$varInfo
-  profile=varInfo$profile
+  parsedExp=GPUExp1$Exp
+  varInfo=GPUExp1$varInfo
+  
+  
+  gpu_gp_matrixNum=GPUVar$global_private_matrixNum
+  gpu_gs_matrixNum=GPUVar$global_share_matrixNum
+  gpu_ls_matrixNum=GPUVar$local_share_matrixNum
+  gpu_lp_matrixNum=GPUVar$local_private_matrixNum
+  
+  gpu_gs_size=GPUVar$global_share_size
+  gpu_gp_size=GPUVar$global_private_size
+  gpu_ls_size=GPUVar$local_share_size
+  
+  gpu_gp_transpose=GPUVar$gp_transpose
+  gpu_gs_transpose=GPUVar$gs_transpose
+  gpu_lp_transpose=GPUVar$lp_transpose
+  gpu_ls_transpose=GPUVar$ls_transpose
   
   #Preserved variables
   #Global worker private data
   gpu_gp_data=GPUVar$global_private_data
   #Per worker length
   gpu_gp_totalSize=GPUVar$global_private_totalSize
-  gpu_gp_matrixNum=GPUVar$global_private_matrixNum
   
   gpu_gp_size1=GPUVar$global_private_size1
   gpu_gp_size2=GPUVar$global_private_size2
@@ -49,21 +63,8 @@ RCcompilerLevel1<-function(profileMeta3){
   gpu_return_variable=GPUVar$return_variable
   
   
-  gpu_code=c(
-    "//Function data preparation",
-    paste0(GPUVar$default_index_type," ",gpu_global_id,"=get_global_id(0);"),
-    paste0(GPUVar$default_index_type," ", gpu_gp_totalSize,"=",gpu_sizeInfo,"[0];"),
-    paste0(GPUVar$default_index_type," ", gpu_gp_matrixNum,"=",gpu_sizeInfo,"[1];"),
-    paste0("global ",GPUVar$default_index_type,"* ", gpu_gp_size1,"=",gpu_gp_size1,"_arg+",gpu_gp_matrixNum,"*",gpu_global_id,";"),
-    paste0("global ",GPUVar$default_index_type,"* ", gpu_gp_size2,"=",gpu_gp_size2,"_arg+",gpu_gp_matrixNum,"*",gpu_global_id,";"),
-    paste0(GPUVar$default_index_type," ", gpu_worker_offset,"=",gpu_global_id,"*",gpu_gp_totalSize,";"),
-    paste0(GPUVar$default_index_type," ", gpu_returnSize,"=",gpu_sizeInfo,"[2];"),
-    paste0(gpu_return_variable,"=",gpu_return_variable,"+",gpu_returnSize,"*",gpu_global_id,";")
-  )
-  
-  
-  gpu_code=c(gpu_code,
-             "//Function variable definition")
+
+  var_def_code=""
   gpu_gp_num=-1
   gpu_gs_num=-1
   gpu_lp_num=-1
@@ -76,7 +77,7 @@ RCcompilerLevel1<-function(profileMeta3){
   varInfo$matrix_lp=data.frame()
   varInfo$matrix_ls=data.frame()
   
-  for(curVar in keys(varInfo$varVersion)){
+  for(curVar in getAllVars(varInfo)){
     curInfo=getVarInfo(varInfo,curVar,0)
     
     
@@ -104,7 +105,7 @@ RCcompilerLevel1<-function(profileMeta3){
     if(curInfo$dataType==T_scale){
       CXXtype=curInfo$precisionType
       curCode=paste0(CXXtype," ",curInfo$var,";")
-      gpu_code=c(gpu_code,curCode)
+      var_def_code=c(var_def_code,curCode)
       curInfo$address=curInfo$var
       varInfo=setVarInfo(varInfo,curInfo)
       next
@@ -127,7 +128,7 @@ RCcompilerLevel1<-function(profileMeta3){
         gpu_gp_num=gpu_gp_num+1
         varInfo$matrixInd[[curVar]]=gpu_gp_num
         varInfo$matrix_gp=addvariableSizeInfo(varInfo$matrix_gp,curInfo)
-        curCode=addVariableDeclaration(curInfo,gpu_gp_data,gpu_gp_offset,gpu_gp_num,gpu_worker_offset)
+        curCode=addVariableDeclaration(curInfo,gpu_gp_data,gpu_gp_offset,gpu_gp_num)
       }
       if(curInfo$location=="local"&&!curInfo$shared){
         gpu_lp_num=gpu_lp_num+1
@@ -136,7 +137,7 @@ RCcompilerLevel1<-function(profileMeta3){
         curCode=addVariableDeclaration(curInfo,gpu_lp_data,gpu_lp_offset,gpu_lp_num)
       }
       curInfo$address=curInfo$var
-      gpu_code=c(gpu_code,curCode)
+      var_def_code=c(var_def_code,curCode)
       varInfo=setVarInfo(varInfo,curInfo)
       next
     }
@@ -144,12 +145,47 @@ RCcompilerLevel1<-function(profileMeta3){
   }
   
   
-  gpu_code=c(gpu_code,
-             "//End of the stage 1 compilation",
-             "//Thread number optimization",
-             "//Matrix dimension optimization")
-             
-  GPUExp1=profileMeta3
+  declareTransposeArry<-function(varName,len){
+    if(len>0)
+      return(paste0("bool ",varName,"[",len,"]={0};"))
+    else
+      return(NULL)
+  }
+  
+  
+  gpu_code=c(
+    "//Define some useful macro", 
+    paste0("#define ", gpu_gp_totalSize," ",gpu_sizeInfo,"[0]"),
+    paste0("#define ", gpu_returnSize," ",gpu_sizeInfo,"[1]"),
+    paste0("#define ", gpu_gp_matrixNum," ",nrow(varInfo$matrix_gp)),
+    paste0("#define ", gpu_gs_matrixNum," ",nrow(varInfo$matrix_gs)),
+    paste0("#define ", gpu_ls_matrixNum," ",nrow(varInfo$matrix_ls)),
+    paste0("#define ", gpu_lp_matrixNum," ",nrow(varInfo$matrix_lp)),
+    paste0("#define ", gpu_worker_offset," ",gpu_global_id,"*",gpu_gp_totalSize),
+    "//Data preparation",
+    paste0("size_t ",gpu_global_id,"=get_global_id(0);"), 
+    paste0("global ",GPUVar$default_index_type,"* ", gpu_gp_size1,"=",gpu_gp_size,";"),
+    paste0("global ",GPUVar$default_index_type,"* ", gpu_gp_size2,"=",gpu_gp_size,"+",gpu_gp_matrixNum,";"),
+    paste0("global ",GPUVar$default_index_type,"* ", gpu_gs_size1,"=",gpu_gs_size,";"),
+    paste0("global ",GPUVar$default_index_type,"* ", gpu_gs_size2,"=",gpu_gs_size,"+",gpu_gs_matrixNum,";"),
+    paste0("global ",GPUVar$default_index_type,"* ", gpu_ls_size1,"=",gpu_ls_size,";"),
+    paste0("global ",GPUVar$default_index_type,"* ", gpu_ls_size2,"=",gpu_ls_size,"+",gpu_ls_matrixNum,";"),
+    "//find the right pointer for the current thread",
+    paste0(gpu_gp_data,"=",gpu_gp_data,"+",gpu_worker_offset,";"),
+    paste0(gpu_return_variable,"=",gpu_return_variable,"+",gpu_returnSize,"*",gpu_global_id,";"),
+    "//variable definitions",
+    var_def_code,
+    "//variable transpose information",
+    declareTransposeArry(gpu_gp_transpose,nrow(varInfo$matrix_gp)),
+    declareTransposeArry(gpu_gs_transpose,nrow(varInfo$matrix_gs)),
+    declareTransposeArry(gpu_lp_transpose,nrow(varInfo$matrix_lp)),
+    declareTransposeArry(gpu_ls_transpose,nrow(varInfo$matrix_ls)),
+    "//End of the stage 1 compilation",
+    "//Thread number optimization",
+    "//Matrix dimension optimization"
+  )
+  
+  
   GPUExp1$Exp=parsedExp
   GPUExp1$varInfo=varInfo
   GPUExp1$gpu_code=gpu_code
@@ -233,6 +269,9 @@ RCTranslation<-function(varInfo,parsedExp){
     }
     if(substr(code_char,1,nchar(GPUVar$openclFuncCall))==GPUVar$openclFuncCall){
       curCode=curExp[[2]]
+      if(!is.character(curCode)){
+        curCode=paste0(deparse(curCode),";")
+      }
       gpu_code=c(gpu_code,curCode)
       next
     }

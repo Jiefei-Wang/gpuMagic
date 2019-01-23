@@ -100,7 +100,12 @@ getSingleDeviceInfo<-function(platform,device){
   deviceInfo
 }
 
-print.options<-function(x){
+#' Print the available options in a pretty format
+#' 
+#' @param x an options object.
+#' @param ... just for making the package checking happy.
+#' @export
+print.options<-function(x,...){
   x=unlist(x)
   name=StrAlign(names(x),sep="\\l")
   value=StrAlign(as.character(x),sep="\\l")

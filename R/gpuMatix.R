@@ -5,13 +5,24 @@
 )
 
 
-#' Create a matrix in an openCL device
+#' gpuMatrix class
 #' 
-#' Create a matrix in an openCL device
+#' @details `gpuMatrix()`: Create a matrix in an openCL device
 #' 
 #' @param data It can be a matrix or an R object that can be converted into a matrix.
 #' @param type The precision that is used to store the data.
 #' @param device The device that the data is sent to.
+#' 
+#' @examples
+#' n=10
+#' m=20
+#' A=matrix(runif(n*m),n,m)
+#' #Create a double-type GPU matrix
+#' A_dev1=gpuMatrix(A,"double")
+#' #Create a float-type GPU matrix
+#' A_dev2=gpuMatrix(A,"float")
+#' 
+#' 
 #' @export
 gpuMatrix<-function(data,type="auto",device="auto"){
   data=as.matrix(data)
@@ -38,13 +49,11 @@ gpuMatrix<-function(data,type="auto",device="auto"){
   obj
 }
 
-#' Create an empty matrix without initialization in an openCL device
-#' 
-#' Create an empty matrix without initialization in an openCL device
-#' 
+ 
+#' @details `gpuEmptMatrix()`: Create an empty matrix without initialization in an openCL device
+#' @inheritParams gpuMatrix
 #' @param row,col the row and column number of the matrix
-#' @param type The precision that is used to store the data.
-#' @param device The device that the data is sent to.
+#' @rdname gpuMatrix
 #' @export
 gpuEmptMatrix<-function(row=1,col=1,type="auto",device="auto"){
   if(type=="auto"){
@@ -118,55 +127,53 @@ gpuEmptMatrix<-function(row=1,col=1,type="auto",device="auto"){
 }
 
 #======================Functions======================
-#' Send the data to the device
+
+#' @details `upload()`: The function will automatically be called when an gpuMatrix object is created.
+#' It is only needed when you want to update value of the matrix.
 #' 
-#' Send the data to the device
-#' 
-#' The function will automatically be called when an gpuMatrix object is created, 
-#' so the function is only needed when you want to update value of the matrix.
-#' 
-#' 
-#' @param obj an gpuMatrix object
-setGeneric(name = "upload",def = function(obj) standardGeneric("upload"))
+#' @aliases upload,gpuMatrix-method upload
+#' @rdname gpuMatrix
+#' @param x an gpuMatrix object
+setGeneric(name = "upload",def = function(x) standardGeneric("upload"))
 
 
 #' @export
 setMethod(
   f="upload",
   signature = "gpuMatrix",
-  definition = function(obj){
-    obj@gpuAddress$upload(.device(obj),.data(obj),.type(obj))
-    obj
+  definition = function(x){
+    x@gpuAddress$upload(.device(x),.data(x),.type(x))
+    x
   }
 )
 
-#' Get the data from the device
+#' @details `download()`: Get the data from the device. You should explicitly call it when you want to collect the data from the device.
 #' 
-#' Get the data from the device. You should explicitly call it when you want to collect the data from the device.
-#' 
-#' @param obj an gpuMatrix object
-setGeneric(name="download",def=function(obj) standardGeneric("download"))
+#' @inheritParams upload
+#' @aliases download,gpuMatrix-method download
+#' @rdname gpuMatrix
+setGeneric(name="download",def=function(x) standardGeneric("download"))
 
 
 #' @export
 setMethod(
   f="download",
   signature = "gpuMatrix",
-  definition = function(obj){
-    obj@data=obj@gpuAddress$download()
-    .Call(C_asMatrix,obj@data,as.integer(.dim(obj)))
-    obj
+  definition = function(x){
+    x@data=x@gpuAddress$download()
+    .Call(C_asMatrix,x@data,as.integer(.dim(x)))
+    x
   }
 )
 
 #======================General functions overload================
 
-#'
-#'  The Number of Rows/Columns of an gpuMatrix object
-#'
-#' `nrow` and `ncol` return the number of rows or columns present in `x`
+
+#' @details `nrow()`,`ncol()`: return the number of rows or columns present in `x`
 #' 
-#' @param x an gpuMatrix object
+#' @inheritParams upload
+#' @aliases nrow,gpuMatrix-method nrow
+#' @rdname gpuMatrix
 setGeneric(name="nrow",def=function(x) standardGeneric("nrow"))
 #' @export
 setMethod("nrow", signature(x="gpuMatrix"),
@@ -177,31 +184,33 @@ setMethod("nrow", signature(x="gpuMatrix"),
 
 
 #' @inherit nrow
+#' @aliases ncol,gpuMatrix-method ncol
 #' @export
 setMethod("ncol", signature(x="gpuMatrix"),
           function(x) {
             .ncol(x)
           }
 )
-#' Dimensions of an gpuMatrix object
+
+#' @details  `dim()`: Retrieve the dimension of an gpuMatrix object
 #' 
-#' Retrieve the dimension of an gpuMatrix object
 #' 
-#' 
-#' @param x an gpuMatrix object
-#' @name dim
+#' @inheritParams upload
+#' @aliases dim,gpuMatrix-method dim
+#' @rdname gpuMatrix
 #' @export
 setMethod("dim", signature(x="gpuMatrix"),
           function(x) {
             .dim(x)
           }
 )
-#' Length of an gpuMatrix object
-#' 
-#' Get the length of an gpuMatrix object. 
+
+#' @details `length()`: Get the length of an gpuMatrix object. 
 #'
-#' @param x an gpuMatrix object
+#' @inheritParams upload
 #' @name length
+#' @aliases length,gpuMatrix-method length
+#' @rdname gpuMatrix
 #' @export
 setMethod("length", signature(x="gpuMatrix"),
           function(x) {
@@ -214,7 +223,7 @@ setMethod("length", signature(x="gpuMatrix"),
 #' if you have run any GPU functions on the gpuMatrix object, 
 #' please call `download(x)` to synchronize the data before calling this function. 
 #' 
-#' @param x an gpuMatrix object
+#' @inheritParams upload
 #' @param ... This argument is only for compatibility. It does not take any effect.
 #' @export
 as.matrix.gpuMatrix<-function(x,...){
@@ -226,7 +235,7 @@ as.matrix.gpuMatrix<-function(x,...){
 #' if you have run any GPU functions on the gpuMatrix object, 
 #' please call `download(x)` to synchronize the data before calling this function. 
 #' 
-#' @param x an gpuMatrix object
+#' @inheritParams upload
 #' @param mode This argument is only for compatibility. It does not take any effect.
 #' @export
 as.vector.gpuMatrix<-function(x, mode=NULL){
@@ -253,13 +262,15 @@ getIndexFromExp<-function(Exp){
 }
 #' extract/set parts of the data in gpuMatrix object
 #'
-#' @param x an gpuMatrix object
+#' @inheritParams upload
 #' @param i,j indices specifying elements to extract or replace. The index j can be missing or empty.
 #' @param ... This argument is only for compatibility. It does not take any effect.
 #' @param drop For matrices and arrays. If TRUE the result is coerced to the lowest possible dimension.
 #' @family Extract
 #' @rdname extract-methods
 #' @docType methods
+#' @aliases [,gpuMatrix-method [
+#' @rdname gpuMatrix
 #' @export
 setMethod("[",
           signature(x = "gpuMatrix", i = "ANY", j = "ANY", drop="missing"),
@@ -337,19 +348,20 @@ setMethod("[<-",
           })
 
 
-#' Get the matrix size in byte
+#' @details Get the matrix size in byte
 #' 
-#' Get the matrix size in byte
-#'  
-#' @param obj an gpuMatrix object
-setGeneric(name="getSize",def=function(obj) standardGeneric("getSize"))
+#' 
+#' @aliases getSize,gpuMatrix-method getSize
+#' @rdname gpuMatrix
+#' @inheritParams upload
+setGeneric(name="getSize",def=function(x) standardGeneric("getSize"))
 
 
 #' @export
 setMethod(
   f="getSize",
   signature = "gpuMatrix",
-  definition = function(obj){
-    .nrow(obj)*.ncol(obj)*getTypeSize(.type(obj))
+  definition = function(x){
+    .nrow(x)*.ncol(x)*getTypeSize(.type(x))
   }
 )

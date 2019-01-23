@@ -129,7 +129,7 @@ R_expression_sub<-function(varInfo,Exp,i,j=1,opt=FALSE,optCode=list(),i_C=FALSE,
     curVar=deparse(Exp)
     #If the expression is a lazy reference
     if(getVarProperty(varInfo,curVar,"isRef")){
-      refExp=parse(text=getVarProperty(varInfo,curVar,"ref"))[[1]]
+      refExp=parse(text=getVarProperty(varInfo,curVar,"specialContent"))[[1]]
       args=matchBracketFunc(refExp)
       if(is.null(args$j)){
         ref_k=args$i
@@ -149,7 +149,7 @@ R_expression_sub<-function(varInfo,Exp,i,j=1,opt=FALSE,optCode=list(),i_C=FALSE,
     }
     
     if(getVarProperty(varInfo,curVar,"isSeq")){
-      seqExp=parse(text=getVarProperty(varInfo,curVar,"seq"))[[1]]
+      seqExp=parse(text=getVarProperty(varInfo,curVar,"specialContent"))[[1]]
       from=seqExp[[2]]
       by=seqExp[[4]]
       
@@ -333,7 +333,7 @@ R_getVarSize<-function(varInfo,var,ind){
   }else{
     curInfo=getVarInfo(varInfo,var)
     if(curInfo$isRef){
-      Exp=parse(text=curInfo$ref)[[1]]
+      Exp=parse(text=curInfo$specialContent)[[1]]
     }
     
   }
@@ -377,7 +377,7 @@ R_getVarSize<-function(varInfo,var,ind){
     if(ind==2)
       return(1)
     if(ind==1){
-      seqExp=parse(text=curInfo$seq)[[1]]
+      seqExp=parse(text=curInfo$specialContent)[[1]]
       from=seqExp[[2]]
       to=seqExp[[3]]
       by=seqExp[[4]]
