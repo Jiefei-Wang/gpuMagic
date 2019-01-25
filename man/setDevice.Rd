@@ -12,3 +12,9 @@ setDevice(i)
 \description{
 Set which device will be used in the opencl, call 'getDeviceList()' first to figure out the index before use this function
 }
+\examples{
+#Use the first device
+setDevice(1)
+#Use two devices
+setDevice(c(1,2))
+}

@@ -9,3 +9,7 @@ gpuSapply.getOption()
 \description{
 Get the package compilation options, the openCl compilation options(\code{kernel.getOption()}) are also included.
 }
+\examples{
+opt=gpuSapply.getOption()
+
+}

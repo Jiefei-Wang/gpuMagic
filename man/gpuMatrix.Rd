@@ -37,9 +37,9 @@ getSize(x)
 \arguments{
 \item{data}{It can be a matrix or an R object that can be converted into a matrix.}
 
-\item{type}{The precision that is used to store the data.}
+\item{type}{The precision that is used to store the data, the default is \code{gpuMagic.getOptions("default.float")}.}
 
-\item{device}{The device that the data is sent to.}
+\item{device}{The device that the data is sent to, the default is the first device.}
 
 \item{row, col}{the row and column number of the matrix}
 
@@ -70,10 +70,9 @@ Get the matrix size in byte
 n=10
 m=20
 A=matrix(runif(n*m),n,m)
-#Create a double-type GPU matrix
-A_dev1=gpuMatrix(A,"double")
-#Create a float-type GPU matrix
-A_dev2=gpuMatrix(A,"float")
+#Create a 64 bit floating point GPU matrix
+A_dev=gpuMatrix(A,"double")
 
-
+#Create an empty matrix
+B_dev=gpuEmptMatrix(row=n,col=m)
 }

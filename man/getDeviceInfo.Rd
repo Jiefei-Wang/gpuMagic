@@ -12,3 +12,6 @@ getDeviceInfo(i)
 \description{
 Get the ith device information, call 'getDeviceList()' first to figure out the index before use this function
 }
+\examples{
+getDeviceInfo(1)
+}

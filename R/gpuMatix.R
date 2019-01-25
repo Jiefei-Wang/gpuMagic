@@ -10,19 +10,18 @@
 #' @details `gpuMatrix()`: Create a matrix in an openCL device
 #' 
 #' @param data It can be a matrix or an R object that can be converted into a matrix.
-#' @param type The precision that is used to store the data.
-#' @param device The device that the data is sent to.
+#' @param type The precision that is used to store the data, the default is `gpuMagic.getOptions("default.float")`.
+#' @param device The device that the data is sent to, the default is the first device.
 #' 
 #' @examples
 #' n=10
 #' m=20
 #' A=matrix(runif(n*m),n,m)
-#' #Create a double-type GPU matrix
-#' A_dev1=gpuMatrix(A,"double")
-#' #Create a float-type GPU matrix
-#' A_dev2=gpuMatrix(A,"float")
+#' #Create a 64 bit floating point GPU matrix
+#' A_dev=gpuMatrix(A,"double")
 #' 
-#' 
+#' #Create an empty matrix
+#' B_dev=gpuEmptMatrix(row=n,col=m)
 #' @export
 gpuMatrix<-function(data,type="auto",device="auto"){
   data=as.matrix(data)

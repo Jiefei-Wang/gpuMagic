@@ -209,6 +209,9 @@ GPUVar<-local({
 #' It is useful in some special cases such as turning off the auto update to do the integer division
 #' (By default, the package will convert the variable to the default float type before doing the division).
 #' 
+#' @examples 
+#' a=gNumber(precision="double",constDef=FALSE)
+#' 
 #' @return a variable initialize with 0.
 #' @export
 gNumber<-function(precision=GPUVar$default_float,constDef=FALSE){
@@ -276,12 +279,12 @@ resize<-function(data,nrow,ncol){
 #' @export
 subRef<-function(variable,i="",j=""){
   if(i==""&&j=="")
-    return(variable[,,drop=F])
+    return(variable[,,drop=FALSE])
   if(i=="")
-    return(variable[,j,drop=F])
+    return(variable[,j,drop=FALSE])
   if(j=="")
-    return(variable[i,,drop=F])
-  return(variable[i,j,drop=F])
+    return(variable[i,,drop=FALSE])
+  return(variable[i,j,drop=FALSE])
 }
 #' Return the result without memory copy
 #' 

@@ -30,3 +30,25 @@ Please refer to sapply to see the basic usage
 This function compile the R code and run it on the openCL-compatible devices. The usage is similar to the sapply function with
 some addtional opencl-related arguments.
 }
+\examples{
+#matrix multiplication function
+matMul<-function(ind,A,B){
+C=A\%*\%B[,ind]
+return(C)
+}
+
+n=100
+m=200
+k=100
+#Create the data
+A=matrix(runif(n*m),n,m)
+B=matrix(runif(k*m),m,k)
+#Perform matrix multiplication
+#GPU
+res_gpu=gpuSapply(1:k,matMul,A,B)
+#CPU
+res_cpu=sapply(1:k,matMul,A,B)
+
+#error
+range(res_gpu-res_cpu)
+}

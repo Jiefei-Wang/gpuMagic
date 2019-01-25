@@ -178,7 +178,7 @@ typeInherit<-function(type1,type2){
 
 is.preservedFunc<-function(func){
   func=as.character(func)
-  length(grep(GPUVar$preservedFuncPrefix,func,fixed = T))!=0
+  length(grep(GPUVar$preservedFuncPrefix,func,fixed = TRUE))!=0
 }
 
 
@@ -217,7 +217,7 @@ isNumeric<-function(x){
     return(FALSE)
   
   xExp=NULL
-  try({xExp=toExpression(x)},silent = T)
+  try({xExp=toExpression(x)},silent = TRUE)
   if(is.null(xExp)) 
     return(FALSE)
   if(is.call(xExp)){
@@ -265,9 +265,9 @@ toExpression<-function(var){
 Simplify2<-function(Exp){
   res=Simplify(Exp)
   #remove the space
-  #res=trimws(gsub(", ",",",res,fixed = T))
+  #res=trimws(gsub(", ",",",res,fixed = TRUE))
   #If the result is a vector
-  # if(length(grep(" ",res,fixed = T))!=0){
+  # if(length(grep(" ",res,fixed = TRUE))!=0){
   #   res=paste0("c(",gsub(" +",",",res),")")
   #   return(res)
   # }

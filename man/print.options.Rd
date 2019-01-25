@@ -14,3 +14,7 @@
 \description{
 Print the available options in a pretty format
 }
+\examples{
+opt=gpuMagic.getOptions()
+print.options(opt)
+}

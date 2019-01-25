@@ -104,6 +104,9 @@ getSingleDeviceInfo<-function(platform,device){
 #' 
 #' @param x an options object.
 #' @param ... just for making the package checking happy.
+#' @examples 
+#' opt=gpuMagic.getOptions()
+#' print.options(opt)
 #' @export
 print.options<-function(x,...){
   x=unlist(x)
@@ -120,12 +123,14 @@ getDeviceList=function(){
   updateDeviceInfo()
   deviceInfo=.gpuResourcesManager$globalVars$deviceInfo[,c("id","platform","device","deviceName","globalMemory")]
   deviceInfo$globalMemory=sapply(deviceInfo$globalMemory,format_memory_size_output)
-  print(deviceInfo, row.names = FALSE,right=F)
+  print(deviceInfo, row.names = FALSE,right=FALSE)
   invisible()
 }
 
 #' Get the ith device information, call 'getDeviceList()' first to figure out the index before use this function
 #' @param i integer The device index
+#' @examples 
+#' getDeviceInfo(1)
 #' @export
 getDeviceInfo=function(i){
   updateDeviceInfo()
@@ -133,7 +138,7 @@ getDeviceInfo=function(i){
   if(i>nrow(deviceInfo)||i<=0){
     stop("Invalid device id!")
   }
-  deviceInfo=deviceInfo[i,,drop=F]
+  deviceInfo=deviceInfo[i,,drop=FALSE]
   deviceInfo$globalMemory=format_memory_size_output(deviceInfo$globalMemory)
   deviceInfo$localMemory=format_memory_size_output(deviceInfo$localMemory)
   deviceInfo=structure(deviceInfo,class="options")
@@ -141,6 +146,8 @@ getDeviceInfo=function(i){
 }
 
 #' Get the information of the current devices
+#' @examples 
+#' getCurDevice()
 #' @export
 getCurDevice=function(){
   curInd=as.integer(keys(.gpuResourcesManager$globalVars$curDevice))
@@ -152,12 +159,19 @@ getCurDevice=function(){
 }
 #' Set which device will be used in the opencl, call 'getDeviceList()' first to figure out the index before use this function
 #' @param i integer The device index
+#' @examples
+#' #Use the first device
+#' setDevice(1)
+#' #Use two devices
+#' setDevice(c(1,2))
 #' @export
 setDevice=function(i){
   selectDevice(sort(unique(as.integer(i))))
   invisible()
 }
 #' Get the index of the current devices 
+#' @examples
+#' getDeviceIndex()
 #' @export
 getDeviceIndex=function(){
   as.integer(keys(.gpuResourcesManager$globalVars$curDevice))
@@ -167,6 +181,9 @@ getDeviceIndex=function(){
 
 #' Query the current job status in a device
 #' @param i integer The device index
+#' @examples 
+#' #Get the job status in the first device
+#' getJobStatus(1)
 #' @export
 getJobStatus=function(i){
   device=getSelectedDevice(i)
@@ -207,18 +224,22 @@ gpuMagic.options$supportedType<-c("bool","char","half","float","double","int","l
 #' @param opt The options that the function will return. It can be either "all" or a vector of the option names.
 #' 
 #' @seealso [gpuMagic.setOptions()] for changing the options.
+#' @examples 
+#' #Get all the available options
+#' opt=gpuMagic.getOptions()
+#' opt
 #' @export
 gpuMagic.getOptions=function(opt="all"){
   allOpt=data.frame(default.float=GPUVar$default_float,
                     default.int=GPUVar$default_int,
                     default.index.type=GPUVar$default_index_type,
                     default.thread.num=gpuMagic.options$default.thread.num,
-                    stringsAsFactors=F
+                    stringsAsFactors=FALSE
   )
   if(opt=="all")
     curOpt=allOpt
   else
-    curOpt=allOpt[,opt,drop=F]
+    curOpt=allOpt[,opt,drop=FALSE]
   curOpt=structure(curOpt, class = "options")
   curOpt
 }
@@ -239,6 +260,16 @@ gpuMagic.getOptions=function(opt="all"){
 #' to change the options.
 #' 
 #' @seealso [gpuMagic.getOptions()] for the name of the options.
+#' @examples
+#' #Get all the available options
+#' opt=gpuMagic.getOptions()
+#' #change the default float type
+#' opt$default.float="float"
+#' #set the options
+#' gpuMagic.setOptions(opt)
+#' 
+#' #set the options(Alternative way)
+#' gpuMagic.setOptions(default.float="float")
 #' @export
 gpuMagic.setOptions=function(...){
   parms=list(...)
@@ -274,6 +305,8 @@ gpuMagic.setOptions=function(...){
 #' Get all the available openCL variable type
 #' 
 #' @return A vector of all the available data type.
+#' @examples 
+#' gpuMagic.getAvailableType()
 #' @export
 gpuMagic.getAvailableType=function(){
   gpuMagic.options$supportedType
@@ -282,6 +315,8 @@ gpuMagic.getAvailableType=function(){
 #' Get the device memory usage
 #' 
 #' The function will print the memory usage on the console
+#' @examples
+#' gpuMagic.getMemUsage()
 #' @export
 gpuMagic.getMemUsage=function(){
   .gpuResourcesManager$getGPUusage()

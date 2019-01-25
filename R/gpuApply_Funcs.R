@@ -141,8 +141,8 @@ fillGPUdata<-function(GPUcode1,.options,.device){
   device_argument$gs_offset=gpuMatrix(sizeInfo_gs$matrixOffset,type=IntType,device=.device)
   
   device_argument$ls_data=kernel.getSharedMem(sizeInfo_ls$totalSize,type="char")
-  device_argument$ls_size=gpuMatrix(sizeInfo_ls$dim,type=IntType)
-  device_argument$ls_offset=gpuMatrix(sizeInfo_ls$matrixOffset,type=IntType)
+  device_argument$ls_size=gpuMatrix(sizeInfo_ls$dim,type=IntType,device=.device)
+  device_argument$ls_offset=gpuMatrix(sizeInfo_ls$matrixOffset,type=IntType,device=.device)
   
   #The return size for each thread
   returnSize=kernel_args$sizeInfo[2]
@@ -295,7 +295,7 @@ formatParms<-function(parms){
 opt_workerNumber<-function(varInfo,code,.options){
   targetCode=paste0("//Thread number optimization\n")
   
-  if(!grepl(targetCode,code,fixed = T)){
+  if(!grepl(targetCode,code,fixed = TRUE)){
     stop("Unable to find the location of the thread number optimization code\n",
          "This error should never be happened\n",
          "Please contact the author")
@@ -309,7 +309,7 @@ opt_workerNumber<-function(varInfo,code,.options){
     insertedCode=""
     endCode=""
   }
-  code=sub(targetCode,insertedCode,code,fixed = T)
+  code=sub(targetCode,insertedCode,code,fixed = TRUE)
   code=paste0(code,endCode)
   code
 }
@@ -317,17 +317,17 @@ opt_workerNumber<-function(varInfo,code,.options){
 opt_matrixDim<-function(varInfo,code,.options){
   targetCode=paste0("//Matrix dimension optimization\n")
   
-  if(!grepl(targetCode,code,fixed = T)){
+  if(!grepl(targetCode,code,fixed = TRUE)){
     stop("Unable to find the location of the thread number optimization code\n",
          "This error should never be happened\n",
          "Please contact the author")
   }
   if(!.options$sapplyOptimization$matrix.dim){
-    code=sub(targetCode,"",code,fixed = T)
+    code=sub(targetCode,"",code,fixed = TRUE)
     return(code)
   }
   
-  match.info=regexpr(targetCode,code,fixed = T)
+  match.info=regexpr(targetCode,code,fixed = TRUE)
   opt_code=substring(code,match.info+attr(match.info,"match.length"))
   
   opt_target_space=c("gp","gs","lp","ls")

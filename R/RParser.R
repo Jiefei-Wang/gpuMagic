@@ -41,7 +41,7 @@ RLevel1_parserFunc<-function(level,codeMetaInfo,curExp){
       return(result)
     }
     #General strategy for all functions call that do not appear above. E.g. f(g())
-    result=simplifyElementOp(curExp,wholeReplace=T,useElementOp=FALSE)
+    result=simplifyElementOp(curExp,wholeReplace=TRUE,useElementOp=FALSE)
     return(result)
   }else{
     result$Exp=curExp

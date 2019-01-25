@@ -391,7 +391,7 @@ getSubInfo<-function(varInfo,curInfo,sub_var,i=NA){
   sub
 }
 
-#Exp=quote(A[,ind,drop=T])
+#Exp=quote(A[,ind,drop=TRUE])
 profile_subset<-function(varInfo,Exp){
   #curInfoPack=getVarInfo(varInfo,Exp[[2]])
   curInfo=getVarInfo(varInfo,Exp[[2]])
@@ -438,7 +438,7 @@ profile_subset<-function(varInfo,Exp){
 profile_numeric<-function(Exp){
   ExpInfo=getEmpyTable(type=T_scale)
   ExpInfo$value=toCharacter(Exp)
-  if(length(grep(".",ExpInfo$value,fixed=T))==0){
+  if(length(grep(".",ExpInfo$value,fixed=TRUE))==0){
     ExpInfo$precisionType=GPUVar$default_int
   }
   ExpInfo$constVal=TRUE
@@ -451,11 +451,15 @@ profile_symbol<-function(varInfo,Exp){
 
 profile_floor<-function(varInfo,Exp){
   ExpInfoPack=getExpInfo(varInfo,Exp[[2]])
+  ExpInfoPack$Exp=parse(text=paste0("floor(",deparse(ExpInfoPack$Exp),")"))[[1]]
   ExpInfoPack$ExpInfo$precisionType=GPUVar$default_int
   return(ExpInfoPack)
 }
 profile_ceil<-function(varInfo,Exp){
-  return(profile_floor(varInfo,Exp))
+  ExpInfoPack=getExpInfo(varInfo,Exp[[2]])
+  ExpInfoPack$Exp=parse(text=paste0("ceiling(",deparse(ExpInfoPack$Exp),")"))[[1]]
+  ExpInfoPack$ExpInfo$precisionType=GPUVar$default_int
+  return(ExpInfoPack)
 }
 
 profile_return<-function(varInfo,Exp){
@@ -562,11 +566,11 @@ profile_seq<-function(varInfo,Exp){
     #expInfo$value=paste0("seq(",fromInfo$value,",",toInfo$value,",",byInfo$value,")")
     expInfo$size1=Simplify2(paste0("floor((",toInfo$value,"-",fromInfo$value,")/",byInfo$value,")+1"))
     expInfo$size2=1
-    #expInfo$compileValue=T
+    #expInfo$compileValue=TRUE
   }
   expInfo$designSize1=3
   expInfo$designSize2=1
-  expInfo$isSpecial=T
+  expInfo$isSpecial=TRUE
   expInfo$specialType="seq"
   expInfo$specialContent=paste0("seq(",deparse(args$from),",",deparse(args$to),",",deparse(args$by),")")
   

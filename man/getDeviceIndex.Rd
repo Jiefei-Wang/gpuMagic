@@ -9,3 +9,6 @@ getDeviceIndex()
 \description{
 Get the index of the current devices
 }
+\examples{
+getDeviceIndex()
+}

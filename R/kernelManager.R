@@ -1,4 +1,8 @@
-
+#' Excute the openCL function
+#' 
+#' @examples 
+#' #TODO
+#' 
 #' @export
 .kernel<-function(src="",kernel,parms,
                   .device="auto",.globalThreadNum="length(FirstArg)",.options=kernel.getOption()){
@@ -112,23 +116,27 @@
 }
 
 #' Get the openCL compilation options
+#' 
+#' @examples 
+#' opt=kernel.getOption()
+#' opt
 #' @export
 kernel.getOption<-function(){
   curOp=list()
   curOp$verbose=FALSE
   
   curOp$kernelMsg=data.frame(
-    compilation.msg=F,
-    memory.usage.msg=F,
-    thread.num.msg=F,
-    insufficient.thread.num.warning=T)
+    compilation.msg=FALSE,
+    memory.usage.msg=FALSE,
+    thread.num.msg=FALSE,
+    insufficient.thread.num.warning=TRUE)
   
   curOp$kernelOption=data.frame(
     localThreadNum="Auto",
     signature="",
     flag="",
     autoType=TRUE,
-    stringsAsFactors=F)
+    stringsAsFactors=FALSE)
   
   curOp
 }

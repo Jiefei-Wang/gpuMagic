@@ -9,3 +9,6 @@ getCurDevice()
 \description{
 Get the information of the current devices
 }
+\examples{
+getCurDevice()
+}

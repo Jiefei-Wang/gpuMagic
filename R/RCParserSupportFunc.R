@@ -172,7 +172,7 @@ C_general_matrix_assignment<-function(varInfo,leftVar,rightVar,func=matrix_assig
     #dispatch accoding to if the right matrix has boundary
     #if the right matrix is a number, boundary will be ignored
     if(is.null(rightBound)||
-       length(grep("gpu_general_index",code_right$value,fixed = T))==0){
+       length(grep("gpu_general_index",code_right$value,fixed = TRUE))==0){
       loopCode=paste0("for(", GPUVar$default_index_type," gpu_general_index=0;gpu_general_index<",R_length(varInfo,leftVar),";gpu_general_index++){")
       
       code_left=R_oneIndex_exp_sub(varInfo,leftVar,k="gpu_general_index",k_C=TRUE,base=0)

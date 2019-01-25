@@ -3,7 +3,6 @@
 #The gpu manager is not supposed to be called by the user
 #It manage the all resources on a device
 #The data will be automatically released when the it is not in use
-#' @export
 .gpuResourcesManager<-local({
   internalVars=new.env()
   internalVars$unload=FALSE
@@ -59,7 +58,7 @@
       return(gpuAd)
     },
     gpuMalloc=function(deviceId,len,type){
-      updateDeviceInfo(initialOnly=T)
+      updateDeviceInfo(initialOnly=TRUE)
       curDevice=getSelectedDevice(deviceId)
       devKey=as.character(deviceId)
       
@@ -90,7 +89,7 @@
       return(res)
     },
     releaseAddress=function(deviceId,gpuAd){
-      curDevice=getSelectedDevice(deviceId,checkInital = F)
+      curDevice=getSelectedDevice(deviceId,checkInital = FALSE)
       devKey=as.character(deviceId)
       adKey=digest(getTrueAd(gpuAd))
       if(internalVars$unload)
@@ -178,8 +177,8 @@ format_memory_size_output<-function(x){
 
 
 #This function query the device info and storage the results into the global variable
-#If initialOnly=T the function will only update the deviceInfo in the first call
-updateDeviceInfo<-function(initialOnly=F){
+#If initialOnly=TRUE the function will only update the deviceInfo in the first call
+updateDeviceInfo<-function(initialOnly=FALSE){
   if(initialOnly){
     if(!is.null(.gpuResourcesManager$globalVars$deviceInfo))
       return()
@@ -214,13 +213,13 @@ updateDeviceInfo<-function(initialOnly=F){
 
 selectDevice=function(devices){
   .gpuResourcesManager$releaseAll()
-  updateDeviceInfo(initialOnly=T)
+  updateDeviceInfo(initialOnly=TRUE)
   deviceInfo=.gpuResourcesManager$globalVars$deviceInfo
   if(range(devices)[1]<=0||range(devices)[2]>nrow(deviceInfo)){
     stop("Invalid device id!")
   }
   
-  curDeviceInfo=deviceInfo[devices,,drop=F]
+  curDeviceInfo=deviceInfo[devices,,drop=FALSE]
   
   clear(.gpuResourcesManager$internalVars$addressSizeList)
   clear(.gpuResourcesManager$internalVars$addressList)
@@ -232,7 +231,7 @@ selectDevice=function(devices){
     key=as.character(devices[i])
     .gpuResourcesManager$internalVars$addressSizeList[[key]]=hash()
     .gpuResourcesManager$internalVars$addressList[[key]]=hash()
-    .gpuResourcesManager$globalVars$curDevice[[key]]=as.integer(curDeviceInfo[i,c("platform","device"),drop=F]-1)
+    .gpuResourcesManager$globalVars$curDevice[[key]]=as.integer(curDeviceInfo[i,c("platform","device"),drop=FALSE]-1)
     .gpuResourcesManager$internalVars$totalMemory[[key]]=as.double(curDeviceInfo[i,"globalMemory"])
     .gpuResourcesManager$internalVars$memoryUsage[[key]]=0
   }
@@ -243,9 +242,9 @@ getFirstSelectedDevice<-function(){
   as.integer(deviceList[1])
 }
 #Get the platform and device id
-#If checkInitial=T, the function will check if the device has been selected
-#If checkInitial=F, the function will just return the device information without check
-getSelectedDevice<-function(device,checkInital=T){
+#If checkInitial=TRUE, the function will check if the device has been selected
+#If checkInitial=FALSE, the function will just return the device information without check
+getSelectedDevice<-function(device,checkInital=TRUE){
   if(checkInital){
     devKey=as.character(device)
     if(!isDeviceSelected(devKey)) 
@@ -253,7 +252,7 @@ getSelectedDevice<-function(device,checkInital=T){
     
     return(as.integer(.gpuResourcesManager$globalVars$curDevice[[devKey]]))
   }else{
-    updateDeviceInfo(initialOnly=T)
+    updateDeviceInfo(initialOnly=TRUE)
     curDevice=as.integer(.gpuResourcesManager$globalVars$deviceInfo[device,c("platform","device")]-1)
     if(is.null(curDevice)) stop("the device does not exist!")
     return(curDevice)

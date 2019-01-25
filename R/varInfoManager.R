@@ -20,7 +20,7 @@ getEmpVarInfoTbl<-function(){
   structure(varInfo,class="varInfo")
 }
 
-copyVarInfoTbl <- function(varInfo, resetVersion = T) {
+copyVarInfoTbl <- function(varInfo, resetVersion = TRUE) {
   newInfo = varInfo
   for (i in names(varInfo)) {
     if (is.hash(varInfo[[i]]))

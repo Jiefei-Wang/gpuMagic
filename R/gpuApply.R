@@ -18,7 +18,27 @@ gpuApplyFuncList=hash()
 #' @param loading The loading of each device, only useful when having multiple devices.
 #' @param .options The package and openCL compilation options, please call `gpuSapply.getOption()` to get all the available options
 #' 
+#' @examples
+#' #matrix multiplication function
+#' matMul<-function(ind,A,B){
+#' C=A%*%B[,ind]
+#' return(C)
+#' }
 #' 
+#' n=100
+#' m=200
+#' k=100
+#' #Create the data
+#' A=matrix(runif(n*m),n,m)
+#' B=matrix(runif(k*m),m,k)
+#' #Perform matrix multiplication
+#' #GPU
+#' res_gpu=gpuSapply(1:k,matMul,A,B)
+#' #CPU
+#' res_cpu=sapply(1:k,matMul,A,B)
+#' 
+#' #error
+#' range(res_gpu-res_cpu)
 #' @export
 gpuSapply<-function(X,FUN,...,.macroParms=NULL,.device="auto",loading="auto",.options=gpuSapply.getOption()){
   if(.device=="auto"){
@@ -37,7 +57,7 @@ gpuSapply<-function(X,FUN,...,.macroParms=NULL,.device="auto",loading="auto",.op
   return(res)
 }
 
-gpuSapply_singleDev<-function(X,FUN,...,.macroParms=NULL,.device,.options=gpuSapply.getOption(),.block=T){
+gpuSapply_singleDev<-function(X,FUN,...,.macroParms=NULL,.device,.options=gpuSapply.getOption(),.block=TRUE){
   #Some interesting setup
   start_time <- Sys.time()
   verbose=.options$verbose
@@ -118,7 +138,7 @@ gpuSapply_singleDev<-function(X,FUN,...,.macroParms=NULL,.device,.options=gpuSap
   return(res)
 }
 
-gpuSapply_multiDev<-function(X,FUN,...,.macroParms=NULL,.device,loading="auto",.options=gpuSapply.getOption(),.block=T){
+gpuSapply_multiDev<-function(X,FUN,...,.macroParms=NULL,.device,loading="auto",.options=gpuSapply.getOption(),.block=TRUE){
   deviceNum=length(.device)
   jobsNum=length(X)
   #If the number of device is larger than 1, parallel the process
@@ -148,7 +168,7 @@ gpuSapply_multiDev<-function(X,FUN,...,.macroParms=NULL,.device,loading="auto",.
       parallelSet[[i]]=
         gpuSapply_singleDev(
           X[(start+1):end],FUN,...,
-          .macroParms=.macroParms,.device=.device[i],.options=.options,.block=F)
+          .macroParms=.macroParms,.device=.device[i],.options=.options,.block=FALSE)
     }
   }
   #Get the result back
@@ -184,23 +204,26 @@ gpuSapply_multiDev<-function(X,FUN,...,.macroParms=NULL,.device,loading="auto",.
 #' 
 #' Get the package compilation options, the openCl compilation options(`kernel.getOption()`) are also included.
 #' 
+#' @examples 
+#' opt=gpuSapply.getOption()
+#' 
 #' @export
 gpuSapply.getOption<-function(){
   curOp=kernel.getOption()
   curOp$kernelOption$autoType=FALSE
   curOp$sapplyMsg=
     data.frame(
-      R.code.compiler.msg=F,
-      timing.R.code.compilation=F
+      R.code.compiler.msg=FALSE,
+      timing.R.code.compilation=FALSE
       )
   
   curOp$sapplyOptimization=
     data.frame(
-      thread.number=T,
-      matrix.dim=T
+      thread.number=TRUE,
+      matrix.dim=TRUE
       )
   
-  curOp$sapplyOption=data.frame(debugCode="",compileEveryTime=F)
+  curOp$sapplyOption=data.frame(debugCode="",compileEveryTime=FALSE)
   
   
   return(curOp)
@@ -209,6 +232,24 @@ gpuSapply.getOption<-function(){
 #' Compile the R function without excute it in the device.
 #' 
 #' @inheritParams gpuSapply
+#' @examples
+#' #matrix add function
+#' matAdd<-function(ind,A,B){
+#' C=A[,ind]+B[,ind]
+#' return(C)
+#' }
+#' 
+#' n=100
+#' m=200
+#' #Create the data
+#' A=matrix(runif(n*m),n,m)
+#' B=matrix(runif(n*m),n,m)
+#' #Compile the R code
+#' res=compileGPUCode(1:m,matAdd,A,B)
+#' #print GPU code
+#' cat(res$gpu_code)
+#' 
+#' 
 #' @export
 compileGPUCode<-function(X,FUN,...,.macroParms=NULL,.options=gpuSapply.getOption()){
   parms=list(...)

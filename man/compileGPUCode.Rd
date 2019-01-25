@@ -22,3 +22,22 @@ If an argument is treated as macro, its value cannot be changed by the code}
 \description{
 Compile the R function without excute it in the device.
 }
+\examples{
+#matrix add function
+matAdd<-function(ind,A,B){
+C=A[,ind]+B[,ind]
+return(C)
+}
+
+n=100
+m=200
+#Create the data
+A=matrix(runif(n*m),n,m)
+B=matrix(runif(n*m),n,m)
+#Compile the R code
+res=compileGPUCode(1:m,matAdd,A,B)
+#print GPU code
+cat(res$gpu_code)
+
+
+}
