@@ -9,6 +9,9 @@ return.nocpy(x)
 \arguments{
 \item{x}{The return value}
 }
+\value{
+No return value
+}
 \description{
 The usage of the \code{return.nocpy} is same as \code{return}. This feature is for openCL code only, please not use it in R function.
 }

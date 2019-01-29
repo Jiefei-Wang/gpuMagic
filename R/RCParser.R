@@ -219,7 +219,7 @@ RCcompilerLevel2<-function(GPUExp1){
 
 RCTranslation<-function(varInfo,parsedExp){
   gpu_code=c()
-  for(i in 1:length(parsedExp)){
+  for(i in seq_along(parsedExp)){
     curExp=parsedExp[[i]]
     if(curExp=="{"||is.symbol(curExp))
       next

@@ -43,7 +43,21 @@ The variable B does not exist in the code after the compilation and therefore no
 \section{Warning}{
 
 Since this feature is implemented like a macro,
-so the value of \code{ind} in \code{B=subRef(A,ind)} can be different from the value of \code{ind} in \code{a=A[ind[2]]}.
-It is a good practice to keep them same while using the subset reference.
+so it is possible to change the value of \code{ind} after the matrix B is created and before you modify the matrix B.
+In such case, it may cause an unexpected error.
+It is a good practice to keep the \code{ind} same while using the subset reference.
 }
 
+\examples{
+#create data
+ind=1:10
+A=matrix(0,100,100)
+#Use the one-index subsetting, create a vector of length 10
+B=subref(A,ind)
+#Subsetting the matrix A,create a 10-by-10 matrix
+C=subref(A,ind,ind)
+#row subsetting 
+D=subref(A,ind,)
+#column subsetting
+E=subref(A,,ind)
+}

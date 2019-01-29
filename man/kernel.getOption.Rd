@@ -6,6 +6,13 @@
 \usage{
 kernel.getOption()
 }
+\value{
+A list of available options
+}
 \description{
 Get the openCL compilation options
+}
+\examples{
+opt=kernel.getOption()
+opt
 }

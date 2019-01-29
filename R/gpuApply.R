@@ -1,3 +1,4 @@
+#' @include hash.R
 gpuApplyFuncList=hash()
 
 
@@ -40,6 +41,7 @@ gpuApplyFuncList=hash()
 #' #error
 #' range(res_gpu-res_cpu)
 #' @export
+#' @return A vector or a matrix
 gpuSapply<-function(X,FUN,...,.macroParms=NULL,.device="auto",loading="auto",.options=gpuSapply.getOption()){
   if(.device=="auto"){
     .device=as.integer(keys(.gpuResourcesManager$globalVars$curDevice))
@@ -88,7 +90,7 @@ gpuSapply_singleDev<-function(X,FUN,...,.macroParms=NULL,.device,.options=gpuSap
     GPUcode1=.compileGPUCode(FUN,parms,.macroParms=.macroParms,.options=.options)
     
     #Store the GPU object
-    gpuApplyFuncList[sig_hash]=saveGPUcode(GPUcode1)
+    gpuApplyFuncList[[sig_hash]]=saveGPUcode(GPUcode1)
     
     #insert debug code, when debug code is not empty, the function will be compiled every time
     if(option$debugCode!=""){
@@ -206,7 +208,7 @@ gpuSapply_multiDev<-function(X,FUN,...,.macroParms=NULL,.device,loading="auto",.
 #' 
 #' @examples 
 #' opt=gpuSapply.getOption()
-#' 
+#' @return An options class
 #' @export
 gpuSapply.getOption<-function(){
   curOp=kernel.getOption()
@@ -223,9 +225,9 @@ gpuSapply.getOption<-function(){
       matrix.dim=TRUE
       )
   
-  curOp$sapplyOption=data.frame(debugCode="",compileEveryTime=FALSE)
+  curOp$sapplyOption=data.frame(debugCode="",compileEveryTime=FALSE,stringsAsFactors = FALSE)
   
-  
+  curOp=structure(curOp,class="options")
   return(curOp)
 }
 
@@ -248,7 +250,7 @@ gpuSapply.getOption<-function(){
 #' res=compileGPUCode(1:m,matAdd,A,B)
 #' #print GPU code
 #' cat(res$gpu_code)
-#' 
+#' @return A list of compilation information
 #' 
 #' @export
 compileGPUCode<-function(X,FUN,...,.macroParms=NULL,.options=gpuSapply.getOption()){

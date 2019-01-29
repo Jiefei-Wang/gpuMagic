@@ -48,7 +48,7 @@ profiler_assignment_exitingVar<-function(level,varInfo,curExp){
   
   if(!leftInfo$isSpecial){
     propertyNames=colnames(leftInfo)
-    for(i in 1:length(propertyNames)){
+    for(i in seq_along(propertyNames)){
       #Find the property name and check the setting
       curProp=propertyNames[i]
       inheritProp=inherit$extVar[[defineType]][[curProp]]

@@ -12,3 +12,6 @@ A vector of all the available data type.
 \description{
 Get all the available openCL variable type
 }
+\examples{
+gpuMagic.getAvailableType()
+}

@@ -21,3 +21,7 @@ a variable initialize with 0.
 The function will create a scalar variable, it is only useful in the openCL functions.
 It can also be called in R, but its argument will not take any effect.
 }
+\examples{
+a=gNumber(precision="double",constDef=FALSE)
+
+}

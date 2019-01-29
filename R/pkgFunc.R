@@ -1,5 +1,3 @@
-#' @include gpuResourcesManager.R
-
 T_scale="scale"
 T_matrix="matrix"
 GPUVar<-local({
@@ -231,7 +229,9 @@ gNumber<-function(precision=GPUVar$default_float,constDef=FALSE){
 #' (By default, the package will convert the variable to the default float type before doing the division).
 #' @param shared If the matrix is shared by all the workers in a work group. Do not use it if you don't know its meaning.
 #' @param location The physical memory location of the matrix, it can be either "global" or "local". Do not use it if you don't know its meaning.
-#' 
+#' @examples 
+#' #Create a 10-by-10 matrix
+#' A=gMatrix(10,10)
 #' @return a matrix initialize with 0.
 #' @export
 gMatrix<-function(nrow=1,ncol=1,precision=GPUVar$default_float,constDef=FALSE,shared=FALSE,location="global"){
@@ -267,14 +267,26 @@ resize<-function(data,nrow,ncol){
 #' 
 #' @section Warning:
 #' Since this feature is implemented like a macro, 
-#' so the value of `ind` in `B=subRef(A,ind)` can be different from the value of `ind` in `a=A[ind[2]]`. 
-#' It is a good practice to keep them same while using the subset reference.
+#' so it is possible to change the value of `ind` after the matrix B is created and before you modify the matrix B.
+#' In such case, it may cause an unexpected error.
+#' It is a good practice to keep the `ind` same while using the subset reference.
 #'  
 #' 
 #' @param variable the matrix you want to subset
 #' @param i the index of a vector or the row index of a matrix
 #' @param j (Optional) The column index of a matrix
-#' 
+#' @examples 
+#' #create data
+#' ind=1:10
+#' A=matrix(0,100,100)
+#' #Use the one-index subsetting, create a vector of length 10
+#' B=subref(A,ind)
+#' #Subsetting the matrix A,create a 10-by-10 matrix
+#' C=subref(A,ind,ind)
+#' #row subsetting 
+#' D=subref(A,ind,)
+#' #column subsetting
+#' E=subref(A,,ind)
 #' @return A reference to the subset of a matrix
 #' @export
 subRef<-function(variable,i="",j=""){
@@ -291,6 +303,7 @@ subRef<-function(variable,i="",j=""){
 #' The usage of the `return.nocpy` is same as `return`. This feature is for openCL code only, please not use it in R function.
 #' 
 #' @param x The return value
+#' @return No return value
 #' @export
 return.nocpy<-function(x){
   stop("You cannot use the reference return in R code")

@@ -11,6 +11,9 @@
 
 \item{...}{just for making the package checking happy.}
 }
+\value{
+No return value, the result will be printed in the console
+}
 \description{
 Print the available options in a pretty format
 }

@@ -12,6 +12,8 @@
 #' @param data It can be a matrix or an R object that can be converted into a matrix.
 #' @param type The precision that is used to store the data, the default is `gpuMagic.getOptions("default.float")`.
 #' @param device The device that the data is sent to, the default is the first device.
+#' @return [gpuMatrix()]: A gpuMatrix object
+#' @rdname gpuMatrix
 #' 
 #' @examples
 #' n=10
@@ -52,6 +54,8 @@ gpuMatrix<-function(data,type="auto",device="auto"){
 #' @details `gpuEmptMatrix()`: Create an empty matrix without initialization in an openCL device
 #' @inheritParams gpuMatrix
 #' @param row,col the row and column number of the matrix
+#' 
+#' @return [gpuEmptMatrix()]: A gpuMatrix object
 #' @rdname gpuMatrix
 #' @export
 gpuEmptMatrix<-function(row=1,col=1,type="auto",device="auto"){
@@ -224,6 +228,7 @@ setMethod("length", signature(x="gpuMatrix"),
 #' 
 #' @inheritParams upload
 #' @param ... This argument is only for compatibility. It does not take any effect.
+#' @return A matrix
 #' @export
 as.matrix.gpuMatrix<-function(x,...){
   as.matrix(.data(x),.nrow(x),.ncol(x))
@@ -236,6 +241,7 @@ as.matrix.gpuMatrix<-function(x,...){
 #' 
 #' @inheritParams upload
 #' @param mode This argument is only for compatibility. It does not take any effect.
+#' @return A vector
 #' @export
 as.vector.gpuMatrix<-function(x, mode=NULL){
   as.vector(.data(x))
@@ -270,6 +276,7 @@ getIndexFromExp<-function(Exp){
 #' @docType methods
 #' @aliases [,gpuMatrix-method [
 #' @rdname gpuMatrix
+#' @return A matrix subset
 #' @export
 setMethod("[",
           signature(x = "gpuMatrix", i = "ANY", j = "ANY", drop="missing"),
@@ -299,6 +306,7 @@ setMethod("[",
 #' @param value The value you want to set
 #' @family Extract
 #' @rdname extract-methods
+#' @return no return value
 #' @export
 setMethod("[<-",
           signature(x = "gpuMatrix", i = "ANY", j = "ANY", value = "numeric"),
@@ -347,7 +355,7 @@ setMethod("[<-",
           })
 
 
-#' @details Get the matrix size in byte
+#' @details "getSize()": Get the matrix size in byte
 #' 
 #' 
 #' @aliases getSize,gpuMatrix-method getSize

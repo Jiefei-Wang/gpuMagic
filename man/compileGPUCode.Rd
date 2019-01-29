@@ -19,6 +19,9 @@ If an argument is treated as macro, its value cannot be changed by the code}
 
 \item{.options}{The package and openCL compilation options, please call \code{gpuSapply.getOption()} to get all the available options}
 }
+\value{
+A list of compilation information
+}
 \description{
 Compile the R function without excute it in the device.
 }
@@ -38,6 +41,4 @@ B=matrix(runif(n*m),n,m)
 res=compileGPUCode(1:m,matAdd,A,B)
 #print GPU code
 cat(res$gpu_code)
-
-
 }

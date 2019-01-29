@@ -23,6 +23,9 @@ If an argument is treated as macro, its value cannot be changed by the code}
 
 \item{.options}{The package and openCL compilation options, please call \code{gpuSapply.getOption()} to get all the available options}
 }
+\value{
+A vector or a matrix
+}
 \description{
 Please refer to sapply to see the basic usage
 }

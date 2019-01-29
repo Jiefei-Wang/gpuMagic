@@ -21,8 +21,8 @@ Imports: Rcpp,
   stringr, 
   BiocGenerics,
   hash
-biocViews:Infrastructure
-BugReports:https://github.com/Jiefei-Wang/gpuMagic/issues
+biocViews: Infrastructure
+BugReports: https://github.com/Jiefei-Wang/gpuMagic/issues
 SystemRequirements: C++11
 RoxygenNote: 6.1.1
 Roxygen: list(markdown = TRUE)
@@ -35,7 +35,6 @@ Collate:
     'RCParserFunc.R'
     'RRecompileFunc.R'
     'RProfilerFunc.R'
-    'gpuResourcesManager.R'
     'pkgFunc.R'
     'RCParser.R'
     'RCParserFunc_Rlevel.R'
@@ -46,11 +45,13 @@ Collate:
     'RProfilerSettings.R'
     'RProfilerSupportFunc.R'
     'RRecompiler.R'
+    'hash.R'
     'gpuApply.R'
     'gpuApply_Funcs.R'
     'gpuFunctions.R'
     'gpuMatix.R'
     'gpuRefAddress.R'
+    'gpuResourcesManager.R'
     'kernelManager.R'
     'pkgSetting.R'
     'varInfoManager.R'

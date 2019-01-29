@@ -6,10 +6,12 @@
 \usage{
 gpuSapply.getOption()
 }
+\value{
+An options class
+}
 \description{
 Get the package compilation options, the openCl compilation options(\code{kernel.getOption()}) are also included.
 }
 \examples{
 opt=gpuSapply.getOption()
-
 }

@@ -119,7 +119,7 @@ matchBracketFunc<-function(Exp){
     for(i in 3:length(Exp)){
       res[[argList[i-2]]]=Exp[[i]]
     }
-    for(i in 1:length(res)){
+    for(i in seq_along(res)){
       if(deparse(res[[i]])=="")
         res[[i]]=""
     }
@@ -186,7 +186,7 @@ printExp<-function(Exp){
 
 extract_for_if_Var<-function(parsedExp){
   code=c()
-  for(i in 1:length(parsedExp)){
+  for(i in seq_along(parsedExp)){
     curExp=parsedExp[[i]]
     if(!is.call(curExp)){
       code=c(code,curExp)

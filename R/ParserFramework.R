@@ -160,7 +160,7 @@ ProcessCodeSingle<-function(parserFunc,updateFunc,codeMetaInfo,curLevel,parsedEx
   list(codeMetaInfo=codeMetaInfo,parsedExp=parsedExp,code=code,Exp=Exp)
 }
 renamevariable<-function(parsedExp,renameList,i){
- for(j in 1:nrow(renameList))
+ for(j in seq_len(nrow(renameList)))
   parsedExp=renameVarInCode(parsedExp,i,renameList[j,1],renameList[j,2])
   parsedExp
 }

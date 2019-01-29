@@ -66,23 +66,15 @@ getEmpyTable<-function(type=""){
 }
 
 
-#Convert key to a hash set
-#If value is provided, it is a hash map
-toHash<-function(key,value=NULL){
-  if(is.null(value))
-    value=rep(0,length(key))
-  names(value)=key
-  hash(value)
-}
 
 primaryProp=c("dataType","precisionType","address","designSize1","designSize2","totalSize",
               "shared","location",
               "require","constVal","constDef","initialization","redirect")
-primaryPropHash=toHash(primaryProp)
+
 
 
 isPrimary<-function(x){
-  has.key(x,primaryPropHash)
+  x%in%primaryProp
 }
 
 #Check if a variable is in the table

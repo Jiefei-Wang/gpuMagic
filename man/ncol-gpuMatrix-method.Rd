@@ -11,6 +11,11 @@
 \arguments{
 \item{x}{an gpuMatrix object}
 }
+\value{
+\code{\link[=gpuMatrix]{gpuMatrix()}}: A gpuMatrix object
+
+\code{\link[=gpuEmptMatrix]{gpuEmptMatrix()}}: A gpuMatrix object
+}
 \description{
 gpuMatrix class
 }
@@ -30,7 +35,7 @@ It is only needed when you want to update value of the matrix.
 
 \code{length()}: Get the length of an gpuMatrix object.
 
-Get the matrix size in byte
+"getSize()": Get the matrix size in byte
 }
 \examples{
 n=10

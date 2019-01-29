@@ -6,6 +6,12 @@
 \usage{
 gpuMagic.getMemUsage()
 }
+\value{
+No return value, the result will be printed in the console.
+}
 \description{
 The function will print the memory usage on the console
+}
+\examples{
+gpuMagic.getMemUsage()
 }

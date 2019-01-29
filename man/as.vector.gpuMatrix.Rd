@@ -11,6 +11,9 @@
 
 \item{mode}{This argument is only for compatibility. It does not take any effect.}
 }
+\value{
+A vector
+}
 \description{
 The function will convert the gpuMatrix object into a vector,
 if you have run any GPU functions on the gpuMatrix object,

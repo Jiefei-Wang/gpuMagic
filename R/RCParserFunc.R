@@ -560,7 +560,7 @@ C_matMul_right_A<-function(varInfo,Exp){
   
   B_vec=c()
   B_ext=c()
-  for(i in 1:vector_size){
+  for(i in seq_len(vector_size)){
     B_code_tmp=R_expression_sub(varInfo,rightVar2,paste0("gpu_k*gpu_vector_size+gpu_start+",i-1),"gpu_j",
                                 i_C=TRUE,j_C=TRUE,base=0,opt=TRUE)
     B_code=R_expression_sub(varInfo,rightVar2,paste0("gpu_k*gpu_vector_size+gpu_start+",i-1),"gpu_j",
@@ -701,7 +701,7 @@ C_matMul_right_B<-function(varInfo,Exp){
   
   A_vec=c()
   A_ext=c()
-  for(j in 1:vector_size){
+  for(j in seq_len(vector_size)){
     A_code_tmp=R_expression_sub(varInfo,rightVar1,"gpu_i",paste0("gpu_k*gpu_vector_size+gpu_start+",j-1),
                                 i_C=TRUE,j_C=TRUE,base=0,opt=TRUE)
     A_code=R_expression_sub(varInfo,rightVar1,"gpu_i",paste0("gpu_k*gpu_vector_size+gpu_start+",j-1),

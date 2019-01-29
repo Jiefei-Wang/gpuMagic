@@ -1,4 +1,5 @@
 #' @include pkgFunc.R
+#' @include hash.R
 #======================GPU resources manager====================
 #The gpu manager is not supposed to be called by the user
 #It manage the all resources on a device
@@ -94,7 +95,7 @@
       adKey=digest(getTrueAd(gpuAd))
       if(internalVars$unload)
         return()
-      if(!hash::has.key(adKey,internalVars$addressSizeList[[devKey]])){
+      if(!has.key(adKey,internalVars$addressSizeList[[devKey]])){
         return()
       }
       .Call(C_release,gpuAd)

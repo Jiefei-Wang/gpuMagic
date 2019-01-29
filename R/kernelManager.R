@@ -2,7 +2,7 @@
 #' 
 #' @examples 
 #' #TODO
-#' 
+#' @return A vector or a matrix
 #' @export
 .kernel<-function(src="",kernel,parms,
                   .device="auto",.globalThreadNum="length(FirstArg)",.options=kernel.getOption()){
@@ -50,11 +50,11 @@
   #Create the data type macros
   #Add the signature if needed
   if(kernelOption$autoType&&length(dataType)!=0){
-    gAUTO=paste0("#define gAuto",1:length(dataType)," global ",dataType,"\n",collapse = "")
-    lAUTO=paste0("#define lAuto",1:length(dataType)," local ",dataType,"\n",collapse = "")
-    pAUTO=paste0("#define auto",1:length(dataType)," ",dataType,"\n",collapse = "")
+    gAUTO=paste0("#define gAuto",seq_along(dataType)," global ",dataType,"\n",collapse = "")
+    lAUTO=paste0("#define lAuto",seq_along(dataType)," local ",dataType,"\n",collapse = "")
+    pAUTO=paste0("#define auto",seq_along(dataType)," ",dataType,"\n",collapse = "")
     
-    AUTOVector=paste0("#define auto",1:length(dataType),"_v4 ",dataType,"4","\n",collapse = "")
+    AUTOVector=paste0("#define auto",seq_along(dataType),"_v4 ",dataType,"4","\n",collapse = "")
     
     src=paste0(gAUTO,lAUTO,pAUTO,AUTOVector,src)
     sig=c(sig,paste0(dataType,collapse = ""))
@@ -120,6 +120,7 @@
 #' @examples 
 #' opt=kernel.getOption()
 #' opt
+#' @return A list of available options
 #' @export
 kernel.getOption<-function(){
   curOp=list()
@@ -137,7 +138,7 @@ kernel.getOption<-function(){
     flag="",
     autoType=TRUE,
     stringsAsFactors=FALSE)
-  
+  curOp=structure(curOp,class="options")
   curOp
 }
 

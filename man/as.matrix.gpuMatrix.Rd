@@ -11,6 +11,9 @@
 
 \item{...}{This argument is only for compatibility. It does not take any effect.}
 }
+\value{
+A matrix
+}
 \description{
 The function will convert the gpuMatrix object into a matrix,
 if you have run any GPU functions on the gpuMatrix object,

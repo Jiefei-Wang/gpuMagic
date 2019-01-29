@@ -28,3 +28,7 @@ a matrix initialize with 0.
 The function create a matrix, it is only useful in the openCL functions.
 it can also be called in R, but its argument may or may not take any effect.
 }
+\examples{
+#Create a 10-by-10 matrix
+A=gMatrix(10,10)
+}

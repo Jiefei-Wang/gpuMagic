@@ -24,6 +24,11 @@
 
 \item{value}{The value you want to set}
 }
+\value{
+A matrix subset
+
+no return value
+}
 \description{
 extract/set parts of the data in gpuMatrix object
 }

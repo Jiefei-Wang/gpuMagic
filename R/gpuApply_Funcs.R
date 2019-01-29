@@ -2,7 +2,7 @@
 saveGPUcode<-function(GPUcode){
   GPUcode_hash=GPUcode
   GPUcode_hash$parms=NULL
-  for(i in 1:length(GPUcode_hash$varInfo)){
+  for(i in seq_along(GPUcode_hash$varInfo)){
     if(class(GPUcode_hash$varInfo[[i]])=="hash")
       GPUcode_hash$varInfo[[i]]=copy(GPUcode_hash$varInfo[[i]])
   }
@@ -189,7 +189,7 @@ completeGPUcode<-function(GPUcode){
                   "char",GPUVar$default_index_type,GPUVar$default_index_type,
                   "char",GPUVar$default_index_type,GPUVar$default_index_type,
                   GPUVar$default_float,GPUVar$default_index_type)
-  for(i in 1:length(arg_list)){
+  for(i in seq_along(arg_list)){
     curCode=paste0(arg_prefix_list[i]," ",arg_type_list[i],"* ",arg_list[i])
     if(i!=length(arg_list))
       curCode=paste0(curCode)
@@ -266,7 +266,7 @@ matchParms<-function(X,parms,FUN){
   names(parms)[1]=loopVar
   unmatchedName=setdiff(argNames,names(parms))
   parName=names(parms)
-  for(i in 1:length(parName)){
+  for(i in seq_along(parName)){
     if(parName[i]==""){
       if(length(unmatchedName)>0){
         parName[i]=unmatchedName[1]
@@ -336,7 +336,7 @@ opt_matrixDim<-function(varInfo,code,.options){
     paste0("gpu_",opt_target_space,"_size2")
   )
   variable_definition=c()
-  for(i in 1:length(opt_target)){
+  for(i in seq_along(opt_target)){
     res=opt_matrixDim_hidden(opt_code,opt_target[i])
     variable_definition=c(variable_definition,res$variable_definition)
     opt_code=res$code_optimization

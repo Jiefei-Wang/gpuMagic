@@ -9,6 +9,9 @@ gpuMagic.getOptions(opt = "all")
 \arguments{
 \item{opt}{The options that the function will return. It can be either "all" or a vector of the option names.}
 }
+\value{
+A list of the options
+}
 \description{
 The functions get the computing precision when compile the GPU code and the number of workers in a computing group.
 }
@@ -22,6 +25,8 @@ Similarly, If the data has an Integer storage model. \code{default.int} will be 
 
 \code{default.thread.num} is used to control the number of workers in a group in openCL. It is not expected to be changed unless you know what you are doing.
 }
-\seealso{
-\code{\link[=gpuMagic.setOptions]{gpuMagic.setOptions()}} for changing the options.
+\examples{
+#Get all the available options
+opt=gpuMagic.getOptions()
+opt
 }

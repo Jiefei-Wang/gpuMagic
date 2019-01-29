@@ -5,7 +5,6 @@
 #' @importFrom stringr str_match_all
 #' @importFrom DescTools StrAlign
 #' @importFrom future future value
-#' @import hash
 #' @import methods
 #' @import BiocGenerics
 #' @useDynLib gpuMagic, .registration = TRUE,  .fixes = "C_"
@@ -19,7 +18,7 @@
   library.dynam.unload("gpuMagic",libpath)
 }
 .onLoad<-function(libname, pkgname){
-  setDevice(1)
+  #setDevice(1)
 }
 
 DEBUG=TRUE
