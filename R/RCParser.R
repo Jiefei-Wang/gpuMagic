@@ -145,14 +145,6 @@ RCcompilerLevel1<-function(profileMeta2){
   }
   
   
-  declareTransposeArry<-function(varName,len){
-    if(len>0)
-      return(paste0("bool ",varName,"[",len,"]={0};"))
-    else
-      return(NULL)
-  }
-  
-  
   gpu_code=c(
     "//Define some useful macro", 
     paste0("#define ", gpu_gp_totalSize," ",gpu_sizeInfo,"[0]"),
@@ -175,11 +167,6 @@ RCcompilerLevel1<-function(profileMeta2){
     paste0(gpu_return_variable,"=",gpu_return_variable,"+",gpu_returnSize,"*",gpu_global_id,";"),
     "//variable definitions",
     var_def_code,
-    "//variable transpose information",
-    declareTransposeArry(gpu_gp_transpose,nrow(varInfo$matrix_gp)),
-    declareTransposeArry(gpu_gs_transpose,nrow(varInfo$matrix_gs)),
-    declareTransposeArry(gpu_lp_transpose,nrow(varInfo$matrix_lp)),
-    declareTransposeArry(gpu_ls_transpose,nrow(varInfo$matrix_ls)),
     "//End of the stage 1 compilation",
     "//Thread number optimization",
     "//Matrix dimension optimization"

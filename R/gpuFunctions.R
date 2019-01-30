@@ -106,7 +106,7 @@ getSingleDeviceInfo<-function(platform,device){
 #' @param ... just for making the package checking happy.
 #' @examples 
 #' opt=gpuMagic.getOptions()
-#' print.options(opt)
+#' print(opt)
 #' @return No return value, the result will be printed in the console
 #' @export
 print.options<-function(x,...){

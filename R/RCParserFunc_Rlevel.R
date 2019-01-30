@@ -1,3 +1,30 @@
+#Fill the target vector with default value to reach the desinged length
+fillDefauleValue<-function(target,designLen,default){
+  if(designLen==length(target)){
+    return(target)
+  }
+  if(designLen>length(target)){
+    target_new=rep(default,designLen)
+    target_new[seq_len(designLen)]=target
+  }else{
+    target_new=target[seq_len(designLen)]
+  }
+  target_new
+}
+R_expression_sub<-function(varInfo,Exp,sub,sub_C=FALSE,opt=FALSE,extCode=NULL,base=1){
+  #fill the vector with the first element to make the length of it consistant with the length of Exp
+  sub_C=fillDefauleValue(sub_C,length(sub),sub_C[1])
+  opt=fillDefauleValue(opt,length(sub),sub_C[1])
+  
+  if(length(sub)==1){
+    res=R_oneIndex_exp_sub(varInfo,Exp,sub,sub_C,opt,extCode,base)
+  }else{
+    res=R_twoIndex_exp_sub(varInfo,Exp,sub[1],sub[2],sub_C[1],sub_C[2],opt,extCode,base)
+  }
+  return(res)
+}
+
+
 #Expression should be a variable or a matrix subset
 #R_oneIndex_exp_sub(varInfo,quote(A[tmp1]),3)
 R_oneIndex_exp_sub<-function(varInfo,Exp,k,k_C=FALSE,opt=FALSE,optCode=list(),base=1){
@@ -86,6 +113,7 @@ oneIndex_to_twoIndex<-function(varInfo,Exp,k_C_value,rowNum,opt=opt,optCode=optC
 }
 
 
+R_twoIndex_exp_sub(varInfo,Exp,sub[1],sub[2],sub_C[1],sub_C[2],opt,extCode,base)
 #get the i,jth element from the expression, 
 #the expression can be a variable, a matrix subset or a number
 #i,j can be interpreted as an R object or a C object, it is determined by i_C and j_C
@@ -93,8 +121,8 @@ oneIndex_to_twoIndex<-function(varInfo,Exp,k_C_value,rowNum,opt=opt,optCode=optC
 #Exp can be empty, then i will be returned
 #Exp can be a value, then the value will be returned
 #Exp can be a scalar, then the value will be returned
-#R_expression_sub(varInfo,quote(A[tmp1,]),3,6)
-R_expression_sub<-function(varInfo,Exp,i,j=1,opt=FALSE,optCode=list(),i_C=FALSE,j_C=FALSE,base=1){
+#R_twoIndex_exp_sub(varInfo,quote(A[tmp1,]),3,6)
+R_twoIndex_exp_sub<-function(varInfo,Exp,i,j=1,i_C=FALSE,j_C=FALSE,opt=FALSE,extCode=NULL,base=1){
   #Convert all the 0-based index to 1-based index
   i=paste0(i,"+",1-base)
   j=paste0(j,"+",1-base)

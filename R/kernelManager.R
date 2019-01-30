@@ -1,5 +1,14 @@
 #' Excute the openCL function
 #' 
+#' @param src the source code, it can be either a file directory or the code
+#' @param kernel the kernel function that will be called on GPU
+#' @param parms a list containning the function arguments. 
+#' The number of elements in the list has to match the number of function arguments.
+#' @param .device the device that will excute the function. 
+#' If not specified, all the selected devices will be used.
+#' @param .globalThreadNum the number of thread that will be created to excute the kernel. 
+#' If not specified, the length of the first argument will be used as the thread number
+#' @param .options the kernel options
 #' @examples 
 #' #TODO
 #' @return A vector or a matrix

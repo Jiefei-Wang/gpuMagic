@@ -7,6 +7,22 @@
 .kernel(src = "", kernel, parms, .device = "auto",
   .globalThreadNum = "length(FirstArg)", .options = kernel.getOption())
 }
+\arguments{
+\item{src}{the source code, it can be either a file directory or the code}
+
+\item{kernel}{the kernel function that will be called on GPU}
+
+\item{parms}{a list containning the function arguments.
+The number of elements in the list has to match the number of function arguments.}
+
+\item{.device}{the device that will excute the function.
+If not specified, all the selected devices will be used.}
+
+\item{.globalThreadNum}{the number of thread that will be created to excute the kernel.
+If not specified, the length of the first argument will be used as the thread number}
+
+\item{.options}{the kernel options}
+}
 \value{
 A vector or a matrix
 }

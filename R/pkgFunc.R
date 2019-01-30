@@ -154,11 +154,6 @@ GPUVar<-local({
 
 #' @include RCParserFunc.R
 .cFuncs=list()
-.cFuncs[["<->"]]=C_arithmaticOP_right
-.cFuncs[["<->="]]=C_arithmaticOP_right
-.cFuncs[["<-<"]]=C_arithmaticOP_right
-.cFuncs[["<-<="]]=C_arithmaticOP_right
-.cFuncs[["<-=="]]=C_arithmaticOP_right
 .cFuncs[["<-matrix"]]=C_matrix_right
 .cFuncs[["<-length"]]= C_length_left_right
 .cFuncs[["<-nrow"]]= C_nrow_left_right
@@ -280,21 +275,21 @@ resize<-function(data,nrow,ncol){
 #' ind=1:10
 #' A=matrix(0,100,100)
 #' #Use the one-index subsetting, create a vector of length 10
-#' B=subref(A,ind)
+#' B=subRef(A,ind)
 #' #Subsetting the matrix A,create a 10-by-10 matrix
-#' C=subref(A,ind,ind)
+#' C=subRef(A,ind,ind)
 #' #row subsetting 
-#' D=subref(A,ind,)
+#' D=subRef(A,ind,)
 #' #column subsetting
-#' E=subref(A,,ind)
+#' E=subRef(A,,ind)
 #' @return A reference to the subset of a matrix
 #' @export
 subRef<-function(variable,i="",j=""){
-  if(i==""&&j=="")
+  if(length(i)==1&&length(j)==1&&i==""&&j=="")
     return(variable[,,drop=FALSE])
-  if(i=="")
+  if(length(i)==1&&i=="")
     return(variable[,j,drop=FALSE])
-  if(j=="")
+  if(length(j)==1&&j=="")
     return(variable[i,,drop=FALSE])
   return(variable[i,j,drop=FALSE])
 }

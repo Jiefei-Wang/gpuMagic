@@ -5,6 +5,7 @@
 #' @importFrom stringr str_match_all
 #' @importFrom DescTools StrAlign
 #' @importFrom future future value
+#' @importFrom utils ls.str
 #' @import methods
 #' @import BiocGenerics
 #' @useDynLib gpuMagic, .registration = TRUE,  .fixes = "C_"

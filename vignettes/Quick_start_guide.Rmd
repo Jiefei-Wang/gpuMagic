@@ -36,7 +36,7 @@ The devices listed above shows you the current avalable device in your computer,
 getDeviceInfo(1)
 setDevice(1)
 ```
-The package also have a GPU resources manager. You can check your memory usage at any time by calling
+The package also have a GPU resources manager. You can check your memory usage at any time by
 ```{r}
 gpuMagic.getMemUsage()
 ```

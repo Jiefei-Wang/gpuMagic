@@ -120,13 +120,8 @@ C_general_scalar_assignment<-function(varInfo,Exp,funcName,func){
     
   }
   
-  if(is.list(code_left)){
-    extCode=c(extCode,code_left$extCode)
-    value_left=code_left$value
-  }else{
-    value_left=code_left
-  }
-  
+  extCode=c(extCode,code_left$extCode)
+  value_left=code_left$value
   
   #if the right expression is the length function
   if(is.call(rightExp)){
@@ -139,12 +134,8 @@ C_general_scalar_assignment<-function(varInfo,Exp,funcName,func){
     code_right=R_expression_sub(varInfo,rightExp,1)
   }
   
-  if(is.list(code_right)){
-    extCode=c(extCode,code_right$extCode)
-    value_right=code_right$value
-  }else{
-    value_right=code_right
-  }
+  extCode=c(extCode,code_right$extCode)
+  value_right=code_right$value
   
   code=paste0(value_left,"=",value_right,";")
   
@@ -157,54 +148,90 @@ C_general_scalar_assignment<-function(varInfo,Exp,funcName,func){
 C_general_matrix_assignment<-function(varInfo,leftVar,rightVar,func=matrix_assignment_func_doNothing,rightBound=NULL){
   leftDataType=getVarProperty(varInfo,leftVar,"dataType")
   if(leftDataType==T_scale){
-    loopCode=NULL
     
-    code_left=R_oneIndex_exp_sub(varInfo,leftVar,k=1)
-    code_right=R_oneIndex_exp_sub(varInfo,rightVar,k=1)
+    code_left=C_element_getCExp(varInfo,leftVar,"0","0")
+    code_right=C_element_getCExp(varInfo,rightVar,"0","0",extCode=code_left$extCode)
+    extCode=c(code_left$extCode,code_right$extCode)
+    code=paste0(extCode,
+      func(code_left$value,code_right$value),";")
     
-    endCode=NULL
   }else{
     code_right=R_oneIndex_exp_sub(varInfo,rightVar,k="gpu_general_index",k_C=TRUE,base=0)
     #dispatch accoding to if the right matrix has boundary
     #if the right matrix is a number, boundary will be ignored
     if(is.null(rightBound)||
        length(grep("gpu_general_index",code_right$value,fixed = TRUE))==0){
-      loopCode=paste0("for(", GPUVar$default_index_type," gpu_general_index=0;gpu_general_index<",R_length(varInfo,leftVar),";gpu_general_index++){")
       
-      code_left=R_oneIndex_exp_sub(varInfo,leftVar,k="gpu_general_index",k_C=TRUE,base=0)
-      #right code is defined above
-      #code_right=R_oneIndex_exp_sub(varInfo,rightVar,k="gpu_general_index",k_C=TRUE,base=0)
+      i="gpu_general_index_i"
+      j="gpu_general_index_j"
+      code_left=C_element_getCExp(varInfo,leftVar,i,j)
+      code_right=C_element_getCExp(varInfo,rightVar,i,j,extCode=code_left$extCode)
+      bodyCode=paste0(func(code_left$value,code_right$value),";")
+        
+      code=C_matrix_assignment(bodyCode,
+                               loopInd1 =j,loopEnd1 =R_ncol(varInfo,leftVar),
+                               loopInd2=i,loopEnd2=R_nrow(varInfo,leftVar),
+                               loopCode1 = code_right$extCode)
       
-      endCode="}"
     }else{
-      loopCode=c(
-        "{",
-        paste0(GPUVar$default_index_type," gpu_general_index_k=0;"),
-        paste0(GPUVar$default_index_type," gpu_right_matrix_length=",rightBound,";"),
-        paste0("for(", GPUVar$default_index_type," gpu_general_index_i=0;gpu_general_index_i<",R_length(varInfo,leftVar),";gpu_general_index_i++){")
-        )
-      
-      code_left=R_oneIndex_exp_sub(varInfo,leftVar,k="gpu_general_index_i",k_C=TRUE,base=0)
+      code_left=R_oneIndex_exp_sub(varInfo,leftVar,k=="gpu_general_index_i",k_C=TRUE,base=0)
       code_right=R_oneIndex_exp_sub(varInfo,rightVar,k="gpu_general_index_k",k_C=TRUE,base=0)
       
+      bodyCode=paste0(func(code_left$value,code_right$value),";")
+      extCode=c(code_left$extCode,code_right$extCode)
       endCode=c(
         "gpu_general_index_k=gpu_general_index_k+1;",
         paste0("if(gpu_general_index_k==gpu_right_matrix_length){"),
-        "gpu_general_index_k=0;",
-        "}",
-        "}",
-        "}"
+        "gpu_general_index_k=0;"
         )
+      
+      code=c(
+        "{",
+        paste0(GPUVar$default_index_type," gpu_general_index_k=0;"),
+        paste0(GPUVar$default_index_type," gpu_right_matrix_length=",rightBound,";"),
+        C_matrix_assignment(bodyCode,
+                            loopInd1 ="gpu_general_index_i",loopEnd1 =R_length(varInfo,leftVar),
+                            loopCode1=extCode,endCode = endCode),
+        "}"
+      )
     }
   }
-  value_left=code_left$value
-  value_right=code_right$value
-  extCode=c(code_left$extCode,code_right$extCode)
   
-  code=c(loopCode,
-         extCode,
-         paste0(func(value_left,value_right),";"),
-         endCode)
+  code
+}
+
+#This function will not check the variable in the varInfo
+#it just create a for loop in C code format
+#for(loopStart1:loopEnd1-1){
+#loopCode1
+#for(loopStart2:loopEnd2-1){
+#loopCode2
+#bodyCode
+#endCode
+#}
+#}
+C_matrix_assignment<-function(bodyCode,
+                              loopInd1,loopStart1="0",loopEnd1,
+                              loopInd2=NULL,loopStart2="0",loopEnd2=NULL,
+                              loopCode1=NULL,loopCode2=NULL,endCode=NULL){
+  code=
+  code=c(
+    paste0("for(",GPUVar$default_index_type," ",loopInd1,"=",loopStart1,
+           ";",loopInd1,"<",loopEnd1,";",loopInd1,"++){"),
+    loopCode1
+  )
+  if(!is.null(loopEnd2)){
+    code=c(code,
+           paste0("for(",GPUVar$default_index_type," ",loopInd2,"=",loopStart2,
+                  ";",loopInd2,"<",loopEnd2,";",loopInd2,"++){"),
+           loopCode2)
+    endCode=c(endCode,"}")
+  }
+  code=c(code,
+         bodyCode,
+         endCode,
+         "}"
+  )
   code
 }
 

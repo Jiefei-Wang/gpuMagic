@@ -7,6 +7,8 @@ hash<-function(){
   x
 }
 
+
+
 is.hash<-function(x){
   class(x)=="hash"
 }
@@ -26,6 +28,7 @@ values<-function(x){
 del<-function(key,x){
   key=toCharacter(key)
   x$data[[key]]=NULL
+  
 }
 
 clear<-function(x){
@@ -35,7 +38,11 @@ clear<-function(x){
 '[[.hash'<-function(x,key){
   key=toCharacter(key)
   x$data[[key]]
+  #x[[key]]
+  #NextMethod(x,key)
 }
+
+
 
 '[[<-.hash'<-function(x,key,value){
   key=toCharacter(key)

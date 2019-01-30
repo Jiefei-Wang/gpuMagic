@@ -46,6 +46,8 @@ C_assignment_dispatch<-function(varInfo,Exp){
 }
 
 #==================element functions===========================
+
+
 C_element_OP<-function(varInfo,Exp){
   leftExp=Exp[[2]]
   rightExp=Exp[[3]]
@@ -59,13 +61,7 @@ C_element_OP<-function(varInfo,Exp){
     rightElement=C_element_getCExp(varInfo,rightExp,"gpu_element_i","gpu_element_j",extCode=leftElement$extCode)
   }
   
-  
-  extCode=rightElement$extCode
-  optCode=NULL
-  if(!is.null(extCode))
-    for(i in seq_len(nrow(extCode))){
-      optCode=rbind(optCode,paste0(GPUVar$default_index_type," ",paste0(extCode[i,],collapse="="),";"))
-    }
+  optCode=finalizeExtCode(rightElement$extCode)
   
   assignmentCode=paste0(leftElement$value,"=",rightElement$value,";")
   if(leftInfo$dataType==T_scale){
@@ -78,40 +74,28 @@ C_element_OP<-function(varInfo,Exp){
              "}"
              )
   }else{
-    code=c(
-      paste0("for(",GPUVar$default_index_type," gpu_element_j=0;gpu_element_j<",
-             R_ncol(varInfo,leftExp),";gpu_element_j++){"),
-      optCode,
-      paste0("for(",GPUVar$default_index_type," gpu_element_i=0;gpu_element_i<",
-             R_nrow(varInfo,leftExp),";gpu_element_i++){"),
-      assignmentCode,
-      "}",
-      "}"
-    )
+    code=C_matrix_assignment(assignmentCode,
+                             loopInd1 = "gpu_element_j",loopEnd1 = R_ncol(varInfo,leftExp),
+                             loopInd2 = "gpu_element_i",loopEnd2 = R_nrow(varInfo,leftExp),
+                             loopCode1 = optCode)
   }
   return(code)
-  
-  
 }
+#Return:
+#list:value,extCode
 C_element_getCExp<-function(varInfo,Exp,i,j,extCode=NULL){
   if(isNumeric(Exp)){
     res=list(value=toCharacter(Exp),extCode=extCode)
     return(res)
   }
   
-  if(is.symbol(Exp)){
+  if(is.symbol(Exp)||Exp[[1]]=="["){
     res=R_expression_sub(varInfo,Exp,i,j,i_C=TRUE,j_C=TRUE,base=0,opt=TRUE)
     if(!is.null(res$colOffset)){
-      if(res$colOffset!=i){
-        if(!is.null(extCode)&&res$colOffset%in%extCode[,2]){
-          ind=which(res$colOffset==extCode[,2])
-          opt_var=extCode[ind,1]
-          res=R_expression_sub(varInfo,Exp,i,j,i_C=TRUE,j_C=TRUE,base=0,optCode = list(colVar=opt_var))
-        }else{
-          opt_var=GPUVar$getTmpVar()
-          extCode=rbind(extCode,c(opt_var,res$colOffset))
-          res=R_expression_sub(varInfo,Exp,i,j,i_C=TRUE,j_C=TRUE,base=0,optCode = list(colVar=opt_var))
-        }
+      if(res$colOffset!=j){
+        var_res=getVarFromExtCode(extCode,GPUVar$default_index_type,res$colOffset)
+        extCode=var_res$extCode
+        res=R_expression_sub(varInfo,Exp,i,j,i_C=TRUE,j_C=TRUE,base=0,optCode = list(colVar=var_res$var))
       }
     }
     res$extCode=extCode
@@ -127,6 +111,7 @@ C_element_getCExp<-function(varInfo,Exp,i,j,extCode=NULL){
   stop("Unsupported function: ",deparse(Exp))
   
 }
+
 
 C_element_arithmatic<-function(varInfo,Exp,i,j,extCode){
   op=deparse(Exp[[1]])
@@ -164,84 +149,8 @@ C_element_ceil<-function(varInfo,Exp,i,j,extCode){
 #Both side is a symbol or a number
 #Exp=parse(text="A=1")[[1]]
 C_assignment_symbols<-function(varInfo,Exp){
-  leftExp=Exp[[2]]
-  rightExp=Exp[[3]]
-  if(isNumeric(leftExp)){
-    stop("The left expression cannot be a constant: ",deparse(Exp))
-  }
-  leftDataType=getVarProperty(varInfo,leftExp,"dataType")
-  if(leftDataType==T_scale){
-    code_left=R_expression_sub(varInfo,leftExp,1)
-    code_right=R_expression_sub(varInfo,rightExp,1)
-    code=c(code_left$extCode,
-           code_right$extCode,
-           paste0(code_left$value,"=",code_right$value,";")
-          )
-  }else{
-    code_left=R_expression_sub(varInfo,leftExp,i="gpu_symbols_i",j="gpu_symbols_j",i_C=TRUE,j_C=TRUE,base=0)
-    code_right=R_expression_sub(varInfo,rightExp,i="gpu_symbols_i",j="gpu_symbols_j",i_C=TRUE,j_C=TRUE,base=0)
-    code=c(
-      paste0("for(",GPUVar$default_index_type," gpu_symbols_i=0;gpu_symbols_i<",
-             R_nrow(varInfo,leftExp),";gpu_symbols_i++){"),
-      paste0("for(",GPUVar$default_index_type," gpu_symbols_j=0;gpu_symbols_j<",
-             R_ncol(varInfo,leftExp),";gpu_symbols_j++){"),
-      code_left$extCode,
-      code_right$extCode,
-      paste0(code_left$value,"=",code_right$value,";"),
-      "}",
-      "}"
-    )
-  }
+  code=C_element_OP(varInfo,Exp)
   return(code)
-}
-
-
-C_arithmaticOP_right<-function(varInfo,Exp){
-  leftVar=Exp[[2]]
-  rightExp=Exp[[3]]
-  
-  leftEle=rightExp[[2]]
-  rightEle=rightExp[[3]]
-  op=deparse(rightExp[[1]])
-    
-  leftDataType=getVarProperty(varInfo,leftVar,"dataType")
-  if(leftDataType==T_scale){
-    loopCode=NULL
-    
-    code_left=R_expression_sub(varInfo,leftVar,i=1)
-    code_leftEle=R_expression_sub(varInfo,leftEle,i=1)
-    code_rightEle=R_expression_sub(varInfo,rightEle,i=1)
-    
-    endCode=NULL
-  }else{
-    loopCode=c(
-      paste0("for(", GPUVar$default_index_type," gpu_arithmatic_i=0;gpu_arithmatic_i<",R_nrow(varInfo,leftVar),";gpu_arithmatic_i++){"),
-      paste0("for(", GPUVar$default_index_type," gpu_arithmatic_j=0;gpu_arithmatic_j<",R_ncol(varInfo,leftVar),";gpu_arithmatic_j++){")
-    )
-    
-    code_left=R_expression_sub(varInfo,leftVar,i="gpu_arithmatic_i",j="gpu_arithmatic_j",i_C =TRUE,j_C=TRUE,base=0)
-
-    code_leftEle=R_expression_sub(varInfo,leftEle,i="gpu_arithmatic_i",j="gpu_arithmatic_j",i_C =TRUE,j_C=TRUE,base=0)
-    code_rightEle=R_expression_sub(varInfo,rightEle,i="gpu_arithmatic_i",j="gpu_arithmatic_j",i_C =TRUE,j_C=TRUE,base=0)
-   
-    endCode=c(
-      "}",
-      "}")
-  }
-  
-  value_left=code_left$value
-  value_right=paste0(code_leftEle$value,op,code_rightEle$value)
-  extCode=c(code_left$extCode,code_leftEle$extCode,code_rightEle$extCode)
-  
-  #If the operation is division, it need to be cast to a floating number
-  if(op=="/")
-    value_right=paste0("(",GPUVar$default_float,")",value_right)
-  
-  code=c(loopCode,
-         extCode,
-         paste0(value_left,"=",value_right,";"),
-         endCode)
-  code
 }
 
 #Exp=parse(text="A=matrix(1,10,1)")[[1]]
@@ -293,30 +202,34 @@ C_subset_right<-function(varInfo,Exp){
   code
 }
 
-
-#Exp=parse(text="return(tmp1)")[[1]]
+#varInfo=GPUExp2$varInfo
+#Exp=parse(text="return(C)")[[1]]
 C_return<-function(varInfo,Exp){
   if(length(Exp)==1) return("return;")
   returnVar=Exp[[2]]
   
-  code_right=R_expression_sub(varInfo,returnVar,"gpu_return_i","gpu_return_j",i_C =TRUE,j_C=TRUE,base=0)
-  curCode=c(
-          "{",
-          paste0(GPUVar$default_index_type," gpu_return_k=0;"),
-          paste0("for(",GPUVar$default_index_type," gpu_return_i=0;gpu_return_i<",R_nrow(varInfo,returnVar),";gpu_return_i++){\n"),
-          paste0("for(",GPUVar$default_index_type," gpu_return_j=0;gpu_return_j<",R_ncol(varInfo,returnVar),";gpu_return_j++){\n"),
-          code_right$extCode,
-          paste0(GPUVar$return_variable,"[gpu_return_k]=",
-                 code_right$value,";"),
-          "gpu_return_k=gpu_return_k+1;",
-          paste0("if(gpu_return_k==",GPUVar$return_size,"){"),
-          "break;",
-          "}",
-          "}",
-          "}",
-          "}"
-          )
-  curCode
+  
+  code_right=C_element_getCExp(varInfo,returnVar,"gpu_return_i","gpu_return_j")
+  
+  
+  loopBody=paste0(GPUVar$return_variable,"[gpu_return_k]=",
+                  code_right$value,";")
+  extCode=finalizeExtCode(code_right$extCode)
+  endCode=c("gpu_return_k=gpu_return_k+1;",
+            paste0("if(gpu_return_k==",GPUVar$return_size,"){"),
+            "break;",
+            "}")
+  code=c(
+    "{",
+    paste0(GPUVar$default_index_type," gpu_return_k=0;"),
+    C_matrix_assignment(loopBody,
+                        loopInd1 = "gpu_return_j",loopEnd1 = R_ncol(varInfo,returnVar),
+                        loopInd2 = "gpu_return_i",loopEnd2 = R_nrow(varInfo,returnVar),
+                        loopCode1 = extCode,endCode=endCode
+    ),
+    "}")
+  
+  code
 }
 C_break<-function(varInfo,Exp){
   "break;"
@@ -342,6 +255,7 @@ C_message<-function(varInfo,Exp){
     size2=R_ncol(varInfo,varName)
     subsetCode=R_expression_sub(varInfo,varName,"gpu_msg_i","gpu_msg_j",i_C =TRUE,j_C=TRUE,base=0)
 
+    
     code=c(paste0("for(uint gpu_msg_i=0;gpu_msg_i<",size1,";gpu_msg_i++){"),
            paste0("for(uint gpu_msg_j=0;gpu_msg_j<",size2,";gpu_msg_j++){"),
            subsetCode$extCode,
