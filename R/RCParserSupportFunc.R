@@ -87,7 +87,23 @@ gpu_cast_long<-function(x){
 gpu_cast_ulong<-function(x){
   trunc(x)
 }
+#Check if x is a valid symbol(no `` around the x)
+isSymbol<-function(x){
+  x=as.symbol(x)
+  length(grep('`',capture.output(x)))==0
+}
 
+
+
+
+getSeqAddress<-function(varInfo,var){
+  curInfo=getVarInfo(varInfo,var)
+  ad=curInfo$address
+  from=paste0(ad,"[0]")
+  to=paste0(ad,"[1]")
+  by=paste0(ad,"[2]")
+  data.frame(from=from,to=to,by=by,stringsAsFactors = FALSE)
+}
 
 
 
@@ -111,17 +127,16 @@ C_general_scalar_assignment<-function(varInfo,Exp,funcName,func){
   #if the left expression is the length function
   if(is.call(leftExp)){
     if(deparse(leftExp[[1]])%in%funcName){
-      code_left=func[[which(funcName==deparse(leftExp[[1]]))]](varInfo,leftExp)
+      value_left=func[[which(funcName==deparse(leftExp[[1]]))]](varInfo,leftExp)
     }else{
       stop("Unexpected function:", deparse(Exp))
     }
   }else{
-    code_left=R_expression_sub(varInfo,leftExp,1)
-    
+    res=R_expression_sub(varInfo,leftExp,sub=1,sub_C=TRUE,extCode=extCode)
+    value_left=res$value
+    extCode=res$extCode
   }
   
-  extCode=c(extCode,code_left$extCode)
-  value_left=code_left$value
   
   #if the right expression is the length function
   if(is.call(rightExp)){
@@ -131,15 +146,15 @@ C_general_scalar_assignment<-function(varInfo,Exp,funcName,func){
       stop("Unexpected function:", deparse(Exp))
     }
   }else{
-    code_right=R_expression_sub(varInfo,rightExp,1)
+    res=R_expression_sub(varInfo,rightExp,sub=1,sub_C=TRUE,extCode=extCode)
+    value_right=res$value
+    extCode=res$extCode
   }
   
-  extCode=c(extCode,code_right$extCode)
-  value_right=code_right$value
-  
+  extCode=finalizeExtCode(extCode)
   code=paste0(value_left,"=",value_right,";")
   
-  return(c(extCode,code))
+  return(c(extCode$optCode,extCode$extraCode,code))
 }
 #This function is for the general matrix assignment
 #The left and right variable should be able to be directly processed by the oneIndex_sub function
@@ -148,37 +163,38 @@ C_general_scalar_assignment<-function(varInfo,Exp,funcName,func){
 C_general_matrix_assignment<-function(varInfo,leftVar,rightVar,func=matrix_assignment_func_doNothing,rightBound=NULL){
   leftDataType=getVarProperty(varInfo,leftVar,"dataType")
   if(leftDataType==T_scale){
-    
-    code_left=C_element_getCExp(varInfo,leftVar,"0","0")
-    code_right=C_element_getCExp(varInfo,rightVar,"0","0",extCode=code_left$extCode)
-    extCode=c(code_left$extCode,code_right$extCode)
-    code=paste0(extCode,
+    sub=c(0,0)
+    code_left=C_element_getCExp(varInfo,leftVar,sub=sub,opt=FALSE)
+    code_right=C_element_getCExp(varInfo,rightVar,sub=sub,extCode=code_left$extCode,opt=FALSE)
+    extCode=finalizeExtCode(code_right$extCode)
+    code=paste0(extCode$optCode,extCode$extraCode,
       func(code_left$value,code_right$value),";")
     
   }else{
-    code_right=R_oneIndex_exp_sub(varInfo,rightVar,k="gpu_general_index",k_C=TRUE,base=0)
     #dispatch accoding to if the right matrix has boundary
     #if the right matrix is a number, boundary will be ignored
-    if(is.null(rightBound)||
-       length(grep("gpu_general_index",code_right$value,fixed = TRUE))==0){
+    if(is.null(rightBound)){
       
       i="gpu_general_index_i"
       j="gpu_general_index_j"
-      code_left=C_element_getCExp(varInfo,leftVar,i,j)
-      code_right=C_element_getCExp(varInfo,rightVar,i,j,extCode=code_left$extCode)
+      sub=c(i,j)
+      code_left=C_element_getCExp(varInfo,leftVar,sub=sub)
+      code_right=C_element_getCExp(varInfo,rightVar,sub=sub,extCode=code_left$extCode)
       bodyCode=paste0(func(code_left$value,code_right$value),";")
-        
+      extCode=finalizeExtCode(code_right$extCode)
+      
       code=C_matrix_assignment(bodyCode,
                                loopInd1 =j,loopEnd1 =R_ncol(varInfo,leftVar),
                                loopInd2=i,loopEnd2=R_nrow(varInfo,leftVar),
-                               loopCode1 = code_right$extCode)
+                               loopCode1 = extCode$optCode,loopCode2 = extCode$extraCode)
       
     }else{
-      code_left=R_oneIndex_exp_sub(varInfo,leftVar,k=="gpu_general_index_i",k_C=TRUE,base=0)
-      code_right=R_oneIndex_exp_sub(varInfo,rightVar,k="gpu_general_index_k",k_C=TRUE,base=0)
+      sub
+      code_left=C_element_getCExp(varInfo,leftVar,sub="gpu_general_index_i",opt=FALSE)
+      code_right=C_element_getCExp(varInfo,rightVar,sub="gpu_general_index_k",extCode=code_left$extCode,opt=FALSE)
       
       bodyCode=paste0(func(code_left$value,code_right$value),";")
-      extCode=c(code_left$extCode,code_right$extCode)
+      extCode=finalizeExtCode(code_right$extCode)
       endCode=c(
         "gpu_general_index_k=gpu_general_index_k+1;",
         paste0("if(gpu_general_index_k==gpu_right_matrix_length){"),
@@ -191,7 +207,7 @@ C_general_matrix_assignment<-function(varInfo,leftVar,rightVar,func=matrix_assig
         paste0(GPUVar$default_index_type," gpu_right_matrix_length=",rightBound,";"),
         C_matrix_assignment(bodyCode,
                             loopInd1 ="gpu_general_index_i",loopEnd1 =R_length(varInfo,leftVar),
-                            loopCode1=extCode,endCode = endCode),
+                            loopCode1=c(extCode$optCode,extCode$extraCode),endCode1 = endCode),
         "}"
       )
     }
@@ -207,29 +223,31 @@ C_general_matrix_assignment<-function(varInfo,leftVar,rightVar,func=matrix_assig
 #for(loopStart2:loopEnd2-1){
 #loopCode2
 #bodyCode
-#endCode
+#endCode2
 #}
+#endCode1
 #}
 C_matrix_assignment<-function(bodyCode,
                               loopInd1,loopStart1="0",loopEnd1,
                               loopInd2=NULL,loopStart2="0",loopEnd2=NULL,
-                              loopCode1=NULL,loopCode2=NULL,endCode=NULL){
+                              loopCode1=NULL,loopCode2=NULL,endCode1=NULL,endCode2=NULL){
   code=
   code=c(
     paste0("for(",GPUVar$default_index_type," ",loopInd1,"=",loopStart1,
            ";",loopInd1,"<",loopEnd1,";",loopInd1,"++){"),
     loopCode1
   )
-  if(!is.null(loopEnd2)){
+  if(!is.null(loopInd2)){
     code=c(code,
            paste0("for(",GPUVar$default_index_type," ",loopInd2,"=",loopStart2,
                   ";",loopInd2,"<",loopEnd2,";",loopInd2,"++){"),
            loopCode2)
-    endCode=c(endCode,"}")
+    endCode2=c(endCode2,"}")
   }
   code=c(code,
          bodyCode,
-         endCode,
+         endCode2,
+         endCode1,
          "}"
   )
   code

@@ -521,6 +521,7 @@ profile_subRef<-function(varInfo,Exp){
   refInfo=profile_subset(varInfo,code)
   refInfo$designSize1=0
   refInfo$designSize2=0
+  refInfo$initialization=FALSE
   refInfo$isSpecial=TRUE
   refInfo$specialType="ref"
   refInfo$specialContent=code_char

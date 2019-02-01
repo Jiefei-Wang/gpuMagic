@@ -53,11 +53,11 @@ It is a good practice to keep the \code{ind} same while using the subset referen
 ind=1:10
 A=matrix(0,100,100)
 #Use the one-index subsetting, create a vector of length 10
-B=subref(A,ind)
+B=subRef(A,ind)
 #Subsetting the matrix A,create a 10-by-10 matrix
-C=subref(A,ind,ind)
+C=subRef(A,ind,ind)
 #row subsetting 
-D=subref(A,ind,)
+D=subRef(A,ind,)
 #column subsetting
-E=subref(A,,ind)
+E=subRef(A,,ind)
 }

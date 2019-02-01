@@ -96,9 +96,10 @@ GPUVar<-local({
   GPUVar_env$openclCode=".opencl_"
   GPUVar_env$openclFuncCall=".opencl("
   
-  #This variable is for doing the matrix optimization
-  GPUVar_env$private_var_space="gpu_private_spcae"
-  GPUVar_env$private_size=16
+  #The shared size in byte
+  #For doing the matrix multiplication
+  GPUVar_env$vectorSize=8
+  GPUVar_env$shared_size=8*1024
   
   
   return(GPUVar_env)

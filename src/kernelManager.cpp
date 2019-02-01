@@ -289,6 +289,7 @@ cl_program kernelManager::createProgram(deviceIdentifier deviceId, programSignat
 
 map<string, cl_program>& kernelManager::getProgramTable(deviceIdentifier device)
 {
+	initializeDevice(device);
 	if (device_programTable.find(device) == device_programTable.end()) {
 		errorHandle("Unable to find the program table!");
 	}
@@ -297,8 +298,9 @@ map<string, cl_program>& kernelManager::getProgramTable(deviceIdentifier device)
 
 map<string, cl_kernel>& kernelManager::getKernelTable(deviceIdentifier device)
 {
+	initializeDevice(device);
 	if (device_kernelTable.find(device) == device_kernelTable.end()) {
-		errorHandle("Unable to find the kernel table!");
+		errorHandle("Unable to find the kernel table!\nPlatform id:"+ std::to_string(device.platform_id)+" Device id:"+ std::to_string(device.device_id));
 	}
 	return device_kernelTable[device];
 }

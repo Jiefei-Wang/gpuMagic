@@ -45,6 +45,7 @@ Collate:
     'RProfilerSettings.R'
     'RProfilerSupportFunc.R'
     'RRecompiler.R'
+    'extCodeManager.R'
     'hash.R'
     'gpuApply.R'
     'gpuApply_Funcs.R'
