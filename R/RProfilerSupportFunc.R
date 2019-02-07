@@ -1,321 +1,295 @@
 
-#===========================profiler 1========================
+# ===========================profiler 1========================
 
-#Profile a parameter and give the profile table back
-profileVar<-function(parms,macroParms){
-  varInfo=getEmpVarInfoTbl()
-  varInfo$parmsTblName="parms"
-  varInfo$requiredVar=c()
-  
-  varName=names(parms)
-  for(i in seq_len(length(parms))){
-    if(class(parms[[i]])=="gpuMatrix"){
-      curPrecision=.type(parms[[i]])
-      curDim=dim(parms[[i]])
-    }else{
-      curPrecision=GPUVar$default_float
-      curDim=dim(as.matrix(parms[[i]]))
+# Profile a parameter and give the profile table back
+profileVar <- function(parms, macroParms) {
+    varInfo = getEmpVarInfoTbl()
+    varInfo$parmsTblName = "parms"
+    varInfo$requiredVar = c()
+    
+    varName = names(parms)
+    for (i in seq_len(length(parms))) {
+        if (class(parms[[i]]) == "gpuMatrix") {
+            curPrecision = .type(parms[[i]])
+            curDim = dim(parms[[i]])
+        } else {
+            curPrecision = GPUVar$default_float
+            curDim = dim(as.matrix(parms[[i]]))
+        }
+        info = getEmpyTable()
+        info$var = varName[i]
+        
+        
+        info$precisionType = curPrecision
+        info$shared = TRUE
+        info$constVal = varName[i] %in% macroParms
+        info$require = TRUE
+        info$initialization = FALSE
+        
+        
+        if (!isNA(info$value)) {
+            info$value = paste0("(", varInfo$parmsTblName, "[[", i, "]])")
+        }
+        
+        if (curDim[1] == 1 && curDim[2] == 1 && varName[i] != GPUVar$gpu_loop_data) {
+            info$dataType = T_scale
+            info$size1 = 1
+            info$size2 = 1
+        } else {
+            info$dataType = T_matrix
+            if (varName[i] == GPUVar$gpu_loop_data) {
+                info$size1 = paste0("length(", varInfo$parmsTblName, "[[", i, "]])")
+                info$size2 = 1
+            } else {
+                info$size1 = paste0("nrow(", varInfo$parmsTblName, "[[", i, "]])")
+                info$size2 = paste0("ncol(", varInfo$parmsTblName, "[[", i, "]])")
+            }
+        }
+        
+        
+        varInfo = addVarInfo(varInfo, info)
+        varInfo$requiredVar = c(varInfo$requiredVar, info$var)
     }
-    info=getEmpyTable()
-    info$var=varName[i]
-    
-    
-    info$precisionType=curPrecision
-    info$shared=TRUE
-    info$constVal=varName[i]%in%macroParms
-    info$require=TRUE
-    info$initialization=FALSE
-    
-    
-    if(!isNA(info$value)){
-      info$value=paste0("(",varInfo$parmsTblName,"[[",i,"]])")
-    }
-    
-    if(curDim[1]==1&&curDim[2]==1&&varName[i]!=GPUVar$gpu_loop_data){
-      info$dataType=T_scale
-      info$size1=1
-      info$size2=1
-    }else{
-      info$dataType=T_matrix
-      if(varName[i]==GPUVar$gpu_loop_data){
-        info$size1=paste0("length(",varInfo$parmsTblName,"[[",i,"]])")
-        info$size2=1
-      }else{
-        info$size1=paste0("nrow(",varInfo$parmsTblName,"[[",i,"]])")
-        info$size2=paste0("ncol(",varInfo$parmsTblName,"[[",i,"]])")
-      }
-    }
-    
-    
-    varInfo=addVarInfo(varInfo,info)
-    varInfo$requiredVar=c(varInfo$requiredVar,info$var)
-  }
-  varInfo
+    varInfo
 }
 
-#==================================Profiler 2==========================
+# ==================================Profiler 2==========================
 
-#Find the function parameters
-#If the functions' argument does not show in the expression, the default value will be used
-matchFunArg<-function(fun,Exp){
-  funArg=formals(fun)
-  eval(parse(text=paste0(deparse(Exp[[1]]),"=fun")))
-  ExpArg=standardise_call(Exp)
-  if(length(ExpArg)>1){
-    argName=names(ExpArg)
-    for(i in 2:length(ExpArg)){
-      funArg[[argName[i]]]=ExpArg[[i]]
+# Find the function parameters If the functions' argument does not show in the expression, the default value will be
+# used
+matchFunArg <- function(fun, Exp) {
+    funArg = formals(fun)
+    eval(parse(text = paste0(deparse(Exp[[1]]), "=fun")))
+    ExpArg = standardise_call(Exp)
+    if (length(ExpArg) > 1) {
+        argName = names(ExpArg)
+        for (i in 2:length(ExpArg)) {
+            funArg[[argName[i]]] = ExpArg[[i]]
+        }
     }
-  }
-  for(i in seq_along(funArg)){
-    if(deparse(funArg[[i]])=="")
-      funArg[[i]]=NA
-    if(is.call(funArg[[i]]))
-      funArg[[i]]=eval(funArg[[i]])
-  }
-  return(funArg)
+    for (i in seq_along(funArg)) {
+        if (deparse(funArg[[i]]) == "") 
+            funArg[[i]] = NA
+        if (is.call(funArg[[i]])) 
+            funArg[[i]] = eval(funArg[[i]])
+    }
+    return(funArg)
 }
 
-#Get the right expression profile
-#Return value would be a list with the following elements:
-#ExpInfo:the expression info
-#Exp: the expression
-#errorCheck: The error check item
-#extCode: the extra code that needs to be added before the expression
-getExpInfo<-function(varInfo,Exp){
-  res=getExpInfo_hidden(varInfo,Exp)
-  if(is.data.frame(res)){
-    res=list(ExpInfo=res,Exp=Exp)
-  }
-  if(is.null(res[["Exp"]])) res[["Exp"]]=Exp
-  
-  ExpInfo=res$ExpInfo
-  
-  #If the variable is explicit definition
-  if(is.call(Exp)&&(deparse(Exp[[1]])%in% .profileExplicitDefine))
+# Get the right expression profile Return value would be a list with the following elements: ExpInfo:the expression info
+# Exp: the expression errorCheck: The error check item extCode: the extra code that needs to be added before the
+# expression
+getExpInfo <- function(varInfo, Exp) {
+    res = getExpInfo_hidden(varInfo, Exp)
+    if (is.data.frame(res)) {
+        res = list(ExpInfo = res, Exp = Exp)
+    }
+    if (is.null(res[["Exp"]])) 
+        res[["Exp"]] = Exp
+    
+    ExpInfo = res$ExpInfo
+    
+    # If the variable is explicit definition
+    if (is.call(Exp) && (deparse(Exp[[1]]) %in% .profileExplicitDefine)) 
+        return(res)
+    # Some optimization
+    if (!isNA(ExpInfo$size1) && !isNA(ExpInfo$size2) && Simplify(ExpInfo$size1) == "1" && Simplify(ExpInfo$size2) == "1") {
+        ExpInfo$dataType = T_scale
+        ExpInfo$size1 = 1
+        ExpInfo$size2 = 1
+    }
+    if (ExpInfo$dataType == T_scale) 
+        ExpInfo$location = "local"
+    
+    res$ExpInfo = ExpInfo
     return(res)
-  #Some optimization
-  if(!isNA(ExpInfo$size1)&&!isNA(ExpInfo$size2)&&
-     Simplify(ExpInfo$size1)=="1"&&Simplify(ExpInfo$size2)=="1"){
-    ExpInfo$dataType=T_scale
-    ExpInfo$size1=1
-    ExpInfo$size2=1
-  }
-  if(ExpInfo$dataType==T_scale)
-    ExpInfo$location="local"
-  
-  res$ExpInfo=ExpInfo
-  return(res)
 }
-getExpInfo_hidden<-function(varInfo,Exp){
-  if(isNumeric(Exp)){
-    ExpInfo=profile_numeric(Exp)
-    return(ExpInfo)
-  }
-  #If the expression is a function call
-  if(is.call(Exp)){
-    func=deparse(Exp[[1]])
-    if(!is.null(.profileFuncs[[func]])){
-      ExpInfo=.profileFuncs[[func]](varInfo,Exp)
-      return(ExpInfo)
+getExpInfo_hidden <- function(varInfo, Exp) {
+    if (isNumeric(Exp)) {
+        ExpInfo = profile_numeric(Exp)
+        return(ExpInfo)
     }
-    stop("Unsupported function: ",deparse(Exp))
-  }
-  
-  #If not the above case, the expression will be treated as a variable
-  if(is.symbol(Exp)){
-    ExpInfo=profile_symbol(varInfo,Exp)
-    return(ExpInfo)
-  }
-  
-  
-  stop("Unknow code: ",deparse(Exp))
-}
-#combine the expression info from several expInfo
-combineExpInfo<-function(Exp,...){
-  parms=list(...)
-  errorCheck=NULL
-  extCode=NULL
-  for(i in seq_along(parms)){
-    curInfo=parms[[i]]
-    errorCheck=rbind(errorCheck,curInfo$errorCheck)
-    extCode=c(extCode,curInfo$extCode)
-    Exp[[i+1]]=curInfo$Exp
-  }
-  return(list(errorCheck=errorCheck,extCode=extCode,Exp=Exp))
-}
-
-#Determine which type can preserve the information 
-#of the information in type1 and type2
-typeInherit<-function(type1,type2){
-  if(!is.character(type1))
-    type1=as.character(type1)
-  if(!is.character(type2))
-    type2=as.character(type2)
-  
-  group_float=c("half","float","double")
-  group_int=c("bool","char","int","long","uint","ulong")
-  
-  target_size=max(getTypeSize(type1),getTypeSize(type2))
-  if(type1 %in% group_float||type2%in% group_float){
-    for(i in seq_along(group_float)){
-      if(target_size==getTypeSize(group_float[i]))
-        return(group_float[i])
+    # If the expression is a function call
+    if (is.call(Exp)) {
+        func = deparse(Exp[[1]])
+        if (!is.null(.profileFuncs[[func]])) {
+            ExpInfo = .profileFuncs[[func]](varInfo, Exp)
+            return(ExpInfo)
+        }
+        stop("Unsupported function: ", deparse(Exp))
     }
-  }
-  if(type1 %in% group_int||type2%in% group_int){
-    for(i in seq_along(group_int)){
-      if(target_size==getTypeSize(group_int[i]))
-        return(group_int[i])
+    
+    # If not the above case, the expression will be treated as a variable
+    if (is.symbol(Exp)) {
+        ExpInfo = profile_symbol(varInfo, Exp)
+        return(ExpInfo)
     }
-  }
-  for(i in seq_along(group_float)){
-    if(target_size==getTypeSize(group_float[i]))
-      return(group_int[i])
-  }
-  stop("Unsupported variable type!")
+    
+    
+    stop("Unknow code: ", deparse(Exp))
 }
-
-is.preservedFunc<-function(func){
-  func=as.character(func)
-  length(grep(GPUVar$preservedFuncPrefix,func,fixed = TRUE))!=0
-}
-
-
-#Format a single code
-formatCall<-function(Exp,generalType=FALSE){
-  if(is.numeric(Exp)){
-    if(generalType)
-      return(as.symbol("gType"))
-    else
-      return(as.symbol("num"))
-  }
-  if(!is.call(Exp)){
-    if(generalType)
-      return(as.symbol("gType"))
-    else
-      return(as.symbol("var"))
-  }
-  if(length(Exp)>1){
-    for(i in 2:length(Exp)){
-      Exp[[i]]=formatCall(Exp[[i]],generalType)
+# combine the expression info from several expInfo
+combineExpInfo <- function(Exp, ...) {
+    parms = list(...)
+    errorCheck = NULL
+    extCode = NULL
+    for (i in seq_along(parms)) {
+        curInfo = parms[[i]]
+        errorCheck = rbind(errorCheck, curInfo$errorCheck)
+        extCode = c(extCode, curInfo$extCode)
+        Exp[[i + 1]] = curInfo$Exp
     }
-  }
-  Exp
-}
-#Test if x is an NA value,
-#support character.
-isNA<-function(x){
-  if(is.character(x))
-    return(x=="NA")
-  return(is.na(x))
-}
-#Test if an input is a number
-#x can be a character or an expression
-isNumeric<-function(x){
-  if(!is.call(x)&&length(x)>1)
-    return(FALSE)
-  
-  xExp=NULL
-  try({xExp=toExpression(x)},silent = TRUE)
-  if(is.null(xExp)) 
-    return(FALSE)
-  if(is.call(xExp)){
-    if(xExp[[1]]!="-"&&xExp[[1]]!="+")
-      return(FALSE)
-    if(length(xExp)!=2)
-      return(FALSE)
-    else
-      return(isNumeric(xExp[[2]]))
-  }
-  res=is.numeric(xExp)
-  return(res)
+    return(list(errorCheck = errorCheck, extCode = extCode, Exp = Exp))
 }
 
-toCharacter<-function(x){
-  if(is.language(x)){
-    var_char=deparse(x)
-  }else{
-    if(is.character(x))
-      var_char=x
-    else{
-      var_char=as.character(x)
+# Determine which type can preserve the information of the information in type1 and type2
+typeInherit <- function(type1, type2) {
+    if (!is.character(type1)) 
+        type1 = as.character(type1)
+    if (!is.character(type2)) 
+        type2 = as.character(type2)
+    
+    group_float = c("half", "float", "double")
+    group_int = c("bool", "char", "int", "long", "uint", "ulong")
+    
+    target_size = max(getTypeSize(type1), getTypeSize(type2))
+    if (type1 %in% group_float || type2 %in% group_float) {
+        for (i in seq_along(group_float)) {
+            if (target_size == getTypeSize(group_float[i])) 
+                return(group_float[i])
+        }
     }
-  }
-  var_char
-}
-#Convert an non-expression to the expression and return both
-#expression and characters
-toExpression<-function(var){
-  if(is.language(var)){
-    var_char=deparse(var)
-  }else{
-    if(is.character(var))
-      var_char=var
-    else{
-      var_char=as.character(var)
+    if (type1 %in% group_int || type2 %in% group_int) {
+        for (i in seq_along(group_int)) {
+            if (target_size == getTypeSize(group_int[i])) 
+                return(group_int[i])
+        }
     }
-    var=parse(text=var_char)[[1]]
-  }
-  return(var)
+    for (i in seq_along(group_float)) {
+        if (target_size == getTypeSize(group_float[i])) 
+            return(group_int[i])
+    }
+    stop("Unsupported variable type!")
+}
+
+is.preservedFunc <- function(func) {
+    func = as.character(func)
+    length(grep(GPUVar$preservedFuncPrefix, func, fixed = TRUE)) != 0
 }
 
 
-#This function simplify the R code and make it ready to put in the varInfo table
-Simplify2<-function(Exp){
-  res=Simplify(Exp)
-  #remove the space
-  #res=trimws(gsub(", ",",",res,fixed = TRUE))
-  #If the result is a vector
-  # if(length(grep(" ",res,fixed = TRUE))!=0){
-  #   res=paste0("c(",gsub(" +",",",res),")")
-  #   return(res)
-  # }
-  if(isNumeric(res))
+# Format a single code
+formatCall <- function(Exp, generalType = FALSE) {
+    if (is.numeric(Exp)) {
+        if (generalType) 
+            return(as.symbol("gType")) else return(as.symbol("num"))
+    }
+    if (!is.call(Exp)) {
+        if (generalType) 
+            return(as.symbol("gType")) else return(as.symbol("var"))
+    }
+    if (length(Exp) > 1) {
+        for (i in 2:length(Exp)) {
+            Exp[[i]] = formatCall(Exp[[i]], generalType)
+        }
+    }
+    Exp
+}
+# Test if x is an NA value, support character.
+isNA <- function(x) {
+    if (is.character(x)) 
+        return(x == "NA")
+    return(is.na(x))
+}
+# Test if an input is a number x can be a character or an expression
+isNumeric <- function(x) {
+    if (!is.call(x) && length(x) > 1) 
+        return(FALSE)
+    
+    xExp = NULL
+    try({
+        xExp = toExpression(x)
+    }, silent = TRUE)
+    if (is.null(xExp)) 
+        return(FALSE)
+    if (is.call(xExp)) {
+        if (xExp[[1]] != "-" && xExp[[1]] != "+") 
+            return(FALSE)
+        if (length(xExp) != 2) 
+            return(FALSE) else return(isNumeric(xExp[[2]]))
+    }
+    res = is.numeric(xExp)
     return(res)
-  else
-    return(paste0("(",res,")"))
-}
-#get the version bump code
-#var: the variable name
-#version: the version that should be bumped to
-getVersionBumpCode<-function(var,version){
-  var_char=toCharacter(var)
-  parse(text=paste0(GPUVar$preservedFuncPrefix,"setVersion(",var_char,",",version,")"))[[1]]
-}
-#Add the error check into the varInfo
-#level: the error level: warning, error
-#code: The code that generate this error check
-#check: the condition that will throw the error(check=TRUE will throw the error)
-#msg: the message that will be post when the error occurs
-setErrorCheck<-function(level,code,check,msg=""){
- data.frame(level=level,code=code,check=check,msg=msg,stringsAsFactors=FALSE)
 }
 
-#Redirect the variable to an exist variable to save the memory space
-redirectVar<-function(varInfo,sourceVar,desVar){
-  sourceVarInfo=getVarInfo(varInfo,sourceVar)
-  if(hasVar(varInfo,desVar)){
-    desVarInfo=getVarInfo(varInfo,desVar)
-    #If the destination is a lazy ref or seq object, no redirection is available
-    if(desVarInfo$isRef||desVarInfo$isSeq){
-      return()
+toCharacter <- function(x) {
+    if (is.language(x)) {
+        var_char = deparse(x)
+    } else {
+        if (is.character(x)) 
+            var_char = x else {
+            var_char = as.character(x)
+        }
     }
-    #Check if the variable can be redirect
-    if(curInfo$require||
-       sourceVar$dataType!=desVar$dataType||
-       sourceVar$shared!=desVar$shared||
-       sourceVar$location!=desVar$location||
-       desVar$precisionType!=typeInherit(sourceVar$precisionType,desVar$precisionType))
-      return()
-    if(desVarInfo$redirect=="NA"){
-      sourceVarInfo$redirect=desVar
-    }else{
-      sourceVarInfo$redirect=desVarInfo$redirect
+    var_char
+}
+# Convert an non-expression to the expression and return both expression and characters
+toExpression <- function(var) {
+    if (is.language(var)) {
+        var_char = deparse(var)
+    } else {
+        if (is.character(var)) 
+            var_char = var else {
+            var_char = as.character(var)
+        }
+        var = parse(text = var_char)[[1]]
     }
-    return(sourceVarInfo)
-  }else{
-    sourceVarInfo$redirect=desVar
-    return(sourceVarInfo)
-  }
+    return(var)
+}
+
+
+# This function simplify the R code and make it ready to put in the varInfo table
+Simplify2 <- function(Exp) {
+    res = Simplify(Exp)
+    # remove the space res=trimws(gsub(', ',',',res,fixed = TRUE)) If the result is a vector if(length(grep(' ',res,fixed =
+    # TRUE))!=0){ res=paste0('c(',gsub(' +',',',res),')') return(res) }
+    if (isNumeric(res)) 
+        return(res) else return(paste0("(", res, ")"))
+}
+# get the version bump code var: the variable name version: the version that should be bumped to
+getVersionBumpCode <- function(var, version) {
+    var_char = toCharacter(var)
+    parse(text = paste0(GPUVar$preservedFuncPrefix, "setVersion(", var_char, ",", version, ")"))[[1]]
+}
+# Add the error check into the varInfo level: the error level: warning, error code: The code that generate this error
+# check check: the condition that will throw the error(check=TRUE will throw the error) msg: the message that will be
+# post when the error occurs
+setErrorCheck <- function(level, code, check, msg = "") {
+    data.frame(level = level, code = code, check = check, msg = msg, stringsAsFactors = FALSE)
+}
+
+# Redirect the variable to an exist variable to save the memory space
+redirectVar <- function(varInfo, sourceVar, desVar) {
+    sourceVarInfo = getVarInfo(varInfo, sourceVar)
+    if (hasVar(varInfo, desVar)) {
+        desVarInfo = getVarInfo(varInfo, desVar)
+        # If the destination is a lazy ref or seq object, no redirection is available
+        if (desVarInfo$isRef || desVarInfo$isSeq) {
+            return()
+        }
+        # Check if the variable can be redirect
+        if (sourceVarInfo$require || sourceVarInfo$dataType != desVarInfo$dataType || sourceVarInfo$shared != desVarInfo$shared || 
+            sourceVarInfo$location != desVarInfo$location || sourceVarInfo$precisionType != typeInherit(sourceVarInfo$precisionType, 
+            desVarInfo$precisionType)) 
+            return()
+        if (desVarInfo$redirect == "NA") {
+            sourceVarInfo$redirect = desVar
+        } else {
+            sourceVarInfo$redirect = desVarInfo$redirect
+        }
+        return(sourceVarInfo)
+    } else {
+        sourceVarInfo$redirect = desVar
+        return(sourceVarInfo)
+    }
 }

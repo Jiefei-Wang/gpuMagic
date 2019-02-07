@@ -6,24 +6,22 @@
 #' @importFrom DescTools StrAlign
 #' @importFrom future future value
 #' @importFrom utils ls.str
+#' @importFrom utils capture.output
 #' @import methods
 #' @import BiocGenerics
-#' @useDynLib gpuMagic, .registration = TRUE,  .fixes = "C_"
+#' @useDynLib gpuMagic, .registration = TRUE,  .fixes = 'C_'
 
-.onDetach<-function(libpath){
-  gc()
+.onDetach <- function(libpath) {
+    gc()
 }
 
-.onUnload<-function(libpath){
-  .gpuResourcesManager$deleteEnv()
-  library.dynam.unload("gpuMagic",libpath)
+.onUnload <- function(libpath) {
+    .gpuResourcesManager$deleteEnv()
+    library.dynam.unload("gpuMagic", libpath)
 }
-.onLoad<-function(libname, pkgname){
-  #setDevice(1)
+.onLoad <- function(libname, pkgname) {
+    # setDevice(1)
 }
 
-DEBUG=TRUE
-
-
-  
+DEBUG = TRUE
 

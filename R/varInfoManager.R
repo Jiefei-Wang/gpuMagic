@@ -40,8 +40,8 @@ copyVarInfoTbl <- function(varInfo, resetVersion = TRUE) {
 #isSeq=FALSE,seq="",redirect="NA"
 
 getEmpyTable<-function(type=""){
+  #variable documentation
   tbl=data.frame(
-    #variable documentation
     var="NA",dataType=T_matrix,precisionType=GPUVar$default_float,
     size1="NA",size2="NA",value="NA",transpose=FALSE,
     version=1,
@@ -170,7 +170,7 @@ setVarInfo_hidden<-function(varInfo,info){
 setVarInfo<-function(varInfo,newInfo){
   #Check if the symbol does not exist in the table
   if(!hasVar(varInfo,newInfo$var,newInfo$version))
-    stop(paste0("The given variable is not found: ",var_char))
+    stop(paste0("The given variable is not found: ",newInfo$var))
   
   setVarInfo_hidden(varInfo,newInfo)
 }
@@ -212,32 +212,6 @@ getVarProperty<-function(varInfo,varName,property,version="auto"){
   #value=var_tbl[[property]]
   return(value)
 }
-
-
-setVarProperty<-function(varInfo,varName,property,value,version="auto"){
-  varName=toCharacter(varName)
-  
-  if (!hasVar(varInfo,varName,version=version))
-    stop("The given variable is not found: ", varName)
-  if (version == "auto") {
-    version = as.numeric(varInfo$varVersion[[varName]])
-  }
-  
-  varCur_char=paste0(var_char,"+",version)
-  var_tbl=varInfo$profile[[varCur_char]]
-  var_tbl[[property]]=value
-  varInfo$profile[[var_char]]=var_tbl
-  
-  if(isPrimary(property)){
-    varDef_char=paste0(var_char,"+",0)
-    var_tbl=varInfo$profile[[varDef_char]]
-    var_tbl[[property]]=value
-    varInfo$profile[[var_char]]=var_tbl
-  }
-  
-  return(varInfo)
-}
-
 
 
 print.varInfo<-function(varInfo,simplify=TRUE,printDef=FALSE){
