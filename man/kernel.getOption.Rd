@@ -12,6 +12,26 @@ A list of available options
 \description{
 Get the openCL compilation options
 }
+\details{
+#' \code{verbose} turn the verbose mode on and off.
+
+\code{kernelOption$localThreadNum} controls the local thread number in each group,
+the local thread number should be a divisor of the argument \code{.globalThreadNum}.
+If it is set to \code{auto}, the suggested number of local thread number will be
+obtained from openCL API and reduced to a divisor of \code{.globalThreadNum}.
+
+\code{kernelOption$localThreadNumMacro} specifys whether the local thread number
+should be inserted into the code as an macro. If it is TRUE, the macro
+\code{cl_local_thread_num} will be defined. It is useful when you want to dynamically
+allocate the memory (Mostly local memory) according to the local thread number
+
+\code{kernelOption$signature} This is for internal usage only, please do not change it
+
+\code{kernelOption$flag} The openCL compiler flag.
+
+\code{kernelOption$autoType} Determine whether the type of kernel arguments should be
+defined as an macro, see the \code{.kernel} document for detail
+}
 \examples{
 opt=kernel.getOption()
 opt

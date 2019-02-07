@@ -241,7 +241,7 @@ getIndexFromExp <- function(Exp) {
         requiredFile = requiredFile[!(requiredFile %in% argName)]
     }
     if (length(requiredFile) > 0 && length(argList) > 0) {
-        for (i in 1:min(length(requiredFile), length(argList))) {
+        for (i in seq_len(min(length(requiredFile), length(argList)))) {
             res[[requiredFile[i]]] = deparse(argList[[i]])
         }
     }

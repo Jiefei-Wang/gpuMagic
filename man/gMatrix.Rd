@@ -19,7 +19,7 @@ It is useful in some special cases such as turning off the auto update to do the
 
 \item{shared}{If the matrix is shared by all the workers in a work group. Do not use it if you don't know its meaning.}
 
-\item{location}{The physical memory location of the matrix, it can be either "global" or "local". Do not use it if you don't know its meaning.}
+\item{location}{The physical memory location of the matrix, it can be either 'global' or 'local'. Do not use it if you don't know its meaning.}
 }
 \value{
 a matrix initialize with 0.

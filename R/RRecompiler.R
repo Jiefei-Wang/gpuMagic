@@ -46,9 +46,8 @@ RRE_parserFunc <- function(level, codeMetaInfo, curExp) {
             rightFunc = deparse(rightExp[[1]])
             if (!is.null(.recompileFuncs[[rightFunc]])) {
                 curCode = .recompileFuncs[[rightFunc]](varInfo, curExp)
-                if (length(curCode) > 1) {
-                  for (i in 1:(length(curCode) - 1)) result$extCode = c(result$extCode, curCode[[i]])
-                }
+                for (i in seq_len(length(curCode) - 1)) result$extCode = c(result$extCode, curCode[[i]])
+                
                 curExp = curCode[[length(curCode)]]
             }
         }
@@ -57,9 +56,8 @@ RRE_parserFunc <- function(level, codeMetaInfo, curExp) {
     
     if (!is.null(.recompileFuncs[[FuncName]])) {
         curCode = .recompileFuncs[[rightFunc]](varInfo, curExp)
-        if (length(curCode) > 1) {
-            for (i in 1:(length(curCode) - 1)) result$extCode = c(result$extCode, curCode[[i]])
-        }
+        for (i in seq_len(length(curCode) - 1)) result$extCode = c(result$extCode, curCode[[i]])
+        
         curExp = curCode[[length(curCode)]]
     }
     

@@ -7,7 +7,7 @@
 gpuMagic.getOptions(opt = "all")
 }
 \arguments{
-\item{opt}{The options that the function will return. It can be either "all" or a vector of the option names.}
+\item{opt}{The options that the function will return. It can be either 'all' or a vector of the option names.}
 }
 \value{
 A list of the options

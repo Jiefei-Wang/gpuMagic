@@ -52,5 +52,6 @@ Internal usage only, the package export this function only for the other package
 Internal usage only, the package export this function only for the other package to access.
 }
 \examples{
+gpu_cast_float(10)
 #Just to make biocCheck happy with that.
 }

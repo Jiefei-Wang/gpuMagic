@@ -28,6 +28,7 @@ if it is called in R, the function \code{return()} will be called instead
 if it is called in R, the function \code{t()} will be called instead
 }
 \examples{
+x=matrix(0)
 #return.nocpy(x)
 #x=t.nocpy(x)
 }

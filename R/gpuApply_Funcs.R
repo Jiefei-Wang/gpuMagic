@@ -275,7 +275,7 @@ matchParms <- function(X, parms, FUN) {
 }
 
 formatParms <- function(parms) {
-    for (i in 1:length(parms)) {
+    for (i in seq_along(parms)) {
         if (class(parms[[i]]) != "gpuMatrix" && class(parms[[i]]) != "matrix") {
             parms[[i]] = as.matrix(parms[[i]])
         }

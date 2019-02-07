@@ -35,14 +35,14 @@ It is only needed when you want to update value of the matrix.
 
 \code{length()}: Get the length of an gpuMatrix object.
 
-"getSize()": Get the matrix size in byte
+'getSize()': Get the matrix size in byte
 }
 \examples{
 n=10
 m=20
 A=matrix(runif(n*m),n,m)
 #Create a 64 bit floating point GPU matrix
-A_dev=gpuMatrix(A,"double")
+A_dev=gpuMatrix(A,'double')
 
 #Create an empty matrix
 B_dev=gpuEmptMatrix(row=n,col=m)

@@ -312,6 +312,7 @@ subRef <- function(variable, i = "", j = "") {
 #' @aliases return.nocpy
 #' @usage return.nocpy(x)
 #' @examples 
+#' x=matrix(0)
 #' #return.nocpy(x)
 #' @export
 return.nocpy = return

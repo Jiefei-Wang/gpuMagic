@@ -25,12 +25,12 @@ The functions set the computing precision when compile the GPU code and the numb
 #Get all the available options
 opt=gpuMagic.getOptions()
 #change the default float type
-opt$default.float="float"
+opt$default.float='float'
 #set the options
 gpuMagic.setOptions(opt)
 
 #set the options(Alternative way)
-gpuMagic.setOptions(default.float="float")
+gpuMagic.setOptions(default.float='float')
 }
 \seealso{
 \code{\link[=gpuMagic.getOptions]{gpuMagic.getOptions()}} for the name of the options.

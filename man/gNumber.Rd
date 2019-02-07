@@ -22,6 +22,6 @@ The function will create a scalar variable, it is only useful in the openCL func
 It can also be called in R, but its argument will not take any effect.
 }
 \examples{
-a=gNumber(precision="double",constDef=FALSE)
+a=gNumber(precision='double',constDef=FALSE)
 
 }

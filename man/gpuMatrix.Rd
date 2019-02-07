@@ -37,7 +37,7 @@ getSize(x)
 \arguments{
 \item{data}{It can be a matrix or an R object that can be converted into a matrix.}
 
-\item{type}{The precision that is used to store the data, the default is \code{gpuMagic.getOptions("default.float")}.}
+\item{type}{The precision that is used to store the data, the default is \code{gpuMagic.getOptions('default.float')}.}
 
 \item{device}{The device that the data is sent to, the default is the first device.}
 
@@ -69,14 +69,14 @@ It is only needed when you want to update value of the matrix.
 
 \code{length()}: Get the length of an gpuMatrix object.
 
-"getSize()": Get the matrix size in byte
+'getSize()': Get the matrix size in byte
 }
 \examples{
 n=10
 m=20
 A=matrix(runif(n*m),n,m)
 #Create a 64 bit floating point GPU matrix
-A_dev=gpuMatrix(A,"double")
+A_dev=gpuMatrix(A,'double')
 
 #Create an empty matrix
 B_dev=gpuEmptMatrix(row=n,col=m)

@@ -70,6 +70,7 @@ CSimplify <- function(Exp, C = TRUE) {
 #' @param x Internal usage only
 #' @rdname internalFunctions
 #' @examples 
+#' gpu_cast_float(10)
 #' #Just to make biocCheck happy with that.
 #' @return A double type data
 #' @export

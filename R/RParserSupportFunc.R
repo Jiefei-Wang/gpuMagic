@@ -120,7 +120,7 @@ matchBracketFunc <- function(Exp) {
         if (argName[i] != "") {
             res[[argName[i]]] = Exp[[i]]
         } else {
-            for (k in 1:3) {
+            for (k in seq_len(3)) {
                 if (!(argList[k] %in% names(res))) {
                   res[[argList[k]]] = Exp[[i]]
                   break
@@ -131,7 +131,7 @@ matchBracketFunc <- function(Exp) {
     if (res[["drop"]] == "T") 
         res[["drop"]] = "TRUE"
     
-    for (i in 1:length(res)) {
+    for (i in seq_along(res)) {
         if (deparse(res[[i]]) == "") 
             res[[i]] = ""
     }
