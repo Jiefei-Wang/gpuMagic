@@ -173,5 +173,16 @@ test_that("Self assignment, Unnecessary bracket",{
   expect_equal(sum(abs(error)),0)
 })
 
-
-
+test_that("Matrix add, transpose and no copy tranpose",{
+  testFunc<-function(ind,A,B){
+    tmp=t(A[ind,])
+    tmp1=B[ind,]
+    C=tmp+t.nocpy(tmp1)
+    return.nocpy(C)
+  }
+  
+  A=matrix(runif(n*m),m,n)
+  B=matrix(runif(n*m),m,n)
+  res_gpu=gpuSapply(1:m,testFunc,A,B)
+  expect_equal(res_gpu,t(A+B))
+})

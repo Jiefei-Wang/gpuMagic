@@ -25,3 +25,5 @@ test_that("matrix multiplication",{
   
   expect_equal(res_gpu,res_cpu)
 })
+
+
