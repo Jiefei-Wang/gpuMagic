@@ -7,7 +7,8 @@ RRecompiler <- function(profileMeta2) {
     for (i in keys(profileMeta3$varInfo$curVarVersion)) {
         profileMeta3$varInfo$curVarVersion[[i]] = 1
     }
-    profileMeta3 = parserFrame(RRE_parserFunc, RRE_checkFunc, RRE_updateFunc, profileMeta3)
+    profileMeta3 = parserFrame(RRE_parserFunc, RRE_checkFunc, RRE_updateFunc, 
+        profileMeta3)
     
     
     codeMetaInfo = list()
@@ -46,7 +47,8 @@ RRE_parserFunc <- function(level, codeMetaInfo, curExp) {
             rightFunc = deparse(rightExp[[1]])
             if (!is.null(.recompileFuncs[[rightFunc]])) {
                 curCode = .recompileFuncs[[rightFunc]](varInfo, curExp)
-                for (i in seq_len(length(curCode) - 1)) result$extCode = c(result$extCode, curCode[[i]])
+                for (i in seq_len(length(curCode) - 1)) result$extCode = c(result$extCode, 
+                  curCode[[i]])
                 
                 curExp = curCode[[length(curCode)]]
             }
@@ -56,7 +58,8 @@ RRE_parserFunc <- function(level, codeMetaInfo, curExp) {
     
     if (!is.null(.recompileFuncs[[FuncName]])) {
         curCode = .recompileFuncs[[rightFunc]](varInfo, curExp)
-        for (i in seq_len(length(curCode) - 1)) result$extCode = c(result$extCode, curCode[[i]])
+        for (i in seq_len(length(curCode) - 1)) result$extCode = c(result$extCode, 
+            curCode[[i]])
         
         curExp = curCode[[length(curCode)]]
     }
@@ -73,7 +76,8 @@ RRE_checkFunc <- function(curExp) {
     return(TRUE)
 }
 
-RRE_updateFunc <- function(type, level, codeMetaInfo, parsedExp, code, i, res) {
+RRE_updateFunc <- function(type, level, codeMetaInfo, parsedExp, code, 
+    i, res) {
     result = general_updateFunc(codeMetaInfo, parsedExp, code)
     result
 }

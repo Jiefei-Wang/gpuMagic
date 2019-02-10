@@ -42,7 +42,8 @@ gpuApplyFuncList = hash()
 #' range(res_gpu-res_cpu)
 #' @export
 #' @return A vector or a matrix
-gpuSapply <- function(X, FUN, ..., .macroParms = NULL, .device = "auto", loading = "auto", .options = gpuSapply.getOption()) {
+gpuSapply <- function(X, FUN, ..., .macroParms = NULL, .device = "auto", 
+    loading = "auto", .options = gpuSapply.getOption()) {
     if (.device == "auto") {
         .device = as.integer(keys(.gpuResourcesManager$globalVars$curDevice))
     } else {
@@ -52,14 +53,17 @@ gpuSapply <- function(X, FUN, ..., .macroParms = NULL, .device = "auto", loading
     deviceNum = length(.device)
     # If the number of device is 1, just call the single device function
     if (deviceNum == 1) {
-        res = gpuSapply_singleDev(X, FUN, ..., .macroParms = .macroParms, .device = .device, .options = .options)
+        res = gpuSapply_singleDev(X, FUN, ..., .macroParms = .macroParms, 
+            .device = .device, .options = .options)
     } else {
-        res = gpuSapply_multiDev(X, FUN, ..., .macroParms = .macroParms, .device = .device, loading = "auto", .options = .options)
+        res = gpuSapply_multiDev(X, FUN, ..., .macroParms = .macroParms, 
+            .device = .device, loading = "auto", .options = .options)
     }
     return(res)
 }
 
-gpuSapply_singleDev <- function(X, FUN, ..., .macroParms = NULL, .device, .options = gpuSapply.getOption(), .block = TRUE) {
+gpuSapply_singleDev <- function(X, FUN, ..., .macroParms = NULL, .device, 
+    .options = gpuSapply.getOption(), .block = TRUE) {
     # Some interesting setup
     start_time <- Sys.time()
     verbose = .options$verbose
@@ -78,7 +82,8 @@ gpuSapply_singleDev <- function(X, FUN, ..., .macroParms = NULL, .device, .optio
     sig = createSapplySignature(parms, FUN, .macroParms, .device, .options)
     sig_hash = digest(sig)
     # Check if the compiled code exist, if not, compile the function
-    if (has.key(sig_hash, gpuApplyFuncList) && option$debugCode == "" && !option$compileEveryTime) {
+    if (has.key(sig_hash, gpuApplyFuncList) && option$debugCode == "" && 
+        !option$compileEveryTime) {
         if (verbose || msg$R.code.compiler.msg) {
             message("The R function has been compiled.")
         }
@@ -87,15 +92,18 @@ gpuSapply_singleDev <- function(X, FUN, ..., .macroParms = NULL, .device, .optio
         if (verbose || msg$R.code.compiler.msg) {
             message("The R function has not been compiled.")
         }
-        GPUcode1 = .compileGPUCode(FUN, parms, .macroParms = .macroParms, .options = .options)
+        GPUcode1 = .compileGPUCode(FUN, parms, .macroParms = .macroParms, 
+            .options = .options)
         
         # Store the GPU object
         gpuApplyFuncList[[sig_hash]] = saveGPUcode(GPUcode1)
         
-        # insert debug code, when debug code is not empty, the function will be compiled every time
+        # insert debug code, when debug code is not empty, the function will be
+        # compiled every time
         if (option$debugCode != "") {
             GPUcode1$gpu_code = option$debugCode
-            GPUcode1$kernel = gsub(".+kernel void ([^(]+)\\(.+", "\\1", option$debugCode)
+            GPUcode1$kernel = gsub(".+kernel void ([^(]+)\\(.+", "\\1", 
+                option$debugCode)
         }
     }
     
@@ -126,8 +134,8 @@ gpuSapply_singleDev <- function(X, FUN, ..., .macroParms = NULL, .device, .optio
     }
     
     # .options$signature=c(.options$signature,sig_hash)
-    .kernel(kernel = GPUcode2$kernel, src = GPUcode2$gpu_code, parms = GPUcode2$device_argument, .device = .device, .globalThreadNum = .globalThreadNum, 
-        .options = .options)
+    .kernel(kernel = GPUcode2$kernel, src = GPUcode2$gpu_code, parms = GPUcode2$device_argument, 
+        .device = .device, .globalThreadNum = .globalThreadNum, .options = .options)
     res = GPUcode2$device_argument$return_var
     
     
@@ -138,11 +146,12 @@ gpuSapply_singleDev <- function(X, FUN, ..., .macroParms = NULL, .device, .optio
     return(res)
 }
 
-gpuSapply_multiDev <- function(X, FUN, ..., .macroParms = NULL, .device, loading = "auto", .options = gpuSapply.getOption(), 
-    .block = TRUE) {
+gpuSapply_multiDev <- function(X, FUN, ..., .macroParms = NULL, .device, 
+    loading = "auto", .options = gpuSapply.getOption(), .block = TRUE) {
     deviceNum = length(.device)
     jobsNum = length(X)
-    # If the number of device is larger than 1, parallel the process Find the loading for each device
+    # If the number of device is larger than 1, parallel the process Find
+    # the loading for each device
     if (loading == "auto" || length(loading) != deviceNum) {
         loading = rep(1, deviceNum)
     }
@@ -165,7 +174,8 @@ gpuSapply_multiDev <- function(X, FUN, ..., .macroParms = NULL, .device, loading
         if (end - start == 0) {
             parallelSet[[i]] = NULL
         } else {
-            parallelSet[[i]] = gpuSapply_singleDev(X[(start + 1):end], FUN, ..., .macroParms = .macroParms, .device = .device[i], 
+            parallelSet[[i]] = gpuSapply_singleDev(X[(start + 1):end], 
+                FUN, ..., .macroParms = .macroParms, .device = .device[i], 
                 .options = .options, .block = FALSE)
         }
     }
@@ -220,7 +230,8 @@ gpuSapply.getOption <- function() {
     
     curOp$sapplyOptimization = data.frame(thread.number = TRUE, matrix.dim = TRUE)
     
-    curOp$sapplyOption = data.frame(debugCode = "", compileEveryTime = FALSE, stringsAsFactors = FALSE)
+    curOp$sapplyOption = data.frame(debugCode = "", compileEveryTime = FALSE, 
+        stringsAsFactors = FALSE)
     
     curOp = structure(curOp, class = "options")
     return(curOp)
@@ -275,8 +286,10 @@ compileGPUCode <- function(X, FUN, ..., .macroParms = NULL, .options = gpuSapply
     GPUcode1 = completeGPUcode(GPUExp2)
     
     # optimization
-    GPUcode1$gpu_code = opt_workerNumber(GPUcode1$varInfo, GPUcode1$gpu_code, .options)
-    GPUcode1$gpu_code = opt_matrixDim(GPUcode1$varInfo, GPUcode1$gpu_code, .options)
+    GPUcode1$gpu_code = opt_workerNumber(GPUcode1$varInfo, GPUcode1$gpu_code, 
+        .options)
+    GPUcode1$gpu_code = opt_matrixDim(GPUcode1$varInfo, GPUcode1$gpu_code, 
+        .options)
     
     
     GPUcode1

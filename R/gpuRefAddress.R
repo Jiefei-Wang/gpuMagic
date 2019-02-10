@@ -40,8 +40,9 @@ gpuRefAddress$methods(download = function() {
 
 gpuRefAddress$methods(switchDevice = function(device) {
     stop("not supported yet!")
-    # ad=.self$getAddress() data=.gpuResourcesManager$download(.self$device,ad) .self$upload(device,data,.self$type)
-    # .self$device=device
+    # ad=.self$getAddress()
+    # data=.gpuResourcesManager$download(.self$device,ad)
+    # .self$upload(device,data,.self$type) .self$device=device
 })
 
 

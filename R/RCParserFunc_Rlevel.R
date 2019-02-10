@@ -1,4 +1,5 @@
-# Fill the target vector with default value to reach the desinged length
+# Fill the target vector with default value to reach the desinged
+# length
 fillDefauleValue <- function(target, designLen, default) {
     if (designLen == length(target)) {
         return(target)
@@ -17,16 +18,20 @@ fillDefauleValue <- function(target, designLen, default) {
 # R_expression_sub(varInfo,quote(gpu_temp_var2[C,]),c('k1',6),sub_C=TRUE,opt=list('k1'))
 # R_expression_sub(varInfo,quote(C[C,]),c('k1',6),sub_C=TRUE,opt=NULL)
 # R_expression_sub(varInfo,quote(C[C,]),c('k1',6),sub_C=TRUE,opt=list('k1'))
-R_expression_sub <- function(varInfo, Exp, sub, sub_C = FALSE, opt = NULL, extCode = NULL, base = 1) {
-    # fill the vector with the first element to make the length of it consistant with the length of Exp
+R_expression_sub <- function(varInfo, Exp, sub, sub_C = FALSE, opt = NULL, 
+    extCode = NULL, base = 1) {
+    # fill the vector with the first element to make the length of it
+    # consistant with the length of Exp
     sub_C = fillDefauleValue(sub_C, length(sub), sub_C[1])
     if (is.null(extCode)) 
         extCode = createExtCode(opt)
     
     if (length(sub) == 1) {
-        res = R_oneIndex_exp_sub(varInfo, Exp, sub, sub_C, opt, extCode, base)
+        res = R_oneIndex_exp_sub(varInfo, Exp, sub, sub_C, opt, extCode, 
+            base)
     } else {
-        res = R_twoIndex_exp_sub(varInfo, Exp, sub[1], sub[2], sub_C[1], sub_C[2], opt, extCode, base)
+        res = R_twoIndex_exp_sub(varInfo, Exp, sub[1], sub[2], sub_C[1], 
+            sub_C[2], opt, extCode, base)
     }
     
     extCode = res$extCode
@@ -48,8 +53,10 @@ R_expression_sub <- function(varInfo, Exp, sub, sub_C = FALSE, opt = NULL, extCo
 }
 
 
-# Expression should be a variable or a matrix subset R_oneIndex_exp_sub(varInfo,quote(A[tmp1]),3)
-R_oneIndex_exp_sub <- function(varInfo, Exp, k, k_C = FALSE, opt = NULL, extCode = NULL, base = 1) {
+# Expression should be a variable or a matrix subset
+# R_oneIndex_exp_sub(varInfo,quote(A[tmp1]),3)
+R_oneIndex_exp_sub <- function(varInfo, Exp, k, k_C = FALSE, opt = NULL, 
+    extCode = NULL, base = 1) {
     if (is.null(extCode)) 
         extCode = createExtCode(opt)
     k = paste0(k, "+", 1 - base)
@@ -80,12 +87,14 @@ R_oneIndex_exp_sub <- function(varInfo, Exp, k, k_C = FALSE, opt = NULL, extCode
             k_C_ind = wrapIndex(varInfo, k, k_C, extCode, opt)
             res = list()
             res$extCode = k_C_ind$extCode
-            res$value = CSimplify(paste0(seqInfo$from, "+", "(", k_C_ind$value, "-1)*", seqInfo$by))
+            res$value = CSimplify(paste0(seqInfo$from, "+", "(", k_C_ind$value, 
+                "-1)*", seqInfo$by))
             return(res)
         }
         
         k_C_ind = wrapIndex(varInfo, k, k_C, extCode, opt)
-        res = oneIndex_to_twoIndex(varInfo, Exp, k_C_ind$value, rowNum = R_getVarSize1(varInfo, Exp), opt = opt, extCode = k_C_ind$extCode)
+        res = oneIndex_to_twoIndex(varInfo, Exp, k_C_ind$value, rowNum = R_getVarSize1(varInfo, 
+            Exp), opt = opt, extCode = k_C_ind$extCode)
         return(res)
     }
     # if the expression is a subset of a matrix
@@ -95,13 +104,16 @@ R_oneIndex_exp_sub <- function(varInfo, Exp, k, k_C = FALSE, opt = NULL, extCode
         # if it is one index subset
         if (is.null(args$j)) {
             sub = args$i
-            k_C_ind = R_oneIndex_exp_sub(varInfo, sub, k = k, k_C = k_C, opt = opt, extCode = extCode)
-            res = R_oneIndex_exp_sub(varInfo, curVar, k = k_C_ind$value, k_C = TRUE, opt = opt, extCode = extCode)
+            k_C_ind = R_oneIndex_exp_sub(varInfo, sub, k = k, k_C = k_C, 
+                opt = opt, extCode = extCode)
+            res = R_oneIndex_exp_sub(varInfo, curVar, k = k_C_ind$value, 
+                k_C = TRUE, opt = opt, extCode = extCode)
             return(res)
         } else {
             size = R_nrow(varInfo, Exp)
             k_C_ind = wrapIndex(varInfo, k, k_C, extCode, opt)
-            res = oneIndex_to_twoIndex(varInfo, Exp, k_C_ind$value, rowNum = size, opt = opt, extCode = k_C_ind$extCode)
+            res = oneIndex_to_twoIndex(varInfo, Exp, k_C_ind$value, rowNum = size, 
+                opt = opt, extCode = k_C_ind$extCode)
             return(res)
             
         }
@@ -109,11 +121,15 @@ R_oneIndex_exp_sub <- function(varInfo, Exp, k, k_C = FALSE, opt = NULL, extCode
     stop("unrecognized code: ", deparse(Exp))
 }
 # assume 1-based index
-oneIndex_to_twoIndex <- function(varInfo, Exp, k_C_value, rowNum, opt = NULL, extCode = NULL) {
+oneIndex_to_twoIndex <- function(varInfo, Exp, k_C_value, rowNum, opt = NULL, 
+    extCode = NULL) {
     tmpVar = GPUVar$getTmpVar()
-    tmpVar_value = CSimplify(paste0("(", GPUVar$default_index_type, ")((", k_C_value, "-1)/(", rowNum, "))"))
-    # if the temporary variable is a constant, it will be plug into the code Otherwise, create a temporary variable for it
-    if (isNumeric(tmpVar_value) || length(grep("/", tmpVar_value, fixed = TRUE)) == 0) {
+    tmpVar_value = CSimplify(paste0("(", GPUVar$default_index_type, ")((", 
+        k_C_value, "-1)/(", rowNum, "))"))
+    # if the temporary variable is a constant, it will be plug into the
+    # code Otherwise, create a temporary variable for it
+    if (isNumeric(tmpVar_value) || length(grep("/", tmpVar_value, fixed = TRUE)) == 
+        0) {
         tmpVar = paste0("(", tmpVar_value, ")")
     } else {
         res = getVarFromExtCode(extCode, GPUVar$default_index_type, tmpVar_value)
@@ -124,18 +140,25 @@ oneIndex_to_twoIndex <- function(varInfo, Exp, k_C_value, rowNum, opt = NULL, ex
     i_C_ind = paste0(k_C_value, "-", rowNum, "*", tmpVar)
     j_C_ind = paste0(tmpVar, "+1")
     
-    res = R_twoIndex_exp_sub(varInfo, Exp, i = i_C_ind, j = j_C_ind, i_C = TRUE, j_C = TRUE, opt = opt, extCode = extCode)
+    res = R_twoIndex_exp_sub(varInfo, Exp, i = i_C_ind, j = j_C_ind, i_C = TRUE, 
+        j_C = TRUE, opt = opt, extCode = extCode)
     
     
     return(res)
 }
 
 
-# get the i,jth element from the expression, the expression can be a variable, a matrix subset or a number i,j can be
-# interpreted as an R object or a C object, it is determined by i_C and j_C Special case: Exp can be empty, then i will
-# be returned Exp can be a value, then the value will be returned Exp can be a scalar, then the value will be returned
+# get the i,jth element from the expression, the expression can be a
+# variable, a matrix subset or a number
+# i,j can be interpreted as an R
+# object or a C object, it is determined by i_C and j_C 
+# Special case:
+# Exp can be empty, then i will be returned Exp can be a value, then
+# the value will be returned
+# Exp can be a scalar, then the value will be returned 
 # R_twoIndex_exp_sub(varInfo,quote(gpu_temp_var2[C,]),3,6)
-R_twoIndex_exp_sub <- function(varInfo, Exp, i, j = 1, i_C = FALSE, j_C = FALSE, opt = FALSE, extCode = NULL, base = 1) {
+R_twoIndex_exp_sub <- function(varInfo, Exp, i, j = 1, i_C = FALSE, j_C = FALSE, 
+    opt = FALSE, extCode = NULL, base = 1) {
     if (is.null(extCode)) 
         extCode = createExtCode(opt)
     # Convert all the 0-based index to 1-based index
@@ -170,9 +193,11 @@ R_twoIndex_exp_sub <- function(varInfo, Exp, i, j = 1, i_C = FALSE, j_C = FALSE,
         if (curInfo$isRef) {
             refExp = parse(text = curInfo$specialContent)[[1]]
             if (curInfo$transpose) {
-                res = R_twoIndex_exp_sub(varInfo, refExp, j, i, i_C = j_C, j_C = i_C, opt = opt, extCode = extCode, base = base)
+                res = R_twoIndex_exp_sub(varInfo, refExp, j, i, i_C = j_C, 
+                  j_C = i_C, opt = opt, extCode = extCode, base = base)
             } else {
-                res = R_twoIndex_exp_sub(varInfo, refExp, i, j, i_C = i_C, j_C = j_C, opt = opt, extCode = extCode, base = base)
+                res = R_twoIndex_exp_sub(varInfo, refExp, i, j, i_C = i_C, 
+                  j_C = j_C, opt = opt, extCode = extCode, base = base)
             }
             return(res)
         }
@@ -186,8 +211,8 @@ R_twoIndex_exp_sub <- function(varInfo, Exp, i, j = 1, i_C = FALSE, j_C = FALSE,
             rowNum = R_getVarSize1(varInfo, Exp)
             res = list()
             res$extCode = j_C_ind$extCode
-            res$value = CSimplify(paste0(seqInfo$from, "+", "(", i_C_ind$value, "+", rowNum, "*(", j_C_ind$value, "-1)-1)*", 
-                seqInfo$by))
+            res$value = CSimplify(paste0(seqInfo$from, "+", "(", i_C_ind$value, 
+                "+", rowNum, "*(", j_C_ind$value, "-1)-1)*", seqInfo$by))
             return(res)
         }
         # If the expression is just a variable
@@ -200,7 +225,8 @@ R_twoIndex_exp_sub <- function(varInfo, Exp, i, j = 1, i_C = FALSE, j_C = FALSE,
             
             i_C_ind = wrapIndex(varInfo, i, i_C, extCode, opt)
             j_C_ind = wrapIndex(varInfo, j, j_C, i_C_ind$extCode, opt)
-            res = R_getVarSub(varInfo, Exp, i_C_ind$value, j_C_ind$value, opt = opt, extCode = j_C_ind$extCode)
+            res = R_getVarSub(varInfo, Exp, i_C_ind$value, j_C_ind$value, 
+                opt = opt, extCode = j_C_ind$extCode)
             return(res)
         }
         stop("unrecognized code: ", deparse(Exp))
@@ -211,36 +237,45 @@ R_twoIndex_exp_sub <- function(varInfo, Exp, i, j = 1, i_C = FALSE, j_C = FALSE,
         args = matchBracketFunc(Exp)
         if (is.null(args$j)) {
             ref_k = args$i
-            ref_k_C = R_oneIndex_exp_sub(varInfo, ref_k, k = i, k_C = i_C, extCode = extCode)
-            res = R_oneIndex_exp_sub(varInfo, curVar, k = ref_k_C$value, k_C = TRUE, opt = opt, extCode = ref_k_C$extCode)
+            ref_k_C = R_oneIndex_exp_sub(varInfo, ref_k, k = i, k_C = i_C, 
+                extCode = extCode)
+            res = R_oneIndex_exp_sub(varInfo, curVar, k = ref_k_C$value, 
+                k_C = TRUE, opt = opt, extCode = ref_k_C$extCode)
         } else {
             ref_i = args$i
             ref_j = args$j
-            ref_i_C = R_oneIndex_exp_sub(varInfo, ref_i, k = i, k_C = i_C, opt = opt, extCode = extCode)
-            ref_j_C = R_oneIndex_exp_sub(varInfo, ref_j, k = j, k_C = j_C, opt = opt, extCode = ref_i_C$extCode)
-            res = R_twoIndex_exp_sub(varInfo, curVar, i = ref_i_C$value, j = ref_j_C$value, i_C = TRUE, j_C = TRUE, opt = opt, 
-                extCode = ref_j_C$extCode)
+            ref_i_C = R_oneIndex_exp_sub(varInfo, ref_i, k = i, k_C = i_C, 
+                opt = opt, extCode = extCode)
+            ref_j_C = R_oneIndex_exp_sub(varInfo, ref_j, k = j, k_C = j_C, 
+                opt = opt, extCode = ref_i_C$extCode)
+            res = R_twoIndex_exp_sub(varInfo, curVar, i = ref_i_C$value, 
+                j = ref_j_C$value, i_C = TRUE, j_C = TRUE, opt = opt, extCode = ref_j_C$extCode)
         }
         return(res)
     }
     stop("unrecognized code: ", deparse(Exp))
 }
-# Return the first element in the argument i If the index is a c variale, direct return it as a list If the index is an
-# R variable, use subset code to process it
+# Return the first element in the argument i If the index is a c
+# variale, direct return it as a list If the index is an R variable,
+# use subset code to process it
 wrapIndex <- function(varInfo, i, i_C, extCode, opt) {
     if (!i_C) {
-        res = R_twoIndex_exp_sub(varInfo, Exp = i, i = 1, j = 1, extCode = extCode, opt = opt)
+        res = R_twoIndex_exp_sub(varInfo, Exp = i, i = 1, j = 1, extCode = extCode, 
+            opt = opt)
     } else {
         res = list(value = i, extCode = extCode)
     }
     res
 }
 
-# Get an element from the matrix(eg. A[i,j]), the transpose will be taken into account i,j is 1-based index by default
-# i,j should be either a number or a variable in C code If opt=FALSE, the c code will be returned If pt=TRUE, a list
-# will be returned. list element: C_sub, rowOffset, colOffset optCode should be a list with rowVar,and colVar as the
-# elements. Both element can be optional
-R_getVarSub <- function(varInfo, var, i, j = 1, opt = NULL, extCode = NULL, base = 1) {
+# Get an element from the matrix(eg. A[i,j]), the transpose will be
+# taken into account i,j is 1-based index by default i,j should be
+# either a number or a variable in C code If opt=FALSE, the c code will
+# be returned If pt=TRUE, a list will be returned. list element: C_sub,
+# rowOffset, colOffset optCode should be a list with rowVar,and colVar
+# as the elements. Both element can be optional
+R_getVarSub <- function(varInfo, var, i, j = 1, opt = NULL, extCode = NULL, 
+    base = 1) {
     var = toCharacter(var)
     
     if (var == "") 
@@ -289,7 +324,8 @@ R_getVarSub <- function(varInfo, var, i, j = 1, opt = NULL, extCode = NULL, base
     return(list(value = c_sub, extCode = extCode))
 }
 
-# The C subset: var[offset] All the argument should be available in C code
+# The C subset: var[offset] All the argument should be available in C
+# code
 R_C_Sub <- function(var, offset, simplification = FALSE) {
     res = paste0(var, "[(", GPUVar$default_index_type, ")(", offset, ")]")
     if (simplification) 
@@ -307,7 +343,10 @@ R_nrow <- function(varInfo, var) {
         return(R_getVarSize1(varInfo, var))
     
     curInfo = getVarInfo(varInfo, var)
-    ifelse(curInfo$transpose, R_getVarSize2(varInfo, var), R_getVarSize1(varInfo, var))
+    ifelse(curInfo$transpose, 
+           R_getVarSize2(varInfo, var), 
+           R_getVarSize1(varInfo, var)
+           )
 }
 # Get the number of rows for a matrix in C format
 R_ncol <- function(varInfo, var) {
@@ -319,10 +358,14 @@ R_ncol <- function(varInfo, var) {
         return(R_getVarSize2(varInfo, var))
     
     curInfo = getVarInfo(varInfo, var)
-    ifelse(curInfo$transpose, R_getVarSize1(varInfo, var), R_getVarSize2(varInfo, var))
+    ifelse(curInfo$transpose, 
+           R_getVarSize1(varInfo, var), 
+           R_getVarSize2(varInfo, var)
+           )
 }
 R_length <- function(varInfo, var) {
-    return(CSimplify(paste0(R_nrow(varInfo, var), "*", R_ncol(varInfo, var))))
+    return(CSimplify(paste0(R_nrow(varInfo, var), "*", R_ncol(varInfo, 
+        var))))
     
 }
 
@@ -333,14 +376,20 @@ R_getVarSize <- function(varInfo, var, ind) {
     
     # Detect if the variable is a subset of a matrix Or a lazy reference
     Exp = NULL
-    if (is.call(var) && var[[1]] == "[") {
+    if (is.call(var)) {
+      if(var[[1]] == "["){
         Exp = var
-    } else {
-        curInfo = getVarInfo(varInfo, var)
-        if (curInfo$isRef) {
-            Exp = parse(text = curInfo$specialContent)[[1]]
-        }
-        
+      }else{
+        var=extractVars(var)[1]
+        return(R_getVarSize(varInfo,var,ind))
+      }
+    } 
+    
+    if(is.null(Exp)){
+      curInfo = getVarInfo(varInfo, var)
+      if (curInfo$isRef) {
+        Exp = parse(text = curInfo$specialContent)[[1]]
+      }
     }
     # If the variable is a subset of a matrix
     if (!is.null(Exp)) {
@@ -374,13 +423,17 @@ R_getVarSize <- function(varInfo, var, ind) {
     }
     
     
-    # If the variable is just a variable and is not a lazy reference curInfo is obtained above
+    # If the variable is just a variable and is not a lazy reference
+    # curInfo is obtained above 
     # curInfo=getVarInfo(varInfo,var,1)
     
     if (curInfo$isSeq) {
-        seqInfo = getSeqAddress(varInfo, var_char)
-        if (xor(curInfo$transpose, ind != 1)) 
-            return(seqInfo$length) else return(1)
+      seqInfo = getSeqAddress(varInfo, var_char)
+      if (xor(curInfo$transpose, ind != 1)) {
+        return(seqInfo$length) 
+      }else{ 
+        return(1)
+      }
     }
     
     
@@ -407,13 +460,13 @@ R_getVarSize <- function(varInfo, var, ind) {
     
     size
 }
-# get the variable row number in C code format Use R_nrow instead, this function does not take the transpose into
-# account
+# get the variable row number in C code format Use R_nrow instead, this
+# function does not take the transpose into account
 R_getVarSize1 <- function(varInfo, var) {
     R_getVarSize(varInfo, var, 1)
 }
-# get the variable column number in C code format Use R_ncol instead, this function does not take the transpose into
-# account
+# get the variable column number in C code format Use R_ncol instead,
+# this function does not take the transpose into account
 R_getVarSize2 <- function(varInfo, var) {
     R_getVarSize(varInfo, var, 2)
 }

@@ -33,13 +33,15 @@ profiler_assignment_exitingVar <- function(level, varInfo, curExp) {
         defineType = "implicit"
     }
     
-    # If the left expression is a lazy reference, then do not perform the profiling
+    # If the left expression is a lazy reference, then do not perform the
+    # profiling
     if (leftInfo$constDef || leftInfo$specialType == "ref") {
         return(list(extCode = extCode, Exp = curExp, errorCheck = errorCheck))
     }
     
     if (leftInfo$constVal) {
-        stop("The left variable is a constant and cannot be changed: ", deparse(curExp))
+        stop("The left variable is a constant and cannot be changed: ", 
+            deparse(curExp))
     }
     
     
@@ -55,15 +57,18 @@ profiler_assignment_exitingVar <- function(level, varInfo, curExp) {
             if (is.null(inheritProp)) 
                 next
             
-            # Check if the property is the same between the left and right expression
+            # Check if the property is the same between the left and right
+            # expression
             if (inheritProp && leftInfo[[curProp]] != rightInfo[[curProp]]) {
                 curAct = inheritAct[[defineType]][[curProp]][["act"]]
                 curWarningLevel = inheritAct[[defineType]][[curProp]][["warningLevel"]]
                 if (is.null(curAct)) 
                   curAct = "no action"
                 if (is.null(curWarningLevel)) 
-                  curWarningLevel = switch(curAct, `no action` = 0, `version bump` = 1, `rename var` = 2)
-                curAct = switch(curAct, `no action` = 0, `version bump` = 1, `rename var` = 2)
+                  curWarningLevel = switch(curAct, `no action` = 0, `version bump` = 1, 
+                    `rename var` = 2)
+                curAct = switch(curAct, `no action` = 0, `version bump` = 1, 
+                  `rename var` = 2)
                 if (curAct != 0) {
                   leftInfo[[curProp]] = rightInfo[[curProp]]
                 }
@@ -87,21 +92,24 @@ profiler_assignment_exitingVar <- function(level, varInfo, curExp) {
     }
     
     
-    # Give warning and error when the expression is inside the for and if body
+    # Give warning and error when the expression is inside the for and if
+    # body
     if ("for" %in% level || "if" %in% level) {
         if (warningLevel == 1) {
-            warning("The property(s) of the left variable is changed inside the for/if body,\n", "The result may be not correct:\n", 
-                deparse(curExp))
+            warning("The property(s) of the left variable is changed inside the for/if body,\n", 
+                "The result may be not correct:\n", deparse(curExp))
         }
         if (warningLevel == 2) {
-            stop("The definition of the left variable is changed inside the for/if body,\n", "Please consider to redefine the variable before it:\n", 
+            stop("The definition of the left variable is changed inside the for/if body,\n", 
+                "Please consider to redefine the variable before it:\n", 
                 deparse(curExp))
         }
     }
     
     
-    # check the precision, if it needs higher precision, then do the version bump changing the variable type inside the for
-    # loop need to be solved in recompiler##########
+    # check the precision, if it needs higher precision, then do the
+    # version bump changing the variable type inside the for loop need to
+    # be solved in recompiler##########
     requiredPrecision = typeInherit(leftInfo$precisionType, rightInfo$precisionType)
     if (requiredPrecision != leftInfo$precisionType) {
         action = max(action, 1)
@@ -141,7 +149,8 @@ profiler_assignment_exitingVar <- function(level, varInfo, curExp) {
     
 }
 
-# If the left variable does not exist curExp=quote({D=1:gpu_global_id})[[2]]
+# If the left variable does not exist
+# curExp=quote({D=1:gpu_global_id})[[2]]
 profiler_assignment_newVar <- function(level, varInfo, curExp) {
     rightInfoPack = getExpInfo(varInfo, curExp[[3]])
     rightInfo = rightInfoPack$ExpInfo
@@ -154,13 +163,15 @@ profiler_assignment_newVar <- function(level, varInfo, curExp) {
     leftVar = curExp[[2]]
     rightExp = rightInfoPack$Exp
     
-    # Determine if the right expression explicitly or implicitly defines a variable
+    # Determine if the right expression explicitly or implicitly defines a
+    # variable
     if (is.call(rightExp) && deparse(rightExp[[1]]) %in% .profileExplicitDefine) {
         leftInfo = rightInfo
         leftInfo$version = 1
         leftInfo$var = deparse(leftVar)
         varInfo = addVarInfo(varInfo, leftInfo)
-        return(list(varInfo = varInfo, extCode = extCode, Exp = curExp, errorCheck = errorCheck))
+        return(list(varInfo = varInfo, extCode = extCode, Exp = curExp, 
+            errorCheck = errorCheck))
     }
     
     
@@ -214,9 +225,12 @@ profile_size <- function(varInfo, Exp) {
 
 
 
-# Exp=parse(text='matrix(10,2)')[[1]] Exp=parse(text='matrix(a,2,2)')[[1]] Exp=parse(text='matrix(a,2)')[[1]]
-# Exp=parse(text='matrix(a,ncol=2)')[[1]] Exp=parse(text='matrix(a,2,2)')[[1]] Exp=parse(text='matrix(3,2,2)')[[1]]
-# matchFunArg(matrix,Exp)
+# Exp=parse(text='matrix(10,2)')[[1]]
+# Exp=parse(text='matrix(a,2,2)')[[1]]
+# Exp=parse(text='matrix(a,2)')[[1]]
+# Exp=parse(text='matrix(a,ncol=2)')[[1]]
+# Exp=parse(text='matrix(a,2,2)')[[1]]
+# Exp=parse(text='matrix(3,2,2)')[[1]] matchFunArg(matrix,Exp)
 
 
 profile_matrix <- function(varInfo, Exp) {
@@ -244,8 +258,8 @@ profile_matrix <- function(varInfo, Exp) {
     ExpInfo$dataType = "matrix"
     ExpInfo$size1 = rowInfo$value
     ExpInfo$size2 = colInfo$value
-    # The simplification function may simplify the function such that the result is a matrix Therefore the value will not be
-    # stored
+    # The simplification function may simplify the function such that the
+    # result is a matrix Therefore the value will not be stored
     ExpInfo
 }
 
@@ -277,7 +291,8 @@ profile_arithmetic <- function(varInfo, Exp) {
     
     
     if (ExpInfo$dataType == T_scale) {
-        ExpInfo$value = Simplify2(paste0(leftInfo$value, deparse(Exp[[1]]), rightInfo$value))
+        ExpInfo$value = Simplify2(paste0(leftInfo$value, deparse(Exp[[1]]), 
+            rightInfo$value))
     }
     
     # Find the right size for the matrix
@@ -297,16 +312,17 @@ profile_arithmetic <- function(varInfo, Exp) {
     
     check = "FALSE"
     if (!isNA(leftInfo$size1) && !isNA(rightInfo$size1)) 
-        check = paste0(check, "||(", leftInfo$size1, "!=", rightInfo$size1, ")&&(", leftInfo$size1, "!=1)&&(", rightInfo$size1, 
-            "!=1)")
+        check = paste0(check, "||(", leftInfo$size1, "!=", rightInfo$size1, 
+            ")&&(", leftInfo$size1, "!=1)&&(", rightInfo$size1, "!=1)")
     
     if (!isNA(leftInfo$size2) && !isNA(rightInfo$size2)) 
-        check = paste0(check, "||(", leftInfo$size2, "!=", rightInfo$size2, ")&&(", leftInfo$size2, "!=1)&&(", rightInfo$size2, 
-            "!=1)")
+        check = paste0(check, "||(", leftInfo$size2, "!=", rightInfo$size2, 
+            ")&&(", leftInfo$size2, "!=1)&&(", rightInfo$size2, "!=1)")
     
     if (check != "FALSE") 
         check = substr(check, 8, nchar(check))
-    errorCheck = setErrorCheck(level = "error", code = deparse(Exp), check = check, msg = "Uncomfortable matrix dimension has been found")
+    errorCheck = setErrorCheck(level = "error", code = deparse(Exp), check = check, 
+        msg = "Uncomfortable matrix dimension has been found")
     res$ExpInfo = ExpInfo
     res$errorCheck = rbind(res$errorCheck, errorCheck)
     return(res)
@@ -336,15 +352,16 @@ profile_matrixMult <- function(varInfo, Exp) {
     ExpInfo$size2 = rightInfo$size2
     
     
-    errorCheck = setErrorCheck(level = "error", code = deparse(Exp), check = paste0(leftInfo$size2, "!=", rightInfo$size1), 
-        msg = "Uncomfortable matrix dimension has been found")
+    errorCheck = setErrorCheck(level = "error", code = deparse(Exp), check = paste0(leftInfo$size2, 
+        "!=", rightInfo$size1), msg = "Uncomfortable matrix dimension has been found")
     
     res$ExpInfo = ExpInfo
     res$errorCheck = errorCheck
     res
 }
 
-# i: indicate the subset index number NA: one value subset 1: first index 2: second index
+# i: indicate the subset index number NA: one value subset 1: first
+# index 2: second index
 getSubInfo <- function(varInfo, curInfo, sub_var, i = NA) {
     sub = list()
     
@@ -400,7 +417,8 @@ profile_subset <- function(varInfo, Exp) {
     if (!is.null(args$j)) {
         
         if (sub1$compileValue && sub2$compileValue && !isNA(curInfo$value)) {
-            ExpInfo$value = Simplify2(paste0(curInfo$value, "[", sub1$value, ",", sub2$value, "]"))
+            ExpInfo$value = Simplify2(paste0(curInfo$value, "[", sub1$value, 
+                ",", sub2$value, "]"))
         }
         if (sub1$compileSize && sub2$compileSize) {
             ExpInfo$size1 = sub1$size
@@ -410,7 +428,8 @@ profile_subset <- function(varInfo, Exp) {
     
     if (is.null(args$j)) {
         if (sub1$compileValue && !isNA(curInfo$value)) {
-            ExpInfo$value = Simplify2(paste0(curInfo$value, "[", sub1$value, "]"))
+            ExpInfo$value = Simplify2(paste0(curInfo$value, "[", sub1$value, 
+                "]"))
         }
         if (sub1$compileSize) {
             ExpInfo$size1 = sub1$size
@@ -438,13 +457,15 @@ profile_symbol <- function(varInfo, Exp) {
 
 profile_floor <- function(varInfo, Exp) {
     ExpInfoPack = getExpInfo(varInfo, Exp[[2]])
-    ExpInfoPack$Exp = parse(text = paste0("floor(", deparse(ExpInfoPack$Exp), ")"))[[1]]
+    ExpInfoPack$Exp = parse(text = paste0("floor(", deparse(ExpInfoPack$Exp), 
+        ")"))[[1]]
     ExpInfoPack$ExpInfo$precisionType = GPUVar$default_int
     return(ExpInfoPack)
 }
 profile_ceil <- function(varInfo, Exp) {
     ExpInfoPack = getExpInfo(varInfo, Exp[[2]])
-    ExpInfoPack$Exp = parse(text = paste0("ceiling(", deparse(ExpInfoPack$Exp), ")"))[[1]]
+    ExpInfoPack$Exp = parse(text = paste0("ceiling(", deparse(ExpInfoPack$Exp), 
+        ")"))[[1]]
     ExpInfoPack$ExpInfo$precisionType = GPUVar$default_int
     return(ExpInfoPack)
 }
@@ -559,7 +580,8 @@ profile_seq <- function(varInfo, Exp) {
     fromInfo = getExpInfo(varInfo, args$from)$ExpInfo
     toInfo = getExpInfo(varInfo, args$to)$ExpInfo
     byInfo = getExpInfo(varInfo, args$by)$ExpInfo
-    if (fromInfo$dataType != "scale" || toInfo$dataType != "scale" || byInfo$dataType != "scale") {
+    if (fromInfo$dataType != "scale" || toInfo$dataType != "scale" || byInfo$dataType != 
+        "scale") {
         stop("The function argument is not a scalar: ", deparse(Exp))
     }
     precision = typeInherit(fromInfo$precisionType, toInfo$precisionType)
@@ -570,7 +592,8 @@ profile_seq <- function(varInfo, Exp) {
     
     if (!isNA(fromInfo$value) && !isNA(toInfo$value) && !isNA(byInfo$value)) {
         # expInfo$value=paste0('seq(',fromInfo$value,',',toInfo$value,',',byInfo$value,')')
-        expInfo$size1 = Simplify2(paste0("floor((", toInfo$value, "-", fromInfo$value, ")/", byInfo$value, ")+1"))
+        expInfo$size1 = Simplify2(paste0("floor((", toInfo$value, "-", 
+            fromInfo$value, ")/", byInfo$value, ")+1"))
         expInfo$size2 = 1
         # expInfo$compileValue=TRUE
     }
@@ -580,7 +603,8 @@ profile_seq <- function(varInfo, Exp) {
     expInfo$location = "local"
     expInfo$shared = FALSE
     expInfo$specialType = "seq"
-    expInfo$specialContent = paste0("seq(", deparse(args$from), ",", deparse(args$to), ",", deparse(args$by), ")")
+    expInfo$specialContent = paste0("seq(", deparse(args$from), ",", deparse(args$to), 
+        ",", deparse(args$by), ")")
     
     expInfo
 }
@@ -590,15 +614,44 @@ profile_seq <- function(varInfo, Exp) {
 profile_oneStepSeq <- function(varInfo, Exp) {
     from = Exp[[2]]
     to = Exp[[3]]
-    code = parse(text = paste0("seq(", deparse(from), ",", deparse(to), ")"))[[1]]
+    code = parse(text = paste0("seq(", deparse(from), ",", deparse(to), 
+        ")"))[[1]]
     expInfo = getExpInfo(varInfo, code)
     expInfo
 }
+# Exp=quote(sum(A))
+profile_sum <- function(varInfo, Exp) {
+    res = getExpInfo(varInfo,Exp[[2]])
+    ExpInfo = res$ExpInfo
+    curInfo = getEmpyTable(T_scale)
+    curInfo$precisionType = typeTruncate(ExpInfo$precisionType)
+    res$ExpInfo = curInfo
+    res$Exp=parse(text=paste0("sum(",deparse(res$Exp),")"))[[1]]
+    return(res)
+}
 
-
-
-
-
+profile_rowSums <- function(varInfo, Exp) {
+  res = getExpInfo(varInfo,Exp[[2]])
+  ExpInfo = res$ExpInfo
+  curInfo = getEmpyTable()
+  curInfo$precisionType = typeTruncate(ExpInfo$precisionType)
+  curInfo$size1=ExpInfo$size1
+  curInfo$size2=1
+  res$ExpInfo = curInfo
+  res$Exp=parse(text=paste0("rowSums(",deparse(res$Exp),")"))[[1]]
+  return(res)
+}
+profile_colSums <- function(varInfo, Exp) {
+  res = getExpInfo(varInfo,Exp[[2]])
+  ExpInfo = res$ExpInfo
+  curInfo = getEmpyTable()
+  curInfo$precisionType = typeTruncate(ExpInfo$precisionType)
+  curInfo$size1=ExpInfo$size2
+  curInfo$size2=1
+  res$ExpInfo = curInfo
+  res$Exp=parse(text=paste0("colSums(",deparse(res$Exp),")"))[[1]]
+  return(res)
+}
 
 
 

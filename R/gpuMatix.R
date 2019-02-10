@@ -1,6 +1,6 @@
 
-.gpuMatrix = setClass(Class = "gpuMatrix", slots = c(data = "ANY", dimension = "vector", type = "character", gpuAddress = "ANY", 
-    device = "numeric"))
+.gpuMatrix = setClass(Class = "gpuMatrix", slots = c(data = "ANY", dimension = "vector", 
+    type = "character", gpuAddress = "ANY", device = "numeric"))
 
 
 #' gpuMatrix class
@@ -42,7 +42,8 @@ gpuMatrix <- function(data, type = "auto", device = "auto") {
     ad = gpuRefAddress()
     ad$upload(device, data, type)
     
-    obj = .gpuMatrix(data = data, dimension = dim(data), type = type, gpuAddress = ad, device = device)
+    obj = .gpuMatrix(data = data, dimension = dim(data), type = type, gpuAddress = ad, 
+        device = device)
     
     
     obj
@@ -73,7 +74,8 @@ gpuEmptMatrix <- function(row = 1, col = 1, type = "auto", device = "auto") {
     len = max(row * col, 1)
     ad$gpuMalloc(device, len, type)
     
-    obj = .gpuMatrix(data = NULL, dimension = c(row, col), type = type, gpuAddress = ad, device = device)
+    obj = .gpuMatrix(data = NULL, dimension = c(row, col), type = type, 
+        gpuAddress = ad, device = device)
     
     
     obj
@@ -260,69 +262,73 @@ getIndexFromExp <- function(Exp) {
 #' @rdname gpuMatrix
 #' @return A matrix subset
 #' @export
-setMethod("[", signature(x = "gpuMatrix", i = "ANY", j = "ANY", drop = "missing"), function(x, i = NA, j = NA, ..., drop = TRUE) {
-    func_call = sys.call()
-    index = getIndexFromExp(func_call)
-    # Empty index
-    if ((index$i == "" && index$j == "") || (index$i == "" && is.na(index$j)) || (is.na(index$i) && index$j == "")) 
-        return(.data(x)[drop = drop])
-    # One index
-    if (is.na(index$j)) 
-        return(.data(x)[i, drop = drop])
-    if (is.na(index$i)) 
-        stop("Undefined behavior")
-    # Two index
-    if (index$i == "") 
-        return(.data(x)[, j, drop = drop])
-    if (index$j == "") 
-        return(.data(x)[i, , drop = drop])
-    
-    return(.data(x)[i, j, drop = drop])
-})
+setMethod("[", signature(x = "gpuMatrix", i = "ANY", j = "ANY", drop = "missing"), 
+    function(x, i = NA, j = NA, ..., drop = TRUE) {
+        func_call = sys.call()
+        index = getIndexFromExp(func_call)
+        # Empty index
+        if ((index$i == "" && index$j == "") || (index$i == "" && is.na(index$j)) || 
+            (is.na(index$i) && index$j == "")) 
+            return(.data(x)[drop = drop])
+        # One index
+        if (is.na(index$j)) 
+            return(.data(x)[i, drop = drop])
+        if (is.na(index$i)) 
+            stop("Undefined behavior")
+        # Two index
+        if (index$i == "") 
+            return(.data(x)[, j, drop = drop])
+        if (index$j == "") 
+            return(.data(x)[i, , drop = drop])
+        
+        return(.data(x)[i, j, drop = drop])
+    })
 #' @param value The value you want to set
 #' @family Extract
 #' @rdname extract-methods
 #' @return no return value
 #' @export
-setMethod("[<-", signature(x = "gpuMatrix", i = "ANY", j = "ANY", value = "numeric"), function(x, i, j, ..., value) {
-    func_call = sys.call()
-    index = getIndexFromExp(func_call)
-    mydata = .data(x)
-    if ((index$i == "" && index$j == "") || (index$i == "" && is.na(index$j)) || (is.na(index$i) && index$j == "")) {
-        mydata[] <- value
+setMethod("[<-", signature(x = "gpuMatrix", i = "ANY", j = "ANY", value = "numeric"), 
+    function(x, i, j, ..., value) {
+        func_call = sys.call()
+        index = getIndexFromExp(func_call)
+        mydata = .data(x)
+        if ((index$i == "" && index$j == "") || (index$i == "" && is.na(index$j)) || 
+            (is.na(index$i) && index$j == "")) {
+            mydata[] <- value
+            .data(x) = mydata
+            .dim(x) = dim(mydata)
+            return(x)
+        }
+        # One index
+        if (is.na(index$j)) {
+            mydata[i] <- value
+            .data(x) = mydata
+            .dim(x) = dim(mydata)
+            return(x)
+        }
+        if (is.na(index$i)) 
+            stop("Undefined behavior")
+        # Two index
+        if (index$i == "") {
+            mydata[, j] <- value
+            .data(x) = mydata
+            .dim(x) = dim(mydata)
+            return(x)
+        }
+        if (index$j == "") {
+            mydata[i, ] <- value
+            .data(x) = mydata
+            .dim(x) = dim(mydata)
+            return(x)
+        }
+        
+        mydata[i, j] <- value
         .data(x) = mydata
         .dim(x) = dim(mydata)
         return(x)
-    }
-    # One index
-    if (is.na(index$j)) {
-        mydata[i] <- value
-        .data(x) = mydata
-        .dim(x) = dim(mydata)
-        return(x)
-    }
-    if (is.na(index$i)) 
-        stop("Undefined behavior")
-    # Two index
-    if (index$i == "") {
-        mydata[, j] <- value
-        .data(x) = mydata
-        .dim(x) = dim(mydata)
-        return(x)
-    }
-    if (index$j == "") {
-        mydata[i, ] <- value
-        .data(x) = mydata
-        .dim(x) = dim(mydata)
-        return(x)
-    }
-    
-    mydata[i, j] <- value
-    .data(x) = mydata
-    .dim(x) = dim(mydata)
-    return(x)
-    
-})
+        
+    })
 
 
 #' @details 'getSize()': Get the matrix size in byte

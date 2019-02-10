@@ -16,8 +16,7 @@ getEmpVarInfoTbl<-function(){
     curInfo=eval(callFunc[[1]][[2]],envir=globalenv())
     print.varInfo(curInfo,simplify=FALSE,printDef = TRUE)
   }
-  
-  structure(varInfo,class="varInfo")
+  varInfo
 }
 
 copyVarInfoTbl <- function(varInfo, resetVersion = TRUE) {
@@ -62,6 +61,8 @@ getEmpyTable<-function(type=""){
     tbl$size2=1
     tbl$location="local"
   }
+  
+  attr(tbl,"infoType")="singleInfo"
   tbl
 }
 
@@ -109,10 +110,10 @@ getVarInfo<-function(varInfo,varName,version="auto"){
   
   varCur_tbl[1,primaryProp]=varDef_tbl[1,primaryProp]
   
-  varCur_tbl$isSeq=varCur_tbl$specialType=="seq"
-  varCur_tbl$isRef=varCur_tbl$specialType=="ref"
+  varCur_tbl$isSeq=(varCur_tbl$specialType=="seq")
+  varCur_tbl$isRef=(varCur_tbl$specialType=="ref")
   
-  
+  attr(varCur_tbl,"infoType")="singleInfo"
   varCur_tbl
 }
 
@@ -168,6 +169,8 @@ setVarInfo_hidden<-function(varInfo,info){
 #Set the variable info
 #If the variable does not exist, an error will be given
 setVarInfo<-function(varInfo,newInfo){
+  if(attr(newInfo,"infoType")!="singleInfo")
+    warning("The info class is incorrent, this should be a bug in the package")
   #Check if the symbol does not exist in the table
   if(!hasVar(varInfo,newInfo$var,newInfo$version))
     stop(paste0("The given variable is not found: ",newInfo$var))
@@ -178,6 +181,8 @@ setVarInfo<-function(varInfo,newInfo){
 #Add a variable in the table
 #If the variable with a give version has exist in the table, an error will be given
 addVarInfo<-function(varInfo,newInfo){
+  if(attr(newInfo,"infoType")!="singleInfo")
+    warning("The info class is incorrent, this should be a bug in the package")
   #Check if the info already exist
   if(hasVar(varInfo,newInfo$var,newInfo$version))
     stop(paste0("The given variable is already in the table: ",newInfo$var))
@@ -231,4 +236,7 @@ print.varInfo<-function(varInfo,simplify=TRUE,printDef=FALSE){
   }
   print(info)
 }
+
+
+
 

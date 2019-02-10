@@ -12,6 +12,13 @@ An options class
 \description{
 Get the package compilation options, the openCl compilation options(\code{kernel.getOption()}) are also included.
 }
+\details{
+There are a few options that is allowed to be changed, they are:
+\code{sapplyOption.debugCode}: Replace the compiled GPU code with your customized code, this option is
+useful when you want to debug the compiled code, or when you want to customize the compiled code.
+
+\code{sapplyOption.compileEveryTime}: Specify whether you want the compiler to compile the R code everytime.
+}
 \examples{
 opt=gpuSapply.getOption()
 }

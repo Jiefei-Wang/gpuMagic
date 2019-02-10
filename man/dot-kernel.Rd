@@ -62,7 +62,7 @@ Please refer to the example for the usage
 }
 \examples{
 #The GPU code
-code="
+code='
 kernel void matAdd(gAuto1* A,gAuto2* B,gAuto3* C,gAuto4* size){
 uint col_id=get_global_id(0);
 uint rowNum=*size;
@@ -70,22 +70,22 @@ for(uint i=0;i<rowNum;i++){
 C[i+col_id*rowNum]=A[i+col_id*rowNum]+B[i+col_id*rowNum];
 }
 }
-"
+'
 #Create data in R
 m=100
 n=200
 A=matrix(runif(m*n),m,n)
 B=matrix(runif(m*n),m,n)
 #Send the data to GPU
-A_dev=gpuMatrix(A,type="double")
-B_dev=gpuMatrix(B,type="double")
+A_dev=gpuMatrix(A,type='double')
+B_dev=gpuMatrix(B,type='double')
 #Create an empty data in GPU
-C_dev=gpuEmptMatrix(row=m,col=n,type="double")
+C_dev=gpuEmptMatrix(row=m,col=n,type='double')
 
 #Get the default options
 options=kernel.getOption()
 #Run the GPU function
-.kernel(src = code,kernel="matAdd",parms=list(A_dev,B_dev,C_dev,m),.options = options)
+.kernel(src = code,kernel='matAdd',parms=list(A_dev,B_dev,C_dev,m),.options = options)
 
 #Retrieve the data
 C_dev=download(C_dev)

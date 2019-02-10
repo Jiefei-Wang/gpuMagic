@@ -1,13 +1,14 @@
 # ==============================parser 1==========================
-# simplifySingleCode(quote({g(a)=floor(r[2]+1)+d})[[2]]) return: Exp, extCode
+# simplifySingleCode(quote({a=floor(r[2]+1)+d})[[2]])
+# simplifySingleCode(quote({a=a+b+sum(a+b)})[[2]]) return: Exp, extCode
 simplifySingleCode <- function(Exp) {
     result = list()
     leftExp = cleanExp(Exp[[2]])
     rightExp = cleanExp(Exp[[3]])
     ExpOp = Exp[[1]]
     if (is.call(leftExp)) {
-        # If the left expression is a matrix subset, replace it with a new variable Otherwise only replace the function argument
-        # if needed
+        # If the left expression is a matrix subset, replace it with a new
+        # variable Otherwise only replace the function argument if needed
         if (is.call(leftExp)) {
             if (ExpOp == "=") {
                 if (leftExp[[1]] != "[") 
@@ -19,10 +20,10 @@ simplifySingleCode <- function(Exp) {
         }
         
     }
-    # For the right expression, check if the function is an element-wise operation If not, create a variable to replace it
-    # right expression
+    # For the right expression, check if the function is an element-wise
+    # operation If not, create a variable to replace it right expression
     if (is.call(rightExp)) {
-        res = simplifyElementOp(rightExp, wholeReplace = TRUE)
+        res = simplifyElementOp(rightExp, useElementOp = TRUE, isTop = TRUE)
         result$extCode = c(result$extCode, res$extCode)
         rightExp = res$Exp
     }
@@ -34,37 +35,61 @@ simplifySingleCode <- function(Exp) {
     return(result)
 }
 
-# Simplify the expression from one side of = sign wholeReplace:If the whole expression is allowed to be replaced
-# useElementOp: if the element operation will be preserved return: Exp, extCode
-simplifyElementOp <- function(Exp, wholeReplace = FALSE, useElementOp = TRUE) {
+# Simplify the expression from one side of = sign wholeReplace:If the
+# whole expression is allowed to be replaced useElementOp: if the
+# element operation will be preserved isTop: If the function is called
+# by other function or called by itself return: Exp, extCode
+# simplifyElementOp(quote(return(a+b)),TRUE,TRUE)
+simplifyElementOp <- function(Exp, useElementOp = TRUE, isTop = TRUE) {
     result = list()
     if (!is.call(Exp)) 
         return(list(Exp = Exp))
+    curFun = deparse(Exp[[1]])
     # Check if the expression start with the element opration
-    if (deparse(Exp[[1]]) %in% .elementOp && useElementOp) {
+    if (useElementOp && curFun %in% c(.elementOp, .noParentElementOP, .noChildElementOP)) {
+        if (curFun %in% .noParentElementOP) {
+            if (!isTop) {
+                res = replaceCode(Exp)
+                res$Exp = res$varName
+                return(res)
+            }
+        }
+        
+        # isTop&&curFun%in%.noParentElementOP curFun %in% .elementOp
+        child_eleOP = TRUE
+        
+        if (curFun %in% .noChildElementOP) {
+            child_eleOP = FALSE
+        }
         for (i in seq_len(length(Exp) - 1) + 1) {
             curExp = Exp[[i]]
-            res = simplifyElementOp(curExp)
+            res = simplifyElementOp(curExp, useElementOp = child_eleOP, 
+                isTop = FALSE)
             result$extCode = c(result$extCode, res$extCode)
             Exp[[i]] = res$Exp
         }
+        
+        result$Exp = Exp
+        return(result)
+    }
+    
+    # If the expression is a part of a larger expression, Replace the whole
+    # expression
+    if (!isTop) {
+        res = replaceCode(Exp)
+        result$extCode = c(result$extCode, res$extCode)
+        Exp = res$varName
     } else {
-        # If the expression is a part of a larger expression, Replace the whole expression
-        if (!wholeReplace) {
-            res = replaceCode(Exp)
-            result$extCode = c(result$extCode, res$extCode)
-            Exp = res$varName
-        } else {
-            for (i in seq_len(length(Exp) - 1) + 1) {
-                curExp = Exp[[i]]
-                if (deparse(Exp[[i]]) != "" && is.call(curExp)) {
-                  res = replaceCode(curExp)
-                  result$extCode = c(result$extCode, res$extCode)
-                  Exp[[i]] = res$varName
-                }
+        for (i in seq_len(length(Exp) - 1) + 1) {
+            curExp = Exp[[i]]
+            if (deparse(Exp[[i]]) != "" && is.call(curExp)) {
+                res = replaceCode(curExp)
+                result$extCode = c(result$extCode, res$extCode)
+                Exp[[i]] = res$varName
             }
         }
     }
+    
     result$Exp = Exp
     result
 }
@@ -76,10 +101,14 @@ replaceCode <- function(Exp) {
     varName = GPUVar$getTmpVar()
     if (Exp[[1]] == "[") {
         subsetArgs = matchBracketFunc(Exp)
+        subsetArgs$i=toCharacter(subsetArgs$i)
         if (is.null(subsetArgs$j)) {
-            replaceCode = paste0(varName, "=subRef(", Exp[[2]], ",", subsetArgs$i, ")")
+            replaceCode = paste0(varName, "=subRef(", Exp[[2]], ",", subsetArgs$i, 
+                ")")
         } else {
-            replaceCode = paste0(varName, "=subRef(", Exp[[2]], ",", subsetArgs$i, ",", subsetArgs$j, ")")
+          subsetArgs$j=toCharacter(subsetArgs$j)
+            replaceCode = paste0(varName, "=subRef(", Exp[[2]], ",", subsetArgs$i, 
+                ",", subsetArgs$j, ")")
         }
     } else {
         replaceCode = paste0(varName, "=", deparse(Exp))
@@ -96,8 +125,10 @@ replaceCode <- function(Exp) {
 }
 
 
-# Exp=quote(a[1,]) This function will return a list of the arguments of the [] function, the empty argments are
-# expressed in character example: a[1] ==>i=1,drop=TRUE a[1,] ==>i=1,b='',drop=TRUE Exp=quote(a[])
+# Exp=quote(a[1,]) This function will return a list of the arguments of
+# the [] function, the empty argments are expressed in character
+# example: a[1] ==>i=1,drop=TRUE a[1,] ==>i=1,b='',drop=TRUE
+# Exp=quote(a[])
 matchBracketFunc <- function(Exp) {
     res = list(drop = TRUE)
     argName = names(Exp)
@@ -187,7 +218,8 @@ extract_for_if_Var <- function(parsedExp) {
             # Force substitution of the index variable
             index_var = curExp[[2]]
             index_newVar = GPUVar$getTmpVar()
-            index_def_code = paste0(index_newVar, "=gNumber(precision=\"", GPUVar$default_index_type, "\",constDef=TRUE)")
+            index_def_code = paste0(index_newVar, "=gNumber(precision=\"", 
+                GPUVar$default_index_type, "\",constDef=TRUE)")
             
             loopNum = curExp[[3]]
             if (is.symbol(loopNum)) {
@@ -199,11 +231,13 @@ extract_for_if_Var <- function(parsedExp) {
             }
             
             loopNumCountvar = GPUVar$getTmpVar()
-            loopNumCountvar_def_code = paste0(loopNumCountvar, "=length(", loopNumVar, ")")
+            loopNumCountvar_def_code = paste0(loopNumCountvar, "=length(", 
+                loopNumVar, ")")
             
             
             # assign the value to the looped variable
-            index_var_code = paste0(deparse(index_var), "=", loopNumVar, "[", index_newVar, "]")
+            index_var_code = paste0(deparse(index_var), "=", loopNumVar, 
+                "[", index_newVar, "]")
             
             
             

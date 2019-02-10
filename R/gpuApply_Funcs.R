@@ -33,11 +33,13 @@ createSapplySignature <- function(parms, FUN, .macroParms, .device, .options) {
         }
         # When it is a macro, add the dim and data
         if (parmsName[i] %in% .macroParms) 
-            varSig = paste(varSig, paste0(dim(parms[[i]]), collapse = ","), digest(parms[[i]][]), sep = ",")
+            varSig = paste(varSig, paste0(dim(parms[[i]]), collapse = ","), 
+                digest(parms[[i]][]), sep = ",")
         sig = c(sig, varSig)
     }
     # Default variable type
-    sig = c(sig, paste(GPUVar$default_float, GPUVar$default_int, GPUVar$default_index_type, sep = ","))
+    sig = c(sig, paste(GPUVar$default_float, GPUVar$default_int, GPUVar$default_index_type, 
+        sep = ","))
     # gpuSapply options
     sig = c(sig, digest(FUN), digest(.macroParms), digest(.options$sapplyOptimization))
     sig
@@ -64,7 +66,8 @@ getVarSizeInfo_C_level <- function(sizeMatrix) {
     if (curoffSet == 0) 
         curoffSet = 1
     # if(is.null(size1)) size1=0 if(is.null(size2)) size2=0
-    res = list(matrixOffset = matrixOffset, size1 = size1, size2 = size2, dim = dim, totalSize = curoffSet, matrixNum = matrixNum)
+    res = list(matrixOffset = matrixOffset, size1 = size1, size2 = size2, 
+        dim = dim, totalSize = curoffSet, matrixNum = matrixNum)
     return(res)
 }
 fillGPUdata <- function(GPUcode1, .options, .device) {
@@ -76,8 +79,9 @@ fillGPUdata <- function(GPUcode1, .options, .device) {
         if (class(parms[[varName]]) == "gpuMatrix") {
             curInfo = getVarInfo(varInfo, varName)
             if (curInfo$precisionType != .type(parms[[varName]])) {
-                stop("The data type of the variable ", varName, " are not compatible with the code,\n", "expected type: ", 
-                  curInfo$precisionType, ", variable type:", .type(parms[[varName]]), "\n")
+                stop("The data type of the variable ", varName, " are not compatible with the code,\n", 
+                  "expected type: ", curInfo$precisionType, ", variable type:", 
+                  .type(parms[[varName]]), "\n")
             }
             if (.device(parms[[varName]]) == .device) {
                 next
@@ -88,7 +92,8 @@ fillGPUdata <- function(GPUcode1, .options, .device) {
         }
         curInfo = getVarInfo(varInfo, varName, 1)
         curType = curInfo$precisionType
-        parms[[varName]] = gpuMatrix(parms[[varName]], type = curType, device = .device)
+        parms[[varName]] = gpuMatrix(parms[[varName]], type = curType, 
+            device = .device)
     }
     
     
@@ -130,23 +135,33 @@ fillGPUdata <- function(GPUcode1, .options, .device) {
     IntType = GPUVar$default_index_type
     
     device_argument = list()
-    device_argument$gp_data = gpuEmptMatrix(row = ceiling(sizeInfo_gp$totalSize * totalWorkerNum/4), col = 1, type = "int", 
+    device_argument$gp_data = gpuEmptMatrix(row = ceiling(sizeInfo_gp$totalSize * 
+        totalWorkerNum/4), col = 1, type = "int", device = .device)
+    device_argument$gp_size = gpuMatrix(sizeInfo_gp$dim, type = IntType, 
         device = .device)
-    device_argument$gp_size = gpuMatrix(sizeInfo_gp$dim, type = IntType, device = .device)
-    device_argument$gp_offset = gpuMatrix(sizeInfo_gp$matrixOffset, type = IntType, device = .device)
+    device_argument$gp_offset = gpuMatrix(sizeInfo_gp$matrixOffset, type = IntType, 
+        device = .device)
     
-    device_argument$gs_data = gpuEmptMatrix(row = ceiling(sizeInfo_gs$totalSize/4), type = "int", device = .device)
-    device_argument$gs_size = gpuMatrix(sizeInfo_gs$dim, type = IntType, device = .device)
-    device_argument$gs_offset = gpuMatrix(sizeInfo_gs$matrixOffset, type = IntType, device = .device)
+    device_argument$gs_data = gpuEmptMatrix(row = ceiling(sizeInfo_gs$totalSize/4), 
+        type = "int", device = .device)
+    device_argument$gs_size = gpuMatrix(sizeInfo_gs$dim, type = IntType, 
+        device = .device)
+    device_argument$gs_offset = gpuMatrix(sizeInfo_gs$matrixOffset, type = IntType, 
+        device = .device)
     
-    device_argument$ls_data = kernel.getSharedMem(sizeInfo_ls$totalSize, type = "char")
-    device_argument$ls_size = gpuMatrix(sizeInfo_ls$dim, type = IntType, device = .device)
-    device_argument$ls_offset = gpuMatrix(sizeInfo_ls$matrixOffset, type = IntType, device = .device)
+    device_argument$ls_data = kernel.getSharedMem(sizeInfo_ls$totalSize, 
+        type = "char")
+    device_argument$ls_size = gpuMatrix(sizeInfo_ls$dim, type = IntType, 
+        device = .device)
+    device_argument$ls_offset = gpuMatrix(sizeInfo_ls$matrixOffset, type = IntType, 
+        device = .device)
     
     # The return size for each thread
     returnSize = kernel_args$sizeInfo[2]
-    device_argument$return_var = gpuEmptMatrix(kernel_args$sizeInfo[2], totalWorkerNum, type = GPUVar$default_float, device = .device)
-    device_argument$sizeInfo = gpuMatrix(kernel_args$sizeInfo, type = IntType, device = .device)
+    device_argument$return_var = gpuEmptMatrix(kernel_args$sizeInfo[2], 
+        totalWorkerNum, type = GPUVar$default_float, device = .device)
+    device_argument$sizeInfo = gpuMatrix(kernel_args$sizeInfo, type = IntType, 
+        device = .device)
     
     
     
@@ -169,20 +184,25 @@ completeGPUcode <- function(GPUcode) {
     for (curName in varInfo$requiredVar) {
         curInfo = getVarInfo(varInfo, curName)
         curType = curInfo$precisionType
-        kernel_arg_code = c(kernel_arg_code, paste0("global ", curType, "* ", curName))
+        kernel_arg_code = c(kernel_arg_code, paste0("global ", curType, 
+            "* ", curName))
     }
     code = paste0(code, paste0(kernel_arg_code, collapse = ","))
     
     # The working memory space
-    arg_prefix_list = c("global", "global", "global", "global", "global", "global", "local", "global", "global", "global", 
-        "global")
-    arg_list = c(GPUVar$global_private_data, GPUVar$global_private_size, GPUVar$global_private_offset, GPUVar$global_shared_data, 
-        GPUVar$global_share_size, GPUVar$global_shared_offset, GPUVar$local_shared_data, GPUVar$local_share_size, GPUVar$local_shared_offset, 
-        GPUVar$return_variable, GPUVar$size_info)
-    arg_type_list = c("char", GPUVar$default_index_type, GPUVar$default_index_type, "char", GPUVar$default_index_type, GPUVar$default_index_type, 
-        "char", GPUVar$default_index_type, GPUVar$default_index_type, GPUVar$default_float, GPUVar$default_index_type)
+    arg_prefix_list = c("global", "global", "global", "global", "global", 
+        "global", "local", "global", "global", "global", "global")
+    arg_list = c(GPUVar$global_private_data, GPUVar$global_private_size, 
+        GPUVar$global_private_offset, GPUVar$global_shared_data, GPUVar$global_share_size, 
+        GPUVar$global_shared_offset, GPUVar$local_shared_data, GPUVar$local_share_size, 
+        GPUVar$local_shared_offset, GPUVar$return_variable, GPUVar$size_info)
+    arg_type_list = c("char", GPUVar$default_index_type, GPUVar$default_index_type, 
+        "char", GPUVar$default_index_type, GPUVar$default_index_type, "char", 
+        GPUVar$default_index_type, GPUVar$default_index_type, GPUVar$default_float, 
+        GPUVar$default_index_type)
     for (i in seq_along(arg_list)) {
-        curCode = paste0(arg_prefix_list[i], " ", arg_type_list[i], "* ", arg_list[i])
+        curCode = paste0(arg_prefix_list[i], " ", arg_type_list[i], "* ", 
+            arg_list[i])
         if (i != length(arg_list)) 
             curCode = paste0(curCode)
         code = c(code, curCode)
@@ -195,11 +215,13 @@ completeGPUcode <- function(GPUcode) {
     
     
     # add the kernel function definition
-    code = paste0(code, "){\n", paste0(GPUcode$gpu_code, collapse = "\n"), "}")
+    code = paste0(code, "){\n", paste0(GPUcode$gpu_code, collapse = "\n"), 
+        "}")
     
     # Add the double vector support if appliable
     if (GPUVar$default_float == "double") 
-        code = paste0("#pragma OPENCL EXTENSION cl_khr_fp64:enable\n", code)
+        code = paste0("#pragma OPENCL EXTENSION cl_khr_fp64:enable\n", 
+            code)
     
     GPUcode$gpu_code = code
     GPUcode$kernel = kernelName
@@ -210,9 +232,12 @@ completeGPUcode <- function(GPUcode) {
 evaluateProfileTbl <- function(parms, table) {
     if (is.null(table) || nrow(table) == 0) 
         return(table)
-    table$totalSize = vapply(as.list(parse(text = table$totalSize)), eval, numeric(1), envir = environment())
-    table$size1 = vapply(as.list(parse(text = table$size1)), eval, numeric(1), envir = environment())
-    table$size2 = vapply(as.list(parse(text = table$size2)), eval, numeric(1), envir = environment())
+    table$totalSize = vapply(as.list(parse(text = table$totalSize)), eval, 
+        numeric(1), envir = environment())
+    table$size1 = vapply(as.list(parse(text = table$size1)), eval, numeric(1), 
+        envir = environment())
+    table$size2 = vapply(as.list(parse(text = table$size2)), eval, numeric(1), 
+        envir = environment())
     return(table)
 }
 
@@ -283,17 +308,19 @@ formatParms <- function(parms) {
     parms
 }
 
-# =========================optimization functions==============================
+# =========================optimization
+# functions==============================
 opt_workerNumber <- function(varInfo, code, .options) {
     targetCode = paste0("//Thread number optimization\n")
     
     if (!grepl(targetCode, code, fixed = TRUE)) {
-        stop("Unable to find the location of the thread number optimization code\n", "This error should never be happened\n", 
-            "Please contact the author")
+        stop("Unable to find the location of the thread number optimization code\n", 
+            "This error should never be happened\n", "Please contact the author")
     }
     
     if (.options$sapplyOptimization$thread.number) {
-        insertedCode = paste0("if(", GPUVar$gpu_global_id, "<", R_length(varInfo, GPUVar$gpu_loop_data), "){\n")
+        insertedCode = paste0("if(", GPUVar$gpu_global_id, "<", R_length(varInfo, 
+            GPUVar$gpu_loop_data), "){\n")
         insertedCode = paste0(targetCode, insertedCode)
         endCode = "\n}"
     } else {
@@ -309,8 +336,8 @@ opt_matrixDim <- function(varInfo, code, .options) {
     targetCode = paste0("//Matrix dimension optimization\n")
     
     if (!grepl(targetCode, code, fixed = TRUE)) {
-        stop("Unable to find the location of the thread number optimization code\n", "This error should never be happened\n", 
-            "Please contact the author")
+        stop("Unable to find the location of the thread number optimization code\n", 
+            "This error should never be happened\n", "Please contact the author")
     }
     if (!.options$sapplyOptimization$matrix.dim) {
         code = sub(targetCode, "", code, fixed = TRUE)
@@ -321,7 +348,8 @@ opt_matrixDim <- function(varInfo, code, .options) {
     opt_code = substring(code, match.info + attr(match.info, "match.length"))
     
     opt_target_space = c("gp", "gs", "lp", "ls")
-    opt_target = c(paste0("gpu_", opt_target_space, "_size1"), paste0("gpu_", opt_target_space, "_size2"))
+    opt_target = c(paste0("gpu_", opt_target_space, "_size1"), paste0("gpu_", 
+        opt_target_space, "_size2"))
     variable_definition = c()
     for (i in seq_along(opt_target)) {
         res = opt_matrixDim_hidden(opt_code, opt_target[i])
@@ -329,7 +357,8 @@ opt_matrixDim <- function(varInfo, code, .options) {
         opt_code = res$code_optimization
     }
     variable_definition = paste0(variable_definition, collapse = "")
-    code = paste0(substr(code, 1, match.info), targetCode, variable_definition, opt_code)
+    code = paste0(substr(code, 1, match.info), targetCode, variable_definition, 
+        opt_code)
     
     code
 }
@@ -346,7 +375,8 @@ opt_matrixDim_hidden <- function(code, opt.target) {
     variable = unique(variable)
     variable_opt = gsub(target.reg, target.replace, variable)
     
-    variable_definition = paste0(GPUVar$default_index_type, " ", variable_opt, "=", variable, ";\n")
+    variable_definition = paste0(GPUVar$default_index_type, " ", variable_opt, 
+        "=", variable, ";\n")
     variable_definition = paste0(variable_definition, collapse = "")
     code_optimization = gsub(target.reg, target.replace, code)
     

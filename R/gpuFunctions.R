@@ -4,20 +4,25 @@ checkTypeSupport <- function(type) {
         stop("The variable type ", type, " is not supported")
 }
 getTypeNum <- function(type) {
-    switch(type, bool = 1L, char = 1L, half = 2L, float = 3L, double = 4L, int = 5L, long = 6L, uint = 7L, ulong = 8L, stop("invalid type: ", 
-        type))
+    switch(type, bool = 1L, char = 1L, half = 2L, float = 3L, double = 4L, 
+        int = 5L, long = 6L, uint = 7L, ulong = 8L, stop("invalid type: ", 
+            type))
 }
 
 
 getTypeCXXStr <- function(type) {
-    switch(type, bool = "bool", char = "char", half = "half", float = "float", double = "double", int = "int", long = "long", 
-        uint = "uint", ulong = "ulong", stop("invalid type: ", type))
+  if(!is.null(attr(type,"infoType"))&&attr(type,"infoType")=="singleInfo")
+    type=type$precisionType
+    switch(type, bool = "bool", char = "char", half = "half", float = "float", 
+        double = "double", int = "int", long = "long", uint = "uint", ulong = "ulong", 
+        stop("invalid type: ", type))
 }
 
 # in byte
 getTypeSize <- function(type) {
-    switch(type, bool = 1L, char = 1L, half = 2L, float = 4L, double = 8L, int = 4L, long = 8L, uint = 4L, ulong = 8L, stop("invalid type: ", 
-        type))
+    switch(type, bool = 1L, char = 1L, half = 2L, float = 4L, double = 8L, 
+        int = 4L, long = 8L, uint = 4L, ulong = 8L, stop("invalid type: ", 
+            type))
 }
 getDataType <- function(data) {
     if (typeof(data) == "double" || typeof(data) == "numeric") 
@@ -28,7 +33,8 @@ getDataType <- function(data) {
 }
 convertDataType <- function(data, type) {
     checkTypeSupport(type)
-    switch(type, bool = as.raw(data), char = as.raw(data), int = as.integer(data), as.double(data))
+    switch(type, bool = as.raw(data), char = as.raw(data), int = as.integer(data), 
+        as.double(data))
 }
 
 
@@ -50,12 +56,14 @@ getSingleDeviceInfo <- function(platform, device) {
     opencl_version = paste0(rep(" ", 100), collapse = "")
     compute_unit_num = 0L
     deviceInfo = .Call(C_getDeviceInfo, as.integer(platform), as.integer(device))
-    names(deviceInfo) = c("deviceName", "deviceType", "globalMemory", "localMemory", "haslocalMemory", "opencl_version", 
-        "compute_unit_num")
+    names(deviceInfo) = c("deviceName", "deviceType", "globalMemory", "localMemory", 
+        "haslocalMemory", "opencl_version", "compute_unit_num")
     deviceInfo = as.data.frame(deviceInfo, stringsAsFactors = FALSE)
-    deviceInfo = cbind(data.frame(id = NA, platform = platform, device = device), deviceInfo)
+    deviceInfo = cbind(data.frame(id = NA, platform = platform, device = device), 
+        deviceInfo)
     
-    deviceInfo$deviceType = switch(as.character(deviceInfo$deviceType), `0` = "CPU", `1` = "GPU", `2` = "other")
+    deviceInfo$deviceType = switch(as.character(deviceInfo$deviceType), 
+        `0` = "CPU", `1` = "GPU", `2` = "other")
     
     deviceInfo
 }
@@ -92,7 +100,8 @@ print.options <- function(x, ...) {
 #' @export
 getDeviceList = function() {
     updateDeviceInfo()
-    deviceInfo = .gpuResourcesManager$globalVars$deviceInfo[, c("id", "platform", "device", "deviceName", "globalMemory")]
+    deviceInfo = .gpuResourcesManager$globalVars$deviceInfo[, c("id", "platform", 
+        "device", "deviceName", "globalMemory")]
     deviceInfo$globalMemory = sapply(deviceInfo$globalMemory, format_memory_size_output)
     print(deviceInfo, row.names = FALSE, right = FALSE)
     invisible()
@@ -174,8 +183,8 @@ getDeviceIndex = function() {
 getJobStatus = function(i) {
     device = getSelectedDevice(i)
     status = .Call(C_getDeviceStatus, device[1], device[2])
-    switch(as.character(status), `3` = "queued", `2` = "submitted", `1` = "running", `0` = "complete", paste0("Unknown status:", 
-        status))
+    switch(as.character(status), `3` = "queued", `2` = "submitted", `1` = "running", 
+        `0` = "complete", paste0("Unknown status:", status))
 }
 
 
@@ -186,7 +195,8 @@ getJobStatus = function(i) {
 
 gpuMagic.options = new.env()
 gpuMagic.options$default.thread.num = 64
-gpuMagic.options$supportedType <- c("bool", "char", "half", "float", "double", "int", "long", "uint", "ulong")
+gpuMagic.options$supportedType <- c("bool", "char", "half", "float", "double", 
+    "int", "long", "uint", "ulong")
 
 
 
@@ -212,8 +222,9 @@ gpuMagic.options$supportedType <- c("bool", "char", "half", "float", "double", "
 #' @return A list of the options
 #' @export
 gpuMagic.getOptions = function(opt = "all") {
-    allOpt = data.frame(default.float = GPUVar$default_float, default.int = GPUVar$default_int, default.index.type = GPUVar$default_index_type, 
-        default.thread.num = gpuMagic.options$default.thread.num, stringsAsFactors = FALSE)
+    allOpt = data.frame(default.float = GPUVar$default_float, default.int = GPUVar$default_int, 
+        default.index.type = GPUVar$default_index_type, default.thread.num = gpuMagic.options$default.thread.num, 
+        stringsAsFactors = FALSE)
     if (opt == "all") 
         curOpt = allOpt else curOpt = allOpt[, opt, drop = FALSE]
     curOpt = structure(curOpt, class = "options")

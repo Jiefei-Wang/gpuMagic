@@ -191,16 +191,40 @@ C_return <- function(varInfo, Exp) {
     returnVar = Exp[[2]]
     
     
-    code_right = C_element_getCExp(varInfo, returnVar, sub = c("gpu_return_i", "gpu_return_j"), opt = list("gpu_return_j", 
-        "gpu_return_i"))
+    
+    code_right = C_element_getCExp(
+      varInfo,
+      returnVar,
+      sub = c("gpu_return_i", "gpu_return_j"),
+      opt = list("gpu_return_j",
+                 "gpu_return_i")
+    )
     
     
-    loopBody = paste0(GPUVar$return_variable, "[gpu_return_k]=", code_right$value, ";")
+    loopBody = paste0(GPUVar$return_variable,
+                      "[gpu_return_k]=",
+                      code_right$value,
+                      ";")
     extCode = finalizeExtCode(code_right$extCode)
-    endCode = c("gpu_return_k=gpu_return_k+1;", paste0("if(gpu_return_k==", GPUVar$return_size, "){"), "break;", "}")
-    code = c("{", paste0(GPUVar$default_index_type, " gpu_return_k=0;"), C_matrix_assignment(loopBody, loopInd1 = "gpu_return_j", 
-        loopEnd1 = R_ncol(varInfo, returnVar), loopInd2 = "gpu_return_i", loopEnd2 = R_nrow(varInfo, returnVar), loopCode0 = extCode$L0, 
-        loopCode1 = extCode$L1, loopCode2 = extCode$L2, endCode2 = endCode), "}", "return;")
+    endCode = c(
+      "gpu_return_k=gpu_return_k+1;",
+      paste0("if(gpu_return_k==", GPUVar$return_size, "){"),
+      "break;",
+      "}"
+    )
+    code = c(
+      "{",
+      paste0(GPUVar$default_index_type, " gpu_return_k=0;"),
+      C_matrix_assignment(
+        loopBody,
+        loopInd1 = "gpu_return_j",loopEnd1 = R_ncol(varInfo, returnVar),
+        loopInd2 = "gpu_return_i",loopEnd2 = R_nrow(varInfo, returnVar),
+        loopCode0 = extCode$L0,loopCode1 = extCode$L1,loopCode2 = extCode$L2,
+        endCode2 = endCode
+      ),
+      "}",
+      "return;"
+    )
     
     code
 }
@@ -337,7 +361,108 @@ C_transpose_right <- function(varInfo, Exp) {
     code
 }
 
+#Exp=quote({ind=sum(A)})[[2]]
+C_sum_right<-function(varInfo, Exp){
+  leftVar = Exp[[2]]
+  rightExp = Exp[[3]]
+  rightVar=rightExp[[2]]
+  
+  leftInfo=getVarInfo(varInfo,leftVar)
+  precision=getTypeCXXStr(leftInfo)
+  
+  leftEle = C_element_getCExp(varInfo, leftVar, 
+                              sub = c("0","0"), 
+                              opt = list("gpu_sum_j", "gpu_sum_i"))
+  rightEle = C_element_getCExp(varInfo, rightVar, 
+                               sub = c("gpu_sum_i", "gpu_sum_j"),
+                               opt = list("gpu_sum_j", "gpu_sum_i"), 
+                               extCode = leftEle$extCode)
+  size_right_1 = R_nrow(varInfo, rightVar)
+  size_right_2 = R_ncol(varInfo, rightVar)
+  tmpVar=GPUVar$getTmpVar()
+  tmpDef=paste0(precision," ",tmpVar,"=0;")
+  loopBody = paste0(tmpVar,"=",tmpVar,"+", rightEle$value, ";")
+  extCode = finalizeExtCode(rightEle$extCode)
+  
+  code1 = C_matrix_assignment(loopBody, 
+                              loopInd1 = "gpu_sum_j", loopEnd1 = size_right_2,
+                              loopInd2 = "gpu_sum_i", loopEnd2 = size_right_1, 
+                             loopCode0 = extCode$L0, loopCode1 = extCode$L1, loopCode2 = extCode$L2)
+  code=c(
+    "{",
+    tmpDef,
+    code1,
+    paste0(leftEle$value,"=",tmpVar,";"),
+    "}"
+  )
+  code
+}
 
+
+#Exp=quote({ind=colSums(A)})[[2]]
+C_colSums_right<-function(varInfo, Exp){
+  leftVar = Exp[[2]]
+  rightExp = Exp[[3]]
+  rightVar=rightExp[[2]]
+  
+  leftInfo=getVarInfo(varInfo,leftVar)
+  precision=getTypeCXXStr(leftInfo)
+  
+  leftEle = C_element_getCExp(varInfo, leftVar, 
+                              sub = c("gpu_sum_j","0"), 
+                              opt = list("gpu_sum_j", "gpu_sum_i"))
+  rightEle = C_element_getCExp(varInfo, rightVar, 
+                               sub = c("gpu_sum_i", "gpu_sum_j"),
+                               opt = list("gpu_sum_j", "gpu_sum_i"), 
+                               extCode = leftEle$extCode)
+  size_right_1 = R_nrow(varInfo, rightVar)
+  size_left_2 = R_nrow(varInfo, leftVar)
+  tmpVar=GPUVar$getTmpVar()
+  tmpDef=paste0(precision," ",tmpVar,"=0;")
+  loopBody = paste0(tmpVar,"=",tmpVar,"+", rightEle$value, ";")
+  assignment=paste0(leftEle$value,"=",tmpVar,";")
+  extCode = finalizeExtCode(rightEle$extCode)
+  
+  code = C_matrix_assignment(loopBody, 
+                              loopInd1 = "gpu_sum_j", loopEnd1 = size_left_2,
+                              loopInd2 = "gpu_sum_i", loopEnd2 = size_right_1, 
+                              loopCode0 = extCode$L0, loopCode1 = c(tmpDef,extCode$L1), loopCode2 = extCode$L2,
+                              endCode1 = assignment)
+  code
+}
+
+
+#Exp=quote({ind=rowSums(A)})[[2]]
+C_rowSums_right<-function(varInfo, Exp){
+  leftVar = Exp[[2]]
+  rightExp = Exp[[3]]
+  rightVar=rightExp[[2]]
+  
+  leftInfo=getVarInfo(varInfo,leftVar)
+  precision=getTypeCXXStr(leftInfo)
+  
+  leftEle = C_element_getCExp(varInfo, leftVar, 
+                              sub = c("gpu_sum_i","0"), 
+                              opt = list("gpu_sum_i", "gpu_sum_j"))
+  rightEle = C_element_getCExp(varInfo, rightVar, 
+                               sub = c("gpu_sum_i", "gpu_sum_j"),
+                               opt = list("gpu_sum_i", "gpu_sum_j"), 
+                               extCode = leftEle$extCode)
+  size_left_1 = R_nrow(varInfo, leftVar)
+  size_right_2 = R_ncol(varInfo, rightVar)
+  tmpVar=GPUVar$getTmpVar()
+  tmpDef=paste0(precision," ",tmpVar,"=0;")
+  loopBody = paste0(tmpVar,"=",tmpVar,"+", rightEle$value, ";")
+  assignment=paste0(leftEle$value,"=",tmpVar,";")
+  extCode = finalizeExtCode(rightEle$extCode)
+  
+  code = C_matrix_assignment(loopBody, 
+                             loopInd1 = "gpu_sum_i", loopEnd1 = size_left_1,
+                             loopInd2 = "gpu_sum_j", loopEnd2 = size_right_2, 
+                             loopCode0 = extCode$L0, loopCode1 = c(tmpDef,extCode$L1), loopCode2 = extCode$L2,
+                             endCode1 = assignment)
+  code
+}
 
 
 ########################################## Super lengthy function##############################

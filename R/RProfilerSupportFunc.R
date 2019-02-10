@@ -38,11 +38,14 @@ profileVar <- function(parms, macroParms) {
         } else {
             info$dataType = T_matrix
             if (varName[i] == GPUVar$gpu_loop_data) {
-                info$size1 = paste0("length(", varInfo$parmsTblName, "[[", i, "]])")
+                info$size1 = paste0("length(", varInfo$parmsTblName, "[[", 
+                  i, "]])")
                 info$size2 = 1
             } else {
-                info$size1 = paste0("nrow(", varInfo$parmsTblName, "[[", i, "]])")
-                info$size2 = paste0("ncol(", varInfo$parmsTblName, "[[", i, "]])")
+                info$size1 = paste0("nrow(", varInfo$parmsTblName, "[[", 
+                  i, "]])")
+                info$size2 = paste0("ncol(", varInfo$parmsTblName, "[[", 
+                  i, "]])")
             }
         }
         
@@ -53,10 +56,11 @@ profileVar <- function(parms, macroParms) {
     varInfo
 }
 
-# ==================================Profiler 2==========================
+# ==================================Profiler
+# 2==========================
 
-# Find the function parameters If the functions' argument does not show in the expression, the default value will be
-# used
+# Find the function parameters If the functions' argument does not show
+# in the expression, the default value will be used
 matchFunArg <- function(fun, Exp) {
     funArg = formals(fun)
     eval(parse(text = paste0(deparse(Exp[[1]]), "=fun")))
@@ -76,9 +80,10 @@ matchFunArg <- function(fun, Exp) {
     return(funArg)
 }
 
-# Get the right expression profile Return value would be a list with the following elements: ExpInfo:the expression info
-# Exp: the expression errorCheck: The error check item extCode: the extra code that needs to be added before the
-# expression
+# Get the right expression profile Return value would be a list with
+# the following elements: ExpInfo:the expression info Exp: the
+# expression errorCheck: The error check item extCode: the extra code
+# that needs to be added before the expression
 getExpInfo <- function(varInfo, Exp) {
     res = getExpInfo_hidden(varInfo, Exp)
     if (is.data.frame(res)) {
@@ -93,7 +98,8 @@ getExpInfo <- function(varInfo, Exp) {
     if (is.call(Exp) && (deparse(Exp[[1]]) %in% .profileExplicitDefine)) 
         return(res)
     # Some optimization
-    if (!isNA(ExpInfo$size1) && !isNA(ExpInfo$size2) && Simplify(ExpInfo$size1) == "1" && Simplify(ExpInfo$size2) == "1") {
+    if (!isNA(ExpInfo$size1) && !isNA(ExpInfo$size2) && Simplify(ExpInfo$size1) == 
+        "1" && Simplify(ExpInfo$size2) == "1") {
         ExpInfo$dataType = T_scale
         ExpInfo$size1 = 1
         ExpInfo$size2 = 1
@@ -142,7 +148,8 @@ combineExpInfo <- function(Exp, ...) {
     return(list(errorCheck = errorCheck, extCode = extCode, Exp = Exp))
 }
 
-# Determine which type can preserve the information of the information in type1 and type2
+# Determine which type can preserve the information of the information
+# in type1 and type2
 typeInherit <- function(type1, type2) {
     if (!is.character(type1)) 
         type1 = as.character(type1)
@@ -170,6 +177,14 @@ typeInherit <- function(type1, type2) {
             return(group_int[i])
     }
     stop("Unsupported variable type!")
+}
+
+typeTruncate <- function(type) {
+  if(type%in%c("bool","char"))
+    return("int")
+  if(type%in%c("half"))
+    return("float")
+  return(type)
 }
 
 is.preservedFunc <- function(func) {
@@ -233,7 +248,8 @@ toCharacter <- function(x) {
     }
     var_char
 }
-# Convert an non-expression to the expression and return both expression and characters
+# Convert an non-expression to the expression and return both
+# expression and characters
 toExpression <- function(var) {
     if (is.language(var)) {
         var_char = deparse(var)
@@ -248,22 +264,27 @@ toExpression <- function(var) {
 }
 
 
-# This function simplify the R code and make it ready to put in the varInfo table
+# This function simplify the R code and make it ready to put in the
+# varInfo table
 Simplify2 <- function(Exp) {
     res = Simplify(Exp)
-    # remove the space res=trimws(gsub(', ',',',res,fixed = TRUE)) If the result is a vector if(length(grep(' ',res,fixed =
-    # TRUE))!=0){ res=paste0('c(',gsub(' +',',',res),')') return(res) }
+    # remove the space res=trimws(gsub(', ',',',res,fixed = TRUE)) If the
+    # result is a vector if(length(grep(' ',res,fixed = TRUE))!=0){
+    # res=paste0('c(',gsub(' +',',',res),')') return(res) }
     if (isNumeric(res)) 
         return(res) else return(paste0("(", res, ")"))
 }
-# get the version bump code var: the variable name version: the version that should be bumped to
+# get the version bump code var: the variable name version: the version
+# that should be bumped to
 getVersionBumpCode <- function(var, version) {
     var_char = toCharacter(var)
-    parse(text = paste0(GPUVar$preservedFuncPrefix, "setVersion(", var_char, ",", version, ")"))[[1]]
+    parse(text = paste0(GPUVar$preservedFuncPrefix, "setVersion(", var_char, 
+        ",", version, ")"))[[1]]
 }
-# Add the error check into the varInfo level: the error level: warning, error code: The code that generate this error
-# check check: the condition that will throw the error(check=TRUE will throw the error) msg: the message that will be
-# post when the error occurs
+# Add the error check into the varInfo level: the error level: warning,
+# error code: The code that generate this error check check: the
+# condition that will throw the error(check=TRUE will throw the error)
+# msg: the message that will be post when the error occurs
 setErrorCheck <- function(level, code, check, msg = "") {
     data.frame(level = level, code = code, check = check, msg = msg, stringsAsFactors = FALSE)
 }
@@ -273,13 +294,15 @@ redirectVar <- function(varInfo, sourceVar, desVar) {
     sourceVarInfo = getVarInfo(varInfo, sourceVar)
     if (hasVar(varInfo, desVar)) {
         desVarInfo = getVarInfo(varInfo, desVar)
-        # If the destination is a lazy ref or seq object, no redirection is available
+        # If the destination is a lazy ref or seq object, no redirection is
+        # available
         if (desVarInfo$isRef || desVarInfo$isSeq) {
             return()
         }
         # Check if the variable can be redirect
-        if (sourceVarInfo$require || sourceVarInfo$dataType != desVarInfo$dataType || sourceVarInfo$shared != desVarInfo$shared || 
-            sourceVarInfo$location != desVarInfo$location || sourceVarInfo$precisionType != typeInherit(sourceVarInfo$precisionType, 
+        if (sourceVarInfo$require || sourceVarInfo$dataType != desVarInfo$dataType || 
+            sourceVarInfo$shared != desVarInfo$shared || sourceVarInfo$location != 
+            desVarInfo$location || sourceVarInfo$precisionType != typeInherit(sourceVarInfo$precisionType, 
             desVarInfo$precisionType)) 
             return()
         if (desVarInfo$redirect == "NA") {

@@ -6,7 +6,8 @@ if (FALSE) {
     codeMetaInfo = profileMeta1
     level = c("top")
 }
-parserFrame <- function(parserFunc, checkFunc, updateFunc, codeMetaInfo, level = c("top")) {
+parserFrame <- function(parserFunc, checkFunc, updateFunc, codeMetaInfo, 
+    level = c("top")) {
     curCodeMetaInfo = codeMetaInfo
     parsedExp = codeMetaInfo$Exp
     code = c()
@@ -21,15 +22,16 @@ parserFrame <- function(parserFunc, checkFunc, updateFunc, codeMetaInfo, level =
                 loopIndExp = curExp[[3]]
                 curLevel = c(level, "for")
                 if (checkFunc(loopIndExp)) {
-                  res = ProcessCodeSingle(parserFunc, updateFunc, curCodeMetaInfo, curLevel, parsedExp, code, i, loopIndExp)
+                  res = ProcessCodeSingle(parserFunc, updateFunc, curCodeMetaInfo, 
+                    curLevel, parsedExp, code, i, loopIndExp)
                   curCodeMetaInfo = res$codeMetaInfo
                   parsedExp = res$parsedExp
                   code = res$code
                   loopIndExp = res$Exp
                 }
                 loopBodyExp = curExp[[4]]
-                res = ProcessCodeChunk(parserFunc, checkFunc, updateFunc, curCodeMetaInfo, curLevel, parsedExp, code, i, 
-                  loopBodyExp)
+                res = ProcessCodeChunk(parserFunc, checkFunc, updateFunc, 
+                  curCodeMetaInfo, curLevel, parsedExp, code, i, loopBodyExp)
                 curCodeMetaInfo = res$codeMetaInfo
                 parsedExp = res$parsedExp
                 code = res$code
@@ -47,7 +49,8 @@ parserFrame <- function(parserFunc, checkFunc, updateFunc, codeMetaInfo, level =
                 conditionExp = curExp[[2]]
                 curLevel = c(level, "if")
                 if (checkFunc(conditionExp)) {
-                  res = ProcessCodeSingle(parserFunc, updateFunc, curCodeMetaInfo, curLevel, parsedExp, code, i, conditionExp)
+                  res = ProcessCodeSingle(parserFunc, updateFunc, curCodeMetaInfo, 
+                    curLevel, parsedExp, code, i, conditionExp)
                   curCodeMetaInfo = res$codeMetaInfo
                   parsedExp = res$parsedExp
                   code = res$code
@@ -57,8 +60,8 @@ parserFrame <- function(parserFunc, checkFunc, updateFunc, codeMetaInfo, level =
                   if (k > length(curExp)) 
                     next
                   conditionBodyExp = curExp[[k]]
-                  res = ProcessCodeChunk(parserFunc, checkFunc, updateFunc, curCodeMetaInfo, curLevel, parsedExp, code, 
-                    i, conditionBodyExp)
+                  res = ProcessCodeChunk(parserFunc, checkFunc, updateFunc, 
+                    curCodeMetaInfo, curLevel, parsedExp, code, i, conditionBodyExp)
                   curCodeMetaInfo = res$codeMetaInfo
                   parsedExp = res$parsedExp
                   code = res$code
@@ -73,11 +76,13 @@ parserFrame <- function(parserFunc, checkFunc, updateFunc, codeMetaInfo, level =
             }
         }
         
-        # I don't know who will use double bracket But I add it for making sure it works
+        # I don't know who will use double bracket But I add it for making sure
+        # it works
         if (length(curExp) > 1 && curExp[[1]] == "{") {
             warning("Unnecessary { has been found: ", deparse(curExp))
             curLevel = c(level, "{")
-            res = ProcessCodeChunk(parserFunc, checkFunc, updateFunc, curCodeMetaInfo, curLevel, parsedExp, code, i, curExp)
+            res = ProcessCodeChunk(parserFunc, checkFunc, updateFunc, curCodeMetaInfo, 
+                curLevel, parsedExp, code, i, curExp)
             curCodeMetaInfo = res$codeMetaInfo
             parsedExp = res$parsedExp
             code = res$code
@@ -88,7 +93,8 @@ parserFrame <- function(parserFunc, checkFunc, updateFunc, codeMetaInfo, level =
         }
         
         if (checkFunc(curExp)) {
-            res = ProcessCodeSingle(parserFunc, updateFunc, curCodeMetaInfo, level, parsedExp, code, i, curExp)
+            res = ProcessCodeSingle(parserFunc, updateFunc, curCodeMetaInfo, 
+                level, parsedExp, code, i, curExp)
             curCodeMetaInfo = res$codeMetaInfo
             parsedExp = res$parsedExp
             code = c(res$code, res$Exp)
@@ -99,10 +105,12 @@ parserFrame <- function(parserFunc, checkFunc, updateFunc, codeMetaInfo, level =
     return(curCodeMetaInfo)
 }
 # inside the for and if loop
-ProcessCodeChunk <- function(parserFunc, checkFunc, updateFunc, codeMetaInfo, curLevel, parsedExp, code, i, ExpChunk) {
+ProcessCodeChunk <- function(parserFunc, checkFunc, updateFunc, codeMetaInfo, 
+    curLevel, parsedExp, code, i, ExpChunk) {
     curMetaInfo = codeMetaInfo
     # Add a curly bracket when the loop does not have it
-    if (is.symbol(ExpChunk) || isNumeric(ExpChunk) || ExpChunk[[1]] != "{") {
+    if (is.symbol(ExpChunk) || isNumeric(ExpChunk) || ExpChunk[[1]] != 
+        "{") {
         ExpChunk = as.call(c(as.symbol("{"), ExpChunk))
     }
     ExpChunk = compressCodeChunk(ExpChunk)
@@ -113,7 +121,8 @@ ProcessCodeChunk <- function(parserFunc, checkFunc, updateFunc, codeMetaInfo, cu
         parsedExp = renamevariable(parsedExp, res$renameList, i)
         codeMetaInfo$renameList = rbind(codeMetaInfo$renameList, res$renameList)
     }
-    res1 = updateFunc(type = "block", curLevel, codeMetaInfo, parsedExp, code, i, res)
+    res1 = updateFunc(type = "block", curLevel, codeMetaInfo, parsedExp, 
+        code, i, res)
     if ("codeMetaInfo" %in% names(res1)) 
         codeMetaInfo = res1$codeMetaInfo
     if ("parsedExp" %in% names(res1)) 
@@ -121,21 +130,28 @@ ProcessCodeChunk <- function(parserFunc, checkFunc, updateFunc, codeMetaInfo, cu
     if ("code" %in% names(res1)) 
         code = res1$code
     ExpChunk = compressCodeChunk(res$Exp)
-    list(codeMetaInfo = codeMetaInfo, parsedExp = parsedExp, code = code, ExpChunk = ExpChunk)
+    list(codeMetaInfo = codeMetaInfo, parsedExp = parsedExp, code = code, 
+        ExpChunk = ExpChunk)
 }
-# For a single line code parserFunc######## parserFunc should at least return a list with Exp as the element, the Exp is
-# the current expression Optional return value: extCode: The expressions that will be added before the current
-# expression renameList: renaming a variable, the framework is responsible to rename the variable in all the expressions
-# next to the current one, the current one shoul be manually renamed. updateFunc######## updateFunc can be used to
-# update anything in the codeMetaInfo, parsedExp or code Optional return value: codeMetaInfo: The description object to
-# describe the property of code parsedExp: The expression that is parsing, usually not change code: The parsed
-# expression
-ProcessCodeSingle <- function(parserFunc, updateFunc, codeMetaInfo, curLevel, parsedExp, code, i, Exp) {
+# For a single line code parserFunc######## parserFunc should at least
+# return a list with Exp as the element, the Exp is the current
+# expression Optional return value: extCode: The expressions that will
+# be added before the current expression renameList: renaming a
+# variable, the framework is responsible to rename the variable in all
+# the expressions next to the current one, the current one shoul be
+# manually renamed. updateFunc######## updateFunc can be used to update
+# anything in the codeMetaInfo, parsedExp or code Optional return
+# value: codeMetaInfo: The description object to describe the property
+# of code parsedExp: The expression that is parsing, usually not change
+# code: The parsed expression
+ProcessCodeSingle <- function(parserFunc, updateFunc, codeMetaInfo, curLevel, 
+    parsedExp, code, i, Exp) {
     res = parserFunc(curLevel, codeMetaInfo, Exp)
     
     Exp = res$Exp
     code = c(code, res$extCode)
-    res1 = updateFunc(type = "normal", curLevel, codeMetaInfo, parsedExp, code, i, res)
+    res1 = updateFunc(type = "normal", curLevel, codeMetaInfo, parsedExp, 
+        code, i, res)
     if ("codeMetaInfo" %in% names(res1)) 
         codeMetaInfo = res1$codeMetaInfo
     if ("parsedExp" %in% names(res1)) 
@@ -146,10 +162,12 @@ ProcessCodeSingle <- function(parserFunc, updateFunc, codeMetaInfo, curLevel, pa
         parsedExp = renamevariable(parsedExp, res$renameList, i)
         codeMetaInfo$renameList = rbind(codeMetaInfo$renameList, res$renameList)
     }
-    list(codeMetaInfo = codeMetaInfo, parsedExp = parsedExp, code = code, Exp = Exp)
+    list(codeMetaInfo = codeMetaInfo, parsedExp = parsedExp, code = code, 
+        Exp = Exp)
 }
 renamevariable <- function(parsedExp, renameList, i) {
-    for (j in seq_len(nrow(renameList))) parsedExp = renameVarInCode(parsedExp, i, renameList[j, 1], renameList[j, 2])
+    for (j in seq_len(nrow(renameList))) parsedExp = renameVarInCode(parsedExp, 
+        i, renameList[j, 1], renameList[j, 2])
     parsedExp
 }
 renameVarInCode <- function(code, start, oldName, newName) {

@@ -4,8 +4,10 @@
 RProfile1 <- function(codeMetaInfo2) {
     profileMeta1 = codeMetaInfo2
     
-    # The looped variable needs some special treatment, because inside each function it has a unique looped variable The
-    # overall looped variable is redefined to distinguish the overall and individual looped variables.
+    # The looped variable needs some special treatment, because inside each
+    # function it has a unique looped variable The overall looped variable
+    # is redefined to distinguish the overall and individual looped
+    # variables.
     loopData = names(profileMeta1$parms)[1]
     func_args = profileMeta1$parms
     
@@ -24,14 +26,16 @@ RProfile1 <- function(codeMetaInfo2) {
 
 
 
-# Function: 1. Profile the variable type 2. rename the variable if the type does not match
+# Function: 1. Profile the variable type 2. rename the variable if the
+# type does not match
 RProfile2 <- function(profileMeta1) {
     if (DEBUG) {
         profileMeta1$varInfo = copyVarInfoTbl(profileMeta1$varInfo)
     }
     profileMeta1$varInfo$errorCheck = c()
     
-    profileMeta2 = parserFrame(RProfile2_parserFunc, RProfile2_checkFunc, RProfile2_updateFunc, profileMeta1)
+    profileMeta2 = parserFrame(RProfile2_parserFunc, RProfile2_checkFunc, 
+        RProfile2_updateFunc, profileMeta1)
     
     profileMeta2
 }
@@ -71,11 +75,13 @@ RProfile2_parserFunc <- function(level, codeMetaInfo, curExp) {
             return(result)
         }
     }
-    # stop when the code is like A=B%*%A, it is unsafe to do the operation and assign back the result to the original matrix
-    # THIS NEEDS TO BE MOVED TO PARSER####################
+    # stop when the code is like A=B%*%A, it is unsafe to do the operation
+    # and assign back the result to the original matrix THIS NEEDS TO BE
+    # MOVED TO PARSER####################
     if (formattedExp_char == "var=var%*%var") {
         if (curExp[[2]] == curExp[[3]][[3]]) {
-            stop("The the left variable cannot be the same as the right variable:\n", deparse(curExp))
+            stop("The the left variable cannot be the same as the right variable:\n", 
+                deparse(curExp))
         }
     }
     
@@ -95,8 +101,9 @@ RProfile2_parserFunc <- function(level, codeMetaInfo, curExp) {
     
     
     
-    # For the no copy return, the function will first try to redirect it to the return variable in the function argument. If
-    # it is not possible, the legacy method will be used.
+    # For the no copy return, the function will first try to redirect it to
+    # the return variable in the function argument. If it is not possible,
+    # the legacy method will be used.
     if (curExp[[1]] == "return.nocpy") {
         returnVar = deparse(curExp[[2]])
         returnInfo = redirectVar(varInfo, returnVar, GPUVar$return_variable)
@@ -136,9 +143,11 @@ RProfile2_checkFunc <- function(curExp) {
     return(TRUE)
 }
 
-RProfile2_updateFunc <- function(type, level, codeMetaInfo, parsedExp, code, i, res) {
+RProfile2_updateFunc <- function(type, level, codeMetaInfo, parsedExp, 
+    code, i, res) {
     result = general_updateFunc(codeMetaInfo, parsedExp, code)
     result$codeMetaInfo$varInfo = res$varInfo
-    result$codeMetaInfo$errorCheck = rbind(result$codeMetaInfo$errorCheck, res$errorCheck)
+    result$codeMetaInfo$errorCheck = rbind(result$codeMetaInfo$errorCheck, 
+        res$errorCheck)
     result
 }

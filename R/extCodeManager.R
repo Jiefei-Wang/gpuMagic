@@ -1,6 +1,4 @@
 ######## Helper functions###################
-
-
 #' @return A vector of variables
 #' @rdname internalFunctions
 #' @export
@@ -9,9 +7,17 @@ extractVars <- function(x) UseMethod("extractVars")
 #' @rdname internalFunctions
 #' @export
 extractVars.default <- function(x) {
+    if(is.language(x)) 
+      return(extractVars.expression(x))
+    if(is.numeric(x))
+      return(NULL)
     matchRes = gregexpr("[a-zA-Z0-9_]+", x)[[1]]
-    vars = vapply(seq_along(matchRes), function(i, x, start, len) substr(x, start[i], start[i] + len[i] - 1), "", x, matchRes, 
-        attr(matchRes, "match.length"))
+    vars = vapply(
+      seq_along(matchRes), 
+      function(i, x, start, len) 
+        substr(x, start[i], start[i] + len[i] - 1), "",
+      x, matchRes, attr(matchRes, "match.length")
+    )
     vars
 }
 
@@ -19,15 +25,30 @@ extractVars.default <- function(x) {
 #' @rdname internalFunctions
 #' @export
 extractVars.extCode <- function(x) {
-    x$varDef$varName
+    x$varDef$varName[!is.na(x$varDef$precision)]
+}
+#' @method extractVars expression
+#' @rdname internalFunctions
+#' @export
+extractVars.expression <- function(x) {
+  if(!is.call(x)){
+    return(deparse(x))
+  }
+  res=c()
+  for(i in seq_len(length(x)-1)+1){
+    res=c(res,extractVars(x[[i]]))
+  }
+  return(res)
 }
 ############# extCode definition##############
 createExtCode <- function(opt) {
     levelNum = length(opt) + 1
-    extCode = structure(list(varDef = NULL, opt = opt, levelNum = levelNum, valueRecord = NULL), class = "extCode")
+    extCode = structure(list(varDef = NULL, opt = opt, levelNum = levelNum, 
+        valueRecord = NULL), class = "extCode")
     for (i in seq_along(opt)) {
         for (j in seq_along(opt[[i]])) {
-            extCode = addVarDef_inLevel(extCode, NA, opt[[i]][j], NA, i + 1)
+            extCode = addVarDef_inLevel(extCode, NA, opt[[i]][j], NA, i + 
+                1)
         }
     }
     extCode
@@ -44,8 +65,8 @@ findVarLevel <- function(extCode, var) {
 
 
 addVarDef_inLevel <- function(extCode, precision, varName, varDef, level) {
-    extCode$varDef = rbind(extCode$varDef, data.frame(precision = precision, varName = varName, varDef = varDef, level = level, 
-        stringsAsFactors = FALSE))
+    extCode$varDef = rbind(extCode$varDef, data.frame(precision = precision, 
+        varName = varName, varDef = varDef, level = level, stringsAsFactors = FALSE))
     extCode
 }
 
@@ -62,7 +83,8 @@ addVarDef <- function(extCode, precision, varName, varDef) {
 
 finalizeExtCode_hidden <- function(curCode) {
     if (!is.na(curCode$precision)) {
-        return(paste0(curCode$precision, " ", curCode$varName, "=", curCode$varDef, ";"))
+        return(paste0(curCode$precision, " ", curCode$varName, "=", curCode$varDef, 
+            ";"))
     } else {
         return(NULL)
     }
@@ -91,7 +113,8 @@ hasVar.extCode <- function(extCode, var) {
 
 
 getVarFromExtCode <- function(extCode, precision, varDef) {
-    ind = which(extCode$varDef$precision == precision & extCode$varDef$varDef == varDef)
+    ind = which(extCode$varDef$precision == precision & extCode$varDef$varDef == 
+        varDef)
     if (length(ind) > 1) {
         stop("Redundant variable definition has been found")
     }
@@ -121,8 +144,8 @@ removeRedundantVar <- function(extCode, var) {
         return(extCode)
     }
 }
-# Add a variable definition record in extra code in a special place The record will not affect the output of
-# finalizeExtCode
+# Add a variable definition record in extra code in a special place The
+# record will not affect the output of finalizeExtCode
 addValueRecord <- function(extCode, value) {
     extCode$valueRecord = c(extCode$valueRecord, value)
     extCode
@@ -141,9 +164,12 @@ getVarsNum <- function(extCode) {
 }
 
 
-###################### Hoist Optimization################################# opt=list(c('gpu_k1')) extCode=createExtCode(opt)
-###################### extCode=addVarDef(extCode,'double','a1','i+j') extCode=addVarDef(extCode,'double','a2','k+j+a3')
-###################### extCode=addVarDef(extCode,'double','a3','i+gpu_k1') Exp='gpu_gp_size1_0 * a[(uint)(f+t)]' finalizeExtCode(extCode)
+###################### Hoist Optimization#################################
+###################### opt=list(c('gpu_k1')) extCode=createExtCode(opt)
+###################### extCode=addVarDef(extCode,'double','a1','i+j')
+###################### extCode=addVarDef(extCode,'double','a2','k+j+a3')
+###################### extCode=addVarDef(extCode,'double','a3','i+gpu_k1')
+###################### Exp='gpu_gp_size1_0 * a[(uint)(f+t)]' finalizeExtCode(extCode)
 
 
 
@@ -159,7 +185,8 @@ hoistOpt <- function(extCode, Exp) {
         baseLevel = c(baseLevel, max(codeInfo[[i]]$level))
     }
     
-    # Upgrade the level if the code is composed by a single variable and its level is unique
+    # Upgrade the level if the code is composed by a single variable and
+    # its level is unique
     totalLevel = getLevelNum(extCode)
     for (i in seq_len(totalLevel - 1)) {
         ind = which(baseLevel == i)
@@ -178,12 +205,14 @@ hoistOpt <- function(extCode, Exp) {
             if (curLevel != curBase) {
                 varDef = CSimplify(constructCode(curInfo, curLevel))
                 
-                res = getVarFromExtCode(extCode, GPUVar$default_index_type, varDef)
+                res = getVarFromExtCode(extCode, GPUVar$default_index_type, 
+                  varDef)
                 varName = res$var
                 extCode = res$extCode
                 curInfo = replaceLevelWithVar(curInfo, varName, curLevel)
             } else {
-                baseRes[[curLevel]] = c(baseRes[[curLevel]], constructCode(curInfo, curLevel))
+                baseRes[[curLevel]] = c(baseRes[[curLevel]], constructCode(curInfo, 
+                  curLevel))
             }
         }
     }
@@ -192,7 +221,8 @@ hoistOpt <- function(extCode, Exp) {
             next
         if (i != getLevelNum(extCode)) {
             varDef = CSimplify(paste0(baseRes[[i]], collapse = "+"))
-            res = getVarFromExtCode(extCode, GPUVar$default_index_type, varDef)
+            res = getVarFromExtCode(extCode, GPUVar$default_index_type, 
+                varDef)
             varName = res$var
             baseRes[[totalLevel]] = c(baseRes[[totalLevel]], varName)
             extCode = res$extCode
@@ -204,7 +234,8 @@ hoistOpt <- function(extCode, Exp) {
     finalRes
 }
 
-# Remove the variable which is less than or equal to the given level Add a variable in the given level
+# Remove the variable which is less than or equal to the given level
+# Add a variable in the given level
 replaceLevelWithVar <- function(codeInfo, var, level) {
     ind = which(codeInfo$level <= level)
     codeInfo = codeInfo[-ind, ]
@@ -213,8 +244,8 @@ replaceLevelWithVar <- function(codeInfo, var, level) {
     codeInfo
 }
 
-# Combine the variables into one variable The variables should in the level that is less than or equal to the given
-# level
+# Combine the variables into one variable The variables should in the
+# level that is less than or equal to the given level
 constructCode <- function(codeInfo, level) {
     ind = which(codeInfo$level <= level)
     codeInfo = codeInfo[ind, ]
@@ -229,8 +260,9 @@ constructCode <- function(codeInfo, level) {
     paste0(res, collapse = "")
 }
 
-# Decompose the code into different level The code should not be able to separate by +,- operator The current supported
-# decompose function is *
+# Decompose the code into different level The code should not be able
+# to separate by +,- operator The current supported decompose function
+# is *
 decomposeCode <- function(extCode, code) {
     code = decomposeCode_hidden(extCode, code)
     if (nrow(code) > 1) {
@@ -249,7 +281,8 @@ decomposeCode_hidden <- function(extCode, code, operator = "") {
         func = deparse(code[[1]])
         if (func == "*") {
             left = decomposeCode_hidden(extCode, code[[2]])
-            right = rbind(left, decomposeCode_hidden(extCode, code[[3]], operator = func))
+            right = rbind(left, decomposeCode_hidden(extCode, code[[3]], 
+                operator = func))
             return(right)
         }
         if (func == "-") {
@@ -265,7 +298,8 @@ decomposeCode_hidden <- function(extCode, code, operator = "") {
     
     level = findCodeLevel(extCode, code)
     code_char = deparse(code)
-    res = data.frame(level = level, var = code_char, operator = operator, stringsAsFactors = FALSE)
+    res = data.frame(level = level, var = code_char, operator = operator, 
+        stringsAsFactors = FALSE)
     return(res)
     
 }

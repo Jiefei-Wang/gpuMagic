@@ -68,14 +68,16 @@ GPUVar <- local({
     # Deducted variable
     GPUVar_env$gpu_global_id = "gpu_global_id"
     
-    # The offset to find the worker data space in the global memory It is not an argument
+    # The offset to find the worker data space in the global memory It is
+    # not an argument
     GPUVar_env$worker_offset = "gpu_worker_offset"
     
     # parameters for creating the function
     GPUVar_env$functionCount = 0
     GPUVar_env$functionName = "gpu_kernel"
     
-    # This number can be reset to 0 in the beggining of the parser The parser can call it when it needs a new variable
+    # This number can be reset to 0 in the beggining of the parser The
+    # parser can call it when it needs a new variable
     GPUVar_env$tempVarInd = 0
     GPUVar_env$getTmpVar <- function() {
         GPUVar_env$tempVarInd = GPUVar_env$tempVarInd + 1
@@ -97,7 +99,7 @@ GPUVar <- local({
     # The shared size in byte For doing the matrix multiplication
     GPUVar_env$vectorSize = 4
     # in byte
-    GPUVar_env$private_vector_size = 32 * 1024
+    GPUVar_env$private_vector_size = 24 * 1024
     
     
     return(GPUVar_env)
@@ -108,7 +110,11 @@ GPUVar <- local({
 
 .elementFuncs = c("+", "-", "*", "/", ">", ">=", "<", "<=", "==")
 .elementTransformation = c("floor", "ceiling")
+
 .elementOp = c(.elementFuncs, .elementTransformation)
+.noParentElementOP = c("sum", "return")
+.noChildElementOP = c()
+
 
 #' @include RProfilerFunc.R
 
@@ -133,6 +139,11 @@ GPUVar <- local({
 .profileFuncs[["gNumber"]] = profile_gNumber
 .profileFuncs[["t"]] = profile_transpose
 .profileFuncs[["t.nocpy"]] = profile_transpose_nocpy
+.profileFuncs[["sum"]]=profile_sum
+.profileFuncs[["rowSums"]]=profile_rowSums
+.profileFuncs[["colSums"]]=profile_colSums
+
+
 
 
 .profileFuncs[["%*%"]] = profile_matrixMult
@@ -165,6 +176,11 @@ GPUVar <- local({
 .cFuncs[["<-:"]] = C_oneStepSeq_right
 .cFuncs[["<-t"]] = C_transpose_right
 .cFuncs[["<-t.nocpy"]] = C_NULL
+
+# No parent opration
+.cFuncs[["<-sum"]] = C_sum_right
+.cFuncs[["<-colSums"]] = C_colSums_right
+.cFuncs[["<-rowSums"]] = C_rowSums_right
 
 
 # Element op
@@ -234,7 +250,8 @@ gNumber <- function(precision = GPUVar$default_float, constDef = FALSE) {
 #' A=gMatrix(10,10)
 #' @return a matrix initialize with 0.
 #' @export
-gMatrix <- function(nrow = 1, ncol = 1, precision = GPUVar$default_float, constDef = FALSE, shared = FALSE, location = "global") {
+gMatrix <- function(nrow = 1, ncol = 1, precision = GPUVar$default_float, 
+    constDef = FALSE, shared = FALSE, location = "global") {
     return(matrix(NA, nrow, ncol))
 }
 # TODO

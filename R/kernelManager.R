@@ -77,12 +77,14 @@
 #' range(C-A-B)
 #' @return A vector or a matrix
 #' @export
-.kernel <- function(src = "", kernel, parms, .device = "auto", .globalThreadNum = "length(FirstArg)", .options = kernel.getOption()) {
+.kernel <- function(src = "", kernel, parms, .device = "auto", .globalThreadNum = "length(FirstArg)", 
+    .options = kernel.getOption()) {
     verbose = .options$verbose
     kernelMsg = .options$kernelMsg
     kernelOption = .options$kernelOption
     
-    if (verbose || sum(as.matrix(kernelMsg[, -grep("warning", colnames(kernelMsg))])) != 0) 
+    if (verbose || sum(as.matrix(kernelMsg[, -grep("warning", colnames(kernelMsg))])) != 
+        0) 
         message("======kelnel compilation=========")
     # Read the opencl code
     codePack = readCode(src)
@@ -135,11 +137,15 @@
     
     # Create the data type macros Add the signature if needed
     if (kernelOption$autoType && length(dataType) != 0) {
-        gAUTO = paste0("#define gAuto", seq_along(dataType), " global ", dataType, "\n", collapse = "")
-        lAUTO = paste0("#define lAuto", seq_along(dataType), " local ", dataType, "\n", collapse = "")
-        pAUTO = paste0("#define auto", seq_along(dataType), " ", dataType, "\n", collapse = "")
+        gAUTO = paste0("#define gAuto", seq_along(dataType), " global ", 
+            dataType, "\n", collapse = "")
+        lAUTO = paste0("#define lAuto", seq_along(dataType), " local ", 
+            dataType, "\n", collapse = "")
+        pAUTO = paste0("#define auto", seq_along(dataType), " ", dataType, 
+            "\n", collapse = "")
         
-        AUTOVector = paste0("#define auto", seq_along(dataType), "_v4 ", dataType, "4", "\n", collapse = "")
+        AUTOVector = paste0("#define auto", seq_along(dataType), "_v4 ", 
+            dataType, "4", "\n", collapse = "")
         
         src = paste0(gAUTO, lAUTO, pAUTO, AUTOVector, src)
         sig = c(sig, paste0(dataType, collapse = ""))
@@ -150,21 +156,24 @@
     if (!hasKernel(device, sig_hash, kernel)) {
         if (verbose || kernelMsg$compilation.msg) 
             message("OpenCL compiler message: The kernel does not exist and will be created")
-        .Call(C_createKernel, device[1], device[2], sig_hash, kernelOption$flag, src, kernel)
+        .Call(C_createKernel, device[1], device[2], sig_hash, kernelOption$flag, 
+            src, kernel)
     }
-    # Compute the usage of the shared memory and global memory upload the parameters
+    # Compute the usage of the shared memory and global memory upload the
+    # parameters
     global_memory = 0
     share_memory = 0
     for (i in seq_len(length(parms))) {
         if (class(parms[[i]]) == "list") {
             share_memory = share_memory + parms[[i]]$size
             
-            .Call(C_setSharedParameter, device[1], device[2], sig_hash, kernel, as.integer(parms[[i]]$size), as.integer(i - 
-                1))
+            .Call(C_setSharedParameter, device[1], device[2], sig_hash, 
+                kernel, as.integer(parms[[i]]$size), as.integer(i - 1))
         } else {
             global_memory = global_memory + getSize(parms[[i]])
             # message(getSize(parms[[i]]))
-            .Call(C_setParameter, device[1], device[2], sig_hash, kernel, .getAddress(parms[[i]]), as.integer(i - 1))
+            .Call(C_setParameter, device[1], device[2], sig_hash, kernel, 
+                .getAddress(parms[[i]]), as.integer(i - 1))
         }
     }
     if (verbose || kernelMsg$memory.usage.msg) {
@@ -193,7 +202,8 @@
         message(paste0("Thread number per block: ", localThreadNum_output))
     }
     
-    .Call(C_launchKernel, device[1], device[2], sig_hash, kernel, as.integer(.globalThreadNum), as.integer(localThreadNum))
+    .Call(C_launchKernel, device[1], device[2], sig_hash, kernel, as.integer(.globalThreadNum), 
+        as.integer(localThreadNum))
     
     invisible()
 }
@@ -228,10 +238,11 @@ kernel.getOption <- function() {
     curOp = list()
     curOp$verbose = FALSE
     
-    curOp$kernelMsg = data.frame(compilation.msg = FALSE, memory.usage.msg = FALSE, thread.num.msg = FALSE, insufficient.thread.num.warning = TRUE)
+    curOp$kernelMsg = data.frame(compilation.msg = FALSE, memory.usage.msg = FALSE, 
+        thread.num.msg = FALSE, insufficient.thread.num.warning = TRUE)
     
-    curOp$kernelOption = data.frame(localThreadNum = "auto", localThreadNumMacro = FALSE, signature = "", flag = "", autoType = TRUE, 
-        stringsAsFactors = FALSE)
+    curOp$kernelOption = data.frame(localThreadNum = "auto", localThreadNumMacro = FALSE, 
+        signature = "", flag = "", autoType = TRUE, stringsAsFactors = FALSE)
     curOp = structure(curOp, class = "options")
     curOp
 }
@@ -242,7 +253,8 @@ kernel.getSharedMem <- function(length, type) {
 }
 
 readCode <- function(src) {
-    # if the src can be treated as a file name, then read the file, otherwise check if it is code.
+    # if the src can be treated as a file name, then read the file,
+    # otherwise check if it is code.
     if (nchar(src) < 128 && file.exists(src)) {
         fileName = src
         ## Read source file

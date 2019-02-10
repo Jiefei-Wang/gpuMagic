@@ -58,7 +58,8 @@ RCcompilerLevel1 <- function(profileMeta2) {
     # Deducted variable
     gpu_global_id = GPUVar$gpu_global_id
     gpu_worker_offset = GPUVar$worker_offset
-    # The return variable is also derived, it need the global id to find the private return variable
+    # The return variable is also derived, it need the global id to find
+    # the private return variable
     gpu_return_variable = GPUVar$return_variable
     
     
@@ -70,7 +71,8 @@ RCcompilerLevel1 <- function(profileMeta2) {
     gpu_ls_num = -1
     # matrixInd is for finding the index of a matrix size in the gpu code
     varInfo$matrixInd = hash()
-    # format: var, precision type, physical length(in byte), row number, col number
+    # format: var, precision type, physical length(in byte), row number,
+    # col number
     varInfo$matrix_gp = data.frame()
     varInfo$matrix_gs = data.frame()
     varInfo$matrix_lp = data.frame()
@@ -83,8 +85,8 @@ RCcompilerLevel1 <- function(profileMeta2) {
         if (curInfo$location != "local" || curInfo$shared) 
             curInfo$dataType = T_matrix
         
-        # If the variable does not need to be initialized Case 1: the variable is the function argument Case 2: the variable is
-        # a lazy reference
+        # If the variable does not need to be initialized Case 1: the variable
+        # is the function argument Case 2: the variable is a lazy reference
         if (!curInfo$initialization) {
             # Don't touch it, its for the gpu_global_id
             curInfo$address = curInfo$var
@@ -93,7 +95,8 @@ RCcompilerLevel1 <- function(profileMeta2) {
                 gpu_gs_num = gpu_gs_num + 1
                 varInfo$matrixInd[[curVar]] = gpu_gs_num
                 curInfo$totalSize = 0
-                varInfo$matrix_gs = addvariableSizeInfo(varInfo$matrix_gs, curInfo)
+                varInfo$matrix_gs = addvariableSizeInfo(varInfo$matrix_gs, 
+                  curInfo)
             }
             varInfo = setVarInfo(varInfo, curInfo)
             next
@@ -102,7 +105,7 @@ RCcompilerLevel1 <- function(profileMeta2) {
         
         
         if (curInfo$dataType == T_scale) {
-            CXXtype = curInfo$precisionType
+            CXXtype = getTypeCXXStr(curInfo)
             curCode = paste0(CXXtype, " ", curInfo$var, ";")
             var_def_code = c(var_def_code, curCode)
             curInfo$address = curInfo$var
@@ -114,27 +117,35 @@ RCcompilerLevel1 <- function(profileMeta2) {
             if (curInfo$location == "global" && curInfo$shared) {
                 gpu_gs_num = gpu_gs_num + 1
                 varInfo$matrixInd[[curVar]] = gpu_gs_num
-                varInfo$matrix_gs = addvariableSizeInfo(varInfo$matrix_gs, curInfo)
-                curCode = addVariableDeclaration(curInfo, gpu_gs_data, gpu_gs_offset, gpu_gs_num)
+                varInfo$matrix_gs = addvariableSizeInfo(varInfo$matrix_gs, 
+                  curInfo)
+                curCode = addVariableDeclaration(curInfo, gpu_gs_data, 
+                  gpu_gs_offset, gpu_gs_num)
             }
             if (curInfo$location == "local" && curInfo$shared) {
                 gpu_ls_num = gpu_ls_num + 1
                 varInfo$matrixInd[[curVar]] = gpu_ls_num
-                varInfo$matrix_ls = addvariableSizeInfo(varInfo$matrix_ls, curInfo)
-                curCode = addVariableDeclaration(curInfo, gpu_ls_data, gpu_ls_offset, gpu_ls_num)
+                varInfo$matrix_ls = addvariableSizeInfo(varInfo$matrix_ls, 
+                  curInfo)
+                curCode = addVariableDeclaration(curInfo, gpu_ls_data, 
+                  gpu_ls_offset, gpu_ls_num)
             }
             if (curInfo$location == "global" && !curInfo$shared) {
                 gpu_gp_num = gpu_gp_num + 1
                 varInfo$matrixInd[[curVar]] = gpu_gp_num
-                varInfo$matrix_gp = addvariableSizeInfo(varInfo$matrix_gp, curInfo)
-                curCode = addVariableDeclaration(curInfo, gpu_gp_data, gpu_gp_offset, gpu_gp_num)
+                varInfo$matrix_gp = addvariableSizeInfo(varInfo$matrix_gp, 
+                  curInfo)
+                curCode = addVariableDeclaration(curInfo, gpu_gp_data, 
+                  gpu_gp_offset, gpu_gp_num)
             }
             # This is wrong..
             if (curInfo$location == "local" && !curInfo$shared) {
                 gpu_lp_num = gpu_lp_num + 1
                 varInfo$matrixInd[[curVar]] = gpu_lp_num
-                varInfo$matrix_lp = addvariableSizeInfo(varInfo$matrix_lp, curInfo)
-                curCode = addVariableDeclaration(curInfo, gpu_lp_data, gpu_lp_offset, gpu_lp_num)
+                varInfo$matrix_lp = addvariableSizeInfo(varInfo$matrix_lp, 
+                  curInfo)
+                curCode = addVariableDeclaration(curInfo, gpu_lp_data, 
+                  gpu_lp_offset, gpu_lp_num)
             }
             curInfo$address = curInfo$var
             var_def_code = c(var_def_code, curCode)
@@ -145,19 +156,28 @@ RCcompilerLevel1 <- function(profileMeta2) {
     }
     
     
-    gpu_code = c("//Define some useful macro", paste0("#define ", gpu_gp_totalSize, " ", gpu_sizeInfo, "[0]"), paste0("#define ", 
-        gpu_returnSize, " ", gpu_sizeInfo, "[1]"), paste0("#define ", gpu_gp_matrixNum, " ", nrow(varInfo$matrix_gp)), paste0("#define ", 
-        gpu_gs_matrixNum, " ", nrow(varInfo$matrix_gs)), paste0("#define ", gpu_ls_matrixNum, " ", nrow(varInfo$matrix_ls)), 
-        paste0("#define ", gpu_lp_matrixNum, " ", nrow(varInfo$matrix_lp)), paste0("#define ", gpu_worker_offset, " ", gpu_global_id, 
-            "*", gpu_gp_totalSize), "//Data preparation", paste0("size_t ", gpu_global_id, "=get_global_id(0);"), paste0("global ", 
-            GPUVar$default_index_type, "* ", gpu_gp_size1, "=", gpu_gp_size, ";"), paste0("global ", GPUVar$default_index_type, 
-            "* ", gpu_gp_size2, "=", gpu_gp_size, "+", gpu_gp_matrixNum, ";"), paste0("global ", GPUVar$default_index_type, 
-            "* ", gpu_gs_size1, "=", gpu_gs_size, ";"), paste0("global ", GPUVar$default_index_type, "* ", gpu_gs_size2, 
-            "=", gpu_gs_size, "+", gpu_gs_matrixNum, ";"), paste0("global ", GPUVar$default_index_type, "* ", gpu_ls_size1, 
-            "=", gpu_ls_size, ";"), paste0("global ", GPUVar$default_index_type, "* ", gpu_ls_size2, "=", gpu_ls_size, "+", 
-            gpu_ls_matrixNum, ";"), "//find the right pointer for the current thread", paste0(gpu_gp_data, "=", gpu_gp_data, 
-            "+", gpu_worker_offset, ";"), paste0(gpu_return_variable, "=", gpu_return_variable, "+", gpu_returnSize, "*", 
-            gpu_global_id, ";"), "//variable definitions", var_def_code, "//End of the stage 1 compilation", "//Thread number optimization", 
+    gpu_code = c("//Define some useful macro", paste0("#define ", gpu_gp_totalSize, 
+        " ", gpu_sizeInfo, "[0]"), paste0("#define ", gpu_returnSize, " ", 
+        gpu_sizeInfo, "[1]"), paste0("#define ", gpu_gp_matrixNum, " ", 
+        nrow(varInfo$matrix_gp)), paste0("#define ", gpu_gs_matrixNum, 
+        " ", nrow(varInfo$matrix_gs)), paste0("#define ", gpu_ls_matrixNum, 
+        " ", nrow(varInfo$matrix_ls)), paste0("#define ", gpu_lp_matrixNum, 
+        " ", nrow(varInfo$matrix_lp)), paste0("#define ", gpu_worker_offset, 
+        " ", gpu_global_id, "*", gpu_gp_totalSize), "//Data preparation", 
+        paste0("size_t ", gpu_global_id, "=get_global_id(0);"), paste0("global ", 
+            GPUVar$default_index_type, "* ", gpu_gp_size1, "=", gpu_gp_size, 
+            ";"), paste0("global ", GPUVar$default_index_type, "* ", gpu_gp_size2, 
+            "=", gpu_gp_size, "+", gpu_gp_matrixNum, ";"), paste0("global ", 
+            GPUVar$default_index_type, "* ", gpu_gs_size1, "=", gpu_gs_size, 
+            ";"), paste0("global ", GPUVar$default_index_type, "* ", gpu_gs_size2, 
+            "=", gpu_gs_size, "+", gpu_gs_matrixNum, ";"), paste0("global ", 
+            GPUVar$default_index_type, "* ", gpu_ls_size1, "=", gpu_ls_size, 
+            ";"), paste0("global ", GPUVar$default_index_type, "* ", gpu_ls_size2, 
+            "=", gpu_ls_size, "+", gpu_ls_matrixNum, ";"), "//find the right pointer for the current thread", 
+        paste0(gpu_gp_data, "=", gpu_gp_data, "+", gpu_worker_offset, ";"), 
+        paste0(gpu_return_variable, "=", gpu_return_variable, "+", gpu_returnSize, 
+            "*", gpu_global_id, ";"), "//variable definitions", var_def_code, 
+        "//End of the stage 1 compilation", "//Thread number optimization", 
         "//Matrix dimension optimization")
     
     
@@ -180,7 +200,8 @@ RCcompilerLevel2 <- function(GPUExp1) {
     parsedExp = GPUExp1$Exp
     varInfo = GPUExp1$varInfo
     gpu_code = GPUExp1$gpu_code
-    gpu_code = c(gpu_code, "//Start of the GPU code", RCTranslation(varInfo, parsedExp))
+    gpu_code = c(gpu_code, "//Start of the GPU code", RCTranslation(varInfo, 
+        parsedExp))
     
     GPUExp2 = GPUExp1
     GPUExp2$gpu_code = gpu_code
@@ -203,10 +224,10 @@ RCTranslation <- function(varInfo, parsedExp) {
             curCode = RCTranslation(varInfo, curExp[[4]])
             loopInd = curExp[[2]]
             loopRange = curExp[[3]]
-            curVar = getVarInfo(varInfo, loopInd)
-            CXXtype = curVar$precisionType
-            loopFunc = paste0("for(", CXXtype, " ", loopInd, "=", loopRange[[2]], ";", loopInd, "<=", loopRange[[3]], ";", 
-                loopInd, "++){")
+            curInfo = getVarInfo(varInfo, loopInd)
+            CXXtype = getTypeCXXStr(curInfo)
+            loopFunc = paste0("for(", CXXtype, " ", loopInd, "=", loopRange[[2]], 
+                ";", loopInd, "<=", loopRange[[3]], ";", loopInd, "++){")
             gpu_code = c(gpu_code, loopFunc, curCode, "}")
             next
         }
@@ -215,11 +236,13 @@ RCTranslation <- function(varInfo, parsedExp) {
             condition = curExp[[2]]
             condition_C = R_expression_sub(varInfo, condition, 1)
             extCode = unlist(finalizeExtCode(condition_C$extCode))
-            ifFunc = c("{", extCode, paste0("if(", condition_C$value, "){\n"), paste0(curCode, collapse = "\n"), "}")
+            ifFunc = c("{", extCode, paste0("if(", condition_C$value, "){\n"), 
+                paste0(curCode, collapse = "\n"), "}")
             elseFunc = NULL
             if (length(curExp) == 4) {
                 curCode = RCTranslation(varInfo, curExp[[4]])
-                elseFunc = paste0("else{", paste0(curCode, collapse = "\n"), "}")
+                elseFunc = paste0("else{", paste0(curCode, collapse = "\n"), 
+                  "}")
             }
             ifstate = c(ifFunc, elseFunc, "}\n")
             gpu_code = c(gpu_code, ifstate)
@@ -230,7 +253,8 @@ RCTranslation <- function(varInfo, parsedExp) {
         # If the code starts with opencl_
         code_char = paste0(deparse(curExp), collapse = "")
         if (substr(code_char, 1, nchar(GPUVar$openclCode)) == GPUVar$openclCode) {
-            curCode = paste0(substr(code_char, nchar(GPUVar$openclCode) + 1, nchar(code_char)), ";")
+            curCode = paste0(substr(code_char, nchar(GPUVar$openclCode) + 
+                1, nchar(code_char)), ";")
             gpu_code = c(gpu_code, curCode)
             next
         }
@@ -264,7 +288,8 @@ RCTranslation <- function(varInfo, parsedExp) {
         }
         
         
-        # if the code does not exactly match the template but has an equal sign, partially match is used
+        # if the code does not exactly match the template but has an equal
+        # sign, partially match is used
         if (curExp[[1]] == "=") {
             curCode = C_assignment_dispatch(varInfo, curExp)
             gpu_code = c(gpu_code, curCode)
