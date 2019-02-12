@@ -13,11 +13,13 @@ ICD_LINUX: $(CLDIR)/OpenCL.so
 
 
 $(CLDIR)/OpenCL.lib: $(OBJ)
+	@mkdir -p $(CLDIR)
 	$(AR) rcs $@ $^
 	
 
 	
 $(ODIR)/%.o:%.c
+	@mkdir -p $(ODIR)
 	$(CC) -o $@ -c $^ $(CFLAGS) $(CPPFLAGS)
 
 
