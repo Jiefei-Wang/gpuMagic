@@ -116,3 +116,16 @@ test_that("Matrix add, transpose and no copy tranpose",{
   res_gpu=gpuSapply(1:m,testFunc,A,B)
   expect_equal(res_gpu,t(A+B))
 })
+
+test_that("Matrix add, one argument is a scalar",{
+  testFunc<-function(ind,A,B){
+    tmp1=B[ind,]
+    C=A+t.nocpy(tmp1)
+    return.nocpy(C)
+  }
+  
+  A=10
+  B=matrix(runif(n*m),m,n)
+  res_gpu=gpuSapply(1:m,testFunc,A,B)
+  expect_equal(res_gpu,t(A+B))
+})

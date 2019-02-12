@@ -14,8 +14,9 @@ addvariableSizeInfo <- function(sizeInfo, curVarInfo) {
 }
 addVariableDeclaration <- function(varInfo,curVarInfo, data, offset, offsetInd,prefix) {
   CXXtype = getTypeCXXStr(curVarInfo)
-  if (curVarInfo$isRef) 
-    return(list(code=NULL,Info=curVarInfo))
+  if (curVarInfo$isRef) {
+      return(list(code=NULL,Info=curVarInfo))
+    }
   
   
   location = paste0(prefix, " ")
@@ -35,9 +36,9 @@ addVariableDeclaration <- function(varInfo,curVarInfo, data, offset, offsetInd,p
     return(list(code=curCode,Info=curVarInfo))
   }
   if (curVarInfo$redirect == "NA") {
+    designSize1=curVarInfo$designSize1
+    designSize2=curVarInfo$designSize2
     if (prefix == "private") {
-      designSize1=curVarInfo$designSize1
-      designSize2=curVarInfo$designSize2
       if(isNumeric(designSize1)&&isNumeric(designSize2)){
         size=Simplify(paste0(designSize1,"*",designSize2))
         curCode = paste0(location, CXXtype, " ", curVarInfo$var,"[",size,"];")
@@ -46,17 +47,26 @@ addVariableDeclaration <- function(varInfo,curVarInfo, data, offset, offsetInd,p
         stop("Dynamically allocate private memory is not allowed:", curVarInfo$var)
       }
     }else{
-      curCode = paste0(location, CXXtype, "* ", curVarInfo$var, "=", 
-                       "(", location, CXXtype, "*)(", data, "+", offset, "[", offsetInd, 
-                       "]);")
-      curVarInfo$isPointer=TRUE
+      if(designSize1=="1"&&designSize2=="1"&&curVarInfo$shared==FALSE){
+        curCode = paste0(location, CXXtype, " ", curVarInfo$var, "=", 
+                         "*((", location, CXXtype, "*)(", data, "+", offset, "[", offsetInd, 
+                         "]));")
+        curVarInfo$isPointer=FALSE
+      }else{
+        curCode = paste0(location, CXXtype, "* ", curVarInfo$var, "=", 
+                         "(", location, CXXtype, "*)(", data, "+", offset, "[", offsetInd, 
+                         "]);")
+        curVarInfo$isPointer=TRUE
+      }
     }
   } else {
-    parentInfo=getVarInfo(varInfo,curVarInfo$var)
     curCode = paste0("#define ", curVarInfo$var, " ", curVarInfo$redirect)
+    if(curVarInfo$redirect==GPUVar$return_variable){
+      curVarInfo$isPointer=TRUE
+    }else{
+    parentInfo=getVarInfo(varInfo,curVarInfo$redirect)
     curVarInfo$isPointer=parentInfo$isPointer
-    # curCode=paste0('global ',CXXtype,'*
-    # ',curVarInfo$var,'=',curVarInfo$redirect,';')
+    }
   }
   curVarInfo$address = curVarInfo$var
   return(list(code=curCode,Info=curVarInfo))

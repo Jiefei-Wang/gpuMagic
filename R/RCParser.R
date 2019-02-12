@@ -76,8 +76,9 @@ RCcompilerLevel1 <- function(profileMeta2) {
         if (curInfo$location != "local" || curInfo$shared) 
             curInfo$dataType = T_matrix
         
-        # If the variable does not need to be initialized Case 1: the variable
-        # is the function argument Case 2: the variable is a lazy reference
+        # If the variable does not need to be initialized 
+        # Case 1: the variable is the function argument 
+        # Case 2: the variable is a lazy reference
         if (!curInfo$initialization) {
             # Don't touch it, its for the gpu_global_id
             curInfo$address = curInfo$var
@@ -88,6 +89,10 @@ RCcompilerLevel1 <- function(profileMeta2) {
                 curInfo$totalSize = 0
                 varInfo$matrix_gs = addvariableSizeInfo(varInfo$matrix_gs, 
                   curInfo)
+                curInfo$isPointer=TRUE
+            }else{
+              curInfo$isPointer=switch(curInfo$dataType,"matrix"=TRUE,"scale"=FALSE,
+                                       stop("Unable to determine the address type"))
             }
             varInfo = setVarInfo(varInfo, curInfo)
             next

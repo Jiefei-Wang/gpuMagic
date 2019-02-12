@@ -10,6 +10,7 @@
 \alias{extractVars}
 \alias{extractVars.default}
 \alias{extractVars.extCode}
+\alias{extractVars.expression}
 \title{Internal usage only, the package export this function only for the other package to access.}
 \usage{
 gpu_cast_float(x)
@@ -29,6 +30,8 @@ extractVars(x)
 \method{extractVars}{default}(x)
 
 \method{extractVars}{extCode}(x)
+
+\method{extractVars}{expression}(x)
 }
 \arguments{
 \item{x}{Internal usage only}

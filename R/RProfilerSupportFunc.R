@@ -30,13 +30,11 @@ profileVar <- function(parms, macroParms) {
         if (!isNA(info$value)) {
             info$value = paste0("(", varInfo$parmsTblName, "[[", i, "]])")
         }
-        
+        info$dataType = T_matrix
         if (curDim[1] == 1 && curDim[2] == 1 && varName[i] != GPUVar$gpu_loop_data) {
-            info$dataType = T_scale
             info$size1 = 1
             info$size2 = 1
         } else {
-            info$dataType = T_matrix
             if (varName[i] == GPUVar$gpu_loop_data) {
                 info$size1 = paste0("length(", varInfo$parmsTblName, "[[", 
                   i, "]])")
@@ -387,6 +385,31 @@ getVersionBumpCode <- function(var, version) {
 # msg: the message that will be post when the error occurs
 setErrorCheck <- function(level, code, check, msg = "") {
     data.frame(level = level, code = code, check = check, msg = msg, stringsAsFactors = FALSE)
+}
+
+#Error check for matrix to matrix operation
+#allowed type:
+#scalar-scalar
+#matrix-scalar
+#scalar-matrix
+#matrix-matrix with the same dimension
+errorCheck_matrix_matrix<-function(left_size1,left_size2,right_size1,right_size2){
+  if (!isNA(left_size1) && !isNA(right_size1)&&
+      !isNA(left_size2) && !isNA(right_size2)){ 
+    #Check row
+    check = paste0("((", left_size1, "!=", right_size1,")")
+    #Check column
+    check = paste0(check,
+                   "||(", left_size2, "!=", right_size2,"))")
+    #Check if one of them is an scalar
+    check=paste0(check,
+                 "&&!(", left_size1, "==1&&",left_size2,"==1)&&",
+                 "!(", right_size1, "==1&&",right_size2, "==1)")
+  }else{
+    check="FALSE"
+  }
+  check=Simplify2(check,parentheses=FALSE)
+  check
 }
 
 # Redirect the variable to an exist variable to save the memory space

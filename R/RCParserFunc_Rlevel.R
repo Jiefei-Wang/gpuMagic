@@ -285,6 +285,16 @@ R_getVarSub <- function(varInfo, var, i, j = 1, opt = NULL, extCode = NULL,
     curInfo = getVarInfo(varInfo, var)
     address = curInfo$address
     transpose = curInfo$transpose
+    isPointer=curInfo$isPointer
+    
+    #If the data is not a pointer, it is a scalar, then directly return the address
+    if(is.na(isPointer)) stop("Unable to determine the type of the variable,",
+                              " this is a bug in the package, please contact the author.")
+    if(!isPointer) 
+      return(list(value =address,extCode=extCode))
+    #If the data is a pointer, but the size is 1, then return the first element in the address
+    if(curInfo$size1=="1"&&curInfo$size2=="1")
+      return(list(value =paste0(address,"[0]"),extCode=extCode))
     
     
     # Get the simplified index

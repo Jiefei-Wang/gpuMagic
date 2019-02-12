@@ -53,8 +53,9 @@ getEmpyTable<-function(type=""){
     require=FALSE,constVal=FALSE,constDef=FALSE,initialization=TRUE,
     #special type: ref,seq
     isSpecial=FALSE,specialType="NA",specialContent="NA",
-    redirect="NA",
+    redirect="NA",isPointer=NA,
     stringsAsFactors=FALSE)
+  
   if(type==T_scale){
     tbl$dataType=T_scale
     tbl$size1=1
@@ -70,7 +71,7 @@ getEmpyTable<-function(type=""){
 
 primaryProp=c("dataType","precisionType","address","designSize1","designSize2","totalSize",
               "shared","location",
-              "require","constVal","constDef","initialization","redirect")
+              "require","constVal","constDef","initialization","redirect","isPointer")
 
 
 

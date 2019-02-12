@@ -68,7 +68,8 @@
 #' #Get the default options
 #' options=kernel.getOption()
 #' #Run the GPU function with n threads, each thread computes one column addition
-#' .kernel(src = code,kernel='matAdd',parms=list(A_dev,B_dev,C_dev,m),.globalThreadNum = n,.options = options)
+#' .kernel(src = code,kernel='matAdd',parms=list(A_dev,B_dev,C_dev,m),
+#' .globalThreadNum = n,.options = options)
 #' 
 #' #Retrieve the data
 #' C_dev=download(C_dev)

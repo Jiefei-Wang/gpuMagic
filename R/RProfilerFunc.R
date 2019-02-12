@@ -312,21 +312,10 @@ profile_arithmetic <- function(varInfo, Exp) {
         }
     }
     
-    if (!isNA(leftInfo$size1) && !isNA(rightInfo$size1)&&
-        !isNA(leftInfo$size2) && !isNA(rightInfo$size2)){ 
-      #Check row
-        check = paste0("((", leftInfo$size1, "!=", rightInfo$size1,")")
-      #Check column
-        check = paste0(check,
-                       "||(", leftInfo$size2, "!=", rightInfo$size2,"))")
-        #Check if one of them is an scalar
-        check=paste0(check,
-                     "&&!(", leftInfo$size1, "==1&&",leftInfo$size2,"==1)&&",
-                     "!(", rightInfo$size1, "==1&&",rightInfo$size2, "==1)")
-    }else{
-      check="FALSE"
-    }
-    check=Simplify2(check,parentheses=FALSE)
+    check=errorCheck_matrix_matrix(
+      leftInfo$size1,leftInfo$size2,
+      rightInfo$size1,rightInfo$size2)
+    
     errorCheck = setErrorCheck(level = "error", code = deparse(Exp), check = check, 
         msg = "Uncomfortable matrix dimension has been found")
     res$ExpInfo = ExpInfo
