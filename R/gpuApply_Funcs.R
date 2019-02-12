@@ -50,6 +50,8 @@ getVarSizeInfo_C_level <- function(sizeMatrix) {
     matrixOffset = c()
     size1 = sizeMatrix$size1
     size2 = sizeMatrix$size2
+    size1[is.na(size1)]=0
+    size2[is.na(size2)]=0
     curoffSet = 0
     for (i in seq_len(nrow(sizeMatrix))) {
         curInfo = sizeMatrix[i, ]
@@ -59,8 +61,6 @@ getVarSizeInfo_C_level <- function(sizeMatrix) {
     
     matrixNum = nrow(sizeMatrix)
     dim = c(size1, size2)
-    if (is.null(dim)) 
-        dim = 0
     if (is.null(matrixOffset)) 
         matrixOffset = 0
     if (curoffSet == 0) 
@@ -98,24 +98,31 @@ fillGPUdata <- function(GPUcode1, .options, .device) {
     
     
     kernel_args = list()
+    
     # gp_totalsize, return size
     kernel_args$sizeInfo = rep(0, 2)
+    gp_totalsize=0
+    returnSize=0
     
+    
+    #The size of the matrix in gp,gs,lp,ls
+    matrix_size_info=c()
     
     sizeInfo_gp = getVarSizeInfo_C_level(varInfo$matrix_gp)
-    kernel_args$gp = sizeInfo_gp
     # Total size per worker
-    kernel_args$sizeInfo[1] = sizeInfo_gp$totalSize
+    gp_totalsize = sizeInfo_gp$totalSize
+    matrix_size_info=c(matrix_size_info,sizeInfo_gp$dim)
     
     
     sizeInfo_gs = getVarSizeInfo_C_level(varInfo$matrix_gs)
-    kernel_args$gs = sizeInfo_gs
+    matrix_size_info=c(matrix_size_info,sizeInfo_gs$dim)
     
     sizeInfo_ls = getVarSizeInfo_C_level(varInfo$matrix_ls)
-    kernel_args$ls = sizeInfo_ls
+    matrix_size_info=c(matrix_size_info,sizeInfo_ls$dim)
     
     sizeInfo_lp = getVarSizeInfo_C_level(varInfo$matrix_lp)
-    kernel_args$lp = sizeInfo_lp
+    matrix_size_info=c(matrix_size_info,sizeInfo_lp$dim)
+    if(length(matrix_size_info)==0) matrix_size_info=0
     
     
     if (!is.null(varInfo$returnInfo)) {
@@ -125,43 +132,39 @@ fillGPUdata <- function(GPUcode1, .options, .device) {
             if (sum(returnSizeVector[1] != returnSizeVector) > 0) 
                 warning("Multiple return size has been found!")
             
-            kernel_args$sizeInfo[2] = max(returnSizeVector)
+          returnSize = max(max(returnSizeVector),1)
         }
     }
     
+    
+    kernel_args$sizeInfo = c(gp_totalsize,returnSize)
     
     # Allocate the gpu memory
     totalWorkerNum = length(parms[[1]])
     IntType = GPUVar$default_index_type
     
     device_argument = list()
-    device_argument$gp_data = gpuEmptMatrix(row = ceiling(sizeInfo_gp$totalSize * 
-        totalWorkerNum/4), col = 1, type = "int", device = .device)
-    device_argument$gp_size = gpuMatrix(sizeInfo_gp$dim, type = IntType, 
-        device = .device)
-    device_argument$gp_offset = gpuMatrix(sizeInfo_gp$matrixOffset, type = IntType, 
-        device = .device)
-    
+    device_argument$gp_data = gpuEmptMatrix(row = ceiling(sizeInfo_gp$totalSize *totalWorkerNum/4),
+                                            col = 1, type = "int", device = .device)
     device_argument$gs_data = gpuEmptMatrix(row = ceiling(sizeInfo_gs$totalSize/4), 
-        type = "int", device = .device)
-    device_argument$gs_size = gpuMatrix(sizeInfo_gs$dim, type = IntType, 
-        device = .device)
-    device_argument$gs_offset = gpuMatrix(sizeInfo_gs$matrixOffset, type = IntType, 
-        device = .device)
-    
+                                            type = "int", device = .device)
     device_argument$ls_data = kernel.getSharedMem(sizeInfo_ls$totalSize, 
-        type = "char")
-    device_argument$ls_size = gpuMatrix(sizeInfo_ls$dim, type = IntType, 
-        device = .device)
+                                                  type = "char")
+    
+    device_argument$gp_offset = gpuMatrix(sizeInfo_gp$matrixOffset, type = IntType, 
+                                          device = .device)
+    device_argument$gs_offset = gpuMatrix(sizeInfo_gs$matrixOffset, type = IntType, 
+                                          device = .device)
     device_argument$ls_offset = gpuMatrix(sizeInfo_ls$matrixOffset, type = IntType, 
-        device = .device)
+                                          device = .device)
+    
+    device_argument$matrix_size_info = gpuMatrix(matrix_size_info, type = IntType, 
+                                        device = .device)
+    
     
     # The return size for each thread
-    returnSize = kernel_args$sizeInfo[2]
-    device_argument$return_var = gpuEmptMatrix(kernel_args$sizeInfo[2], 
-        totalWorkerNum, type = GPUVar$default_float, device = .device)
-    device_argument$sizeInfo = gpuMatrix(kernel_args$sizeInfo, type = IntType, 
-        device = .device)
+    device_argument$return_var = gpuEmptMatrix(returnSize, totalWorkerNum, type = GPUVar$default_float, device = .device)
+    device_argument$sizeInfo = gpuMatrix(kernel_args$sizeInfo, type = IntType, device = .device)
     
     
     
@@ -190,16 +193,20 @@ completeGPUcode <- function(GPUcode) {
     code = paste0(code, paste0(kernel_arg_code, collapse = ","))
     
     # The working memory space
-    arg_prefix_list = c("global", "global", "global", "global", "global", 
-        "global", "local", "global", "global", "global", "global")
-    arg_list = c(GPUVar$global_private_data, GPUVar$global_private_size, 
-        GPUVar$global_private_offset, GPUVar$global_shared_data, GPUVar$global_share_size, 
-        GPUVar$global_shared_offset, GPUVar$local_shared_data, GPUVar$local_share_size, 
-        GPUVar$local_shared_offset, GPUVar$return_variable, GPUVar$size_info)
-    arg_type_list = c("char", GPUVar$default_index_type, GPUVar$default_index_type, 
-        "char", GPUVar$default_index_type, GPUVar$default_index_type, "char", 
-        GPUVar$default_index_type, GPUVar$default_index_type, GPUVar$default_float, 
-        GPUVar$default_index_type)
+    arg_prefix_list = c(
+      "global", "global", "local",
+      "global", "global", "global",
+      "global", "global", "global")
+    arg_list = c(
+      GPUVar$global_private_data, GPUVar$global_shared_data,GPUVar$local_shared_data,
+      GPUVar$global_private_offset,GPUVar$global_shared_offset, GPUVar$local_shared_offset, 
+      GPUVar$matrix_size_info, GPUVar$return_variable, GPUVar$size_info)
+    
+    indType=GPUVar$default_index_type
+    floatType=GPUVar$default_float
+    arg_type_list = c("char", "char","char", 
+                      indType,indType,indType,
+                      indType,floatType,indType)
     for (i in seq_along(arg_list)) {
         curCode = paste0(arg_prefix_list[i], " ", arg_type_list[i], "* ", 
             arg_list[i])
@@ -207,7 +214,7 @@ completeGPUcode <- function(GPUcode) {
             curCode = paste0(curCode)
         code = c(code, curCode)
     }
-    
+    paste0(arg_prefix_list, " ", arg_type_list, "* ", arg_list)
     
     
     code = paste0(code, collapse = ",\n")

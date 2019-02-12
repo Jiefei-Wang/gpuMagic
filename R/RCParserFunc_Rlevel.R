@@ -334,43 +334,43 @@ R_C_Sub <- function(var, offset, simplification = FALSE) {
 }
 
 # Get the number of rows for a matrix in C format
-R_nrow <- function(varInfo, var) {
+R_nrow <- function(varInfo, var,C_symbol=FALSE) {
     var_char = toCharacter(var)
     var = toExpression(var)
     if (isNumeric(var_char)) 
         return(1)
     if (is.call(var)) 
-        return(R_getVarSize1(varInfo, var))
+        return(R_getVarSize1(varInfo, var,C_symbol))
     
     curInfo = getVarInfo(varInfo, var)
     ifelse(curInfo$transpose, 
-           R_getVarSize2(varInfo, var), 
-           R_getVarSize1(varInfo, var)
+           R_getVarSize2(varInfo, var,C_symbol), 
+           R_getVarSize1(varInfo, var,C_symbol)
            )
 }
 # Get the number of rows for a matrix in C format
-R_ncol <- function(varInfo, var) {
+R_ncol <- function(varInfo, var,C_symbol=FALSE) {
     var_char = toCharacter(var)
     var = toExpression(var)
     if (isNumeric(var_char)) 
         return(1)
     if (is.call(var)) 
-        return(R_getVarSize2(varInfo, var))
+        return(R_getVarSize2(varInfo, var,C_symbol))
     
     curInfo = getVarInfo(varInfo, var)
     ifelse(curInfo$transpose, 
-           R_getVarSize1(varInfo, var), 
-           R_getVarSize2(varInfo, var)
+           R_getVarSize1(varInfo, var,C_symbol), 
+           R_getVarSize2(varInfo, var,C_symbol)
            )
 }
-R_length <- function(varInfo, var) {
-    return(CSimplify(paste0(R_nrow(varInfo, var), "*", R_ncol(varInfo, 
-        var))))
+R_length <- function(varInfo, var,C_symbol=FALSE) {
+    return(CSimplify(paste0(R_nrow(varInfo, var,C_symbol), "*", R_ncol(varInfo, 
+        var,C_symbol))))
     
 }
 
 
-R_getVarSize <- function(varInfo, var, ind) {
+R_getVarSize <- function(varInfo, var,C_symbol, ind) {
     var_char = toCharacter(var)
     var = toExpression(var)
     
@@ -380,8 +380,31 @@ R_getVarSize <- function(varInfo, var, ind) {
       if(var[[1]] == "["){
         Exp = var
       }else{
-        var=extractVars(var)[1]
-        return(R_getVarSize(varInfo,var,ind))
+        #If the function is an element operation
+        #If the size are all 1, return 1
+        #If one matrix has non-1 size, return the dimension of that matrix
+        #If multiple matrix has non-1 size, return the maximum among them
+        vars=extractVars(var)
+        sizeList=sapply(vars,R_getVarSize,varInfo=varInfo,C_symbol=C_symbol,ind=ind)
+        sizeList_notOne=sizeList[sizeList!="1"]
+        if(length(sizeList_notOne)==0) {
+          return(1)
+        }
+        if(length(sizeList_notOne)==1){
+          return(sizeList_notOne)
+          }
+        numInd_logic=vapply(sizeList_notOne, isNumeric, FUN.VALUE = logical(1))
+        numInd=which(numInd_logic)
+        if(length(numInd)!=0){
+          return(sizeList_notOne[numInd[1]])
+        }
+        #length(sizeList_notOne)>1
+        #All variables are not number
+        res=paste0("max(",sizeList_notOne[1],",",sizeList_notOne[2],")")
+        for(i in seq_len(length(sizeList_notOne)-2)+2){
+          res=paste0("max(",sizeList_notOne[i],",",res,")")
+        }
+        return(res)
       }
     } 
     
@@ -398,18 +421,18 @@ R_getVarSize <- function(varInfo, var, ind) {
         if (ind == 1) {
             # If the first index is empty. eg: A[,1]
             if (!is.null(args$i) && args$i == "") 
-                return(R_nrow(varInfo, refVar))
+                return(R_nrow(varInfo, refVar,C_symbol))
             
             sub1 = args$i
             if (isNumeric(sub1)) 
                 return(1)
             
-            return(R_length(varInfo, sub1))
+            return(R_length(varInfo, sub1,C_symbol))
         }
         if (ind == 2) {
             # If the second index is empty. eg: A[1,]
             if (!is.null(args$j) && args$j == "") 
-                return(R_ncol(varInfo, refVar))
+                return(R_ncol(varInfo, refVar,C_symbol))
             # If there is no second index. eg:A[1]
             if (is.null(args$j)) 
                 return(1)
@@ -418,7 +441,7 @@ R_getVarSize <- function(varInfo, var, ind) {
             if (isNumeric(subs)) 
                 return(1)
             
-            return(R_length(varInfo, subs))
+            return(R_length(varInfo, subs,C_symbol))
         }
     }
     
@@ -427,18 +450,17 @@ R_getVarSize <- function(varInfo, var, ind) {
     # curInfo is obtained above 
     # curInfo=getVarInfo(varInfo,var,1)
     
-    if (curInfo$isSeq) {
-      seqInfo = getSeqAddress(varInfo, var_char)
-      if (xor(curInfo$transpose, ind != 1)) {
-        return(seqInfo$length) 
-      }else{ 
-        return(1)
-      }
-    }
+    
     
     
     if (curInfo$dataType == T_scale) 
         return(1)
+    
+    if(!C_symbol){
+      size=switch(ind,curInfo$size1,curInfo$size2)
+      if(isNumeric(size))
+        return(size)
+    }
     
     var_ind = varInfo$matrixInd[[var_char]]
     if (var_ind == "" || is.na(var_ind)) 
@@ -462,11 +484,11 @@ R_getVarSize <- function(varInfo, var, ind) {
 }
 # get the variable row number in C code format Use R_nrow instead, this
 # function does not take the transpose into account
-R_getVarSize1 <- function(varInfo, var) {
-    R_getVarSize(varInfo, var, 1)
+R_getVarSize1 <- function(varInfo, var,C_symbol=FALSE) {
+    R_getVarSize(varInfo, var,C_symbol, 1)
 }
 # get the variable column number in C code format Use R_ncol instead,
 # this function does not take the transpose into account
-R_getVarSize2 <- function(varInfo, var) {
-    R_getVarSize(varInfo, var, 2)
+R_getVarSize2 <- function(varInfo, var,C_symbol=FALSE) {
+    R_getVarSize(varInfo, var,C_symbol, 2)
 }

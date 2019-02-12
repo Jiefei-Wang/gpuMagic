@@ -160,7 +160,7 @@ C_length_left_right <- function(varInfo, Exp) {
 # Exp=parse(text='A=nrow(A)')[[1]]
 C_nrow_left_right <- function(varInfo, Exp) {
     nrow_func <- function(varInfo, Exp) {
-        return(R_nrow(varInfo, Exp[[2]]))
+        return(R_nrow(varInfo, Exp[[2]],C_symbol=TRUE))
     }
     code = C_general_scalar_assignment(varInfo, Exp, "nrow", nrow_func)
     return(code)
@@ -168,7 +168,7 @@ C_nrow_left_right <- function(varInfo, Exp) {
 # Exp=parse(text='A=ncol(A)')[[1]]
 C_ncol_left_right <- function(varInfo, Exp) {
     ncol_func <- function(varInfo, Exp) {
-        return(R_ncol(varInfo, Exp[[2]]))
+        return(R_ncol(varInfo, Exp[[2]],C_symbol = TRUE))
     }
     code = C_general_scalar_assignment(varInfo, Exp, "ncol", ncol_func)
     return(code)
@@ -306,11 +306,15 @@ C_seq_right <- function(varInfo, Exp) {
     extCode_seq = finalizeExtCode(extCode)
     # assign a sequence to a sequence variable
     if (leftInfo$isSeq) {
-        seqAd = getSeqAddress(varInfo, leftVar)
+        seqAd = getSeqAddress(varInfo, leftVar,C_symbol=TRUE)
         
         
-        code = c(extCode$L0, paste0(seqAd$from, "=", from_C$value, ";"), paste0(seqAd$to, "=", to_C$value, ";"), paste0(seqAd$by, 
-            "=", by_C$value, ";"), paste0(seqAd$length, "=", seq_size, ";"))
+        code = c(extCode$L0, 
+                 paste0(seqAd$from, "=", from_C$value, ";"), 
+                 paste0(seqAd$to, "=", to_C$value, ";"), 
+                 paste0(seqAd$by, "=", by_C$value, ";"), 
+                 paste0(seqAd$length, "=", seq_size, ";")
+                 )
         
         return(code)
     } else {

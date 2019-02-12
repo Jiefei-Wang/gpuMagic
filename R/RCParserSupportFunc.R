@@ -12,41 +12,54 @@ addvariableSizeInfo <- function(sizeInfo, curVarInfo) {
     sizeInfo = rbind(sizeInfo, curSizeinfo)
     return(sizeInfo)
 }
-addVariableDeclaration <- function(curVarInfo, data, offset, offsetInd) {
-    CXXtype = getTypeCXXStr(curVarInfo)
-    if (curVarInfo$isRef) 
-        return(NULL)
-    
-    
-    location = paste0(curVarInfo$location, " ")
-    if (!curVarInfo$shared && location == "local ") {
-        location = ""
-    }
-    
-    # If the variable is a sequence
-    if (curVarInfo$isSeq) {
-        if (location == "") {
-            curCode = paste0(CXXtype, 4, " ", curVarInfo$var, ";")
-        } else {
-            curCode = paste0(location, CXXtype, 4, "* ", curVarInfo$var, 
-                "=", "(", location, CXXtype, 4, "*)(", data, "+", offset, 
-                "[", offsetInd, "]);")
-        }
-        return(curCode)
-    }
-    if (curVarInfo$redirect == "NA") {
-        if (location == "") {
-            stop("Not supported")
-        }
-        curCode = paste0(location, CXXtype, "* ", curVarInfo$var, "=", 
-            "(", location, CXXtype, "*)(", data, "+", offset, "[", offsetInd, 
-            "]);")
+addVariableDeclaration <- function(varInfo,curVarInfo, data, offset, offsetInd,prefix) {
+  CXXtype = getTypeCXXStr(curVarInfo)
+  if (curVarInfo$isRef) 
+    return(list(code=NULL,Info=curVarInfo))
+  
+  
+  location = paste0(prefix, " ")
+  
+  # If the variable is a sequence
+  if (curVarInfo$isSeq) {
+    if (prefix == "private") {
+      curCode = paste0(CXXtype, 3, " ", curVarInfo$var, ";")
+      curVarInfo$isPointer=FALSE
     } else {
-        curCode = paste0("#define ", curVarInfo$var, " ", curVarInfo$redirect)
-        # curCode=paste0('global ',CXXtype,'*
-        # ',curVarInfo$var,'=',curVarInfo$redirect,';')
+      curCode = paste0(location, CXXtype, 3, "* ", curVarInfo$var, 
+                       "=", "(", location, CXXtype, 3, "*)(", data, "+", offset, 
+                       "[", offsetInd, "]);")
+      curVarInfo$isPointer=TRUE
     }
-    return(curCode)
+    curVarInfo$address = curVarInfo$var
+    return(list(code=curCode,Info=curVarInfo))
+  }
+  if (curVarInfo$redirect == "NA") {
+    if (prefix == "private") {
+      designSize1=curVarInfo$designSize1
+      designSize2=curVarInfo$designSize2
+      if(isNumeric(designSize1)&&isNumeric(designSize2)){
+        size=Simplify(paste0(designSize1,"*",designSize2))
+        curCode = paste0(location, CXXtype, " ", curVarInfo$var,"[",size,"];")
+        curVarInfo$isPointer=TRUE
+      }else{
+        stop("Dynamically allocate private memory is not allowed:", curVarInfo$var)
+      }
+    }else{
+      curCode = paste0(location, CXXtype, "* ", curVarInfo$var, "=", 
+                       "(", location, CXXtype, "*)(", data, "+", offset, "[", offsetInd, 
+                       "]);")
+      curVarInfo$isPointer=TRUE
+    }
+  } else {
+    parentInfo=getVarInfo(varInfo,curVarInfo$var)
+    curCode = paste0("#define ", curVarInfo$var, " ", curVarInfo$redirect)
+    curVarInfo$isPointer=parentInfo$isPointer
+    # curCode=paste0('global ',CXXtype,'*
+    # ',curVarInfo$var,'=',curVarInfo$redirect,';')
+  }
+  curVarInfo$address = curVarInfo$var
+  return(list(code=curCode,Info=curVarInfo))
 }
 
 
@@ -125,7 +138,7 @@ isSymbol <- function(x) {
 
 
 
-getSeqAddress <- function(varInfo, var) {
+getSeqAddress <- function(varInfo, var,C_symbol=FALSE) {
     curInfo = getVarInfo(varInfo, var)
     ad = curInfo$address
     if (!(curInfo$location == "local" && !curInfo$shared)) {
@@ -134,7 +147,7 @@ getSeqAddress <- function(varInfo, var) {
     from = paste0(ad, ".s0")
     to = paste0(ad, ".s1")
     by = paste0(ad, ".s2")
-    length = paste0(ad, ".s3")
+    length = R_getVarSize1(varInfo,var,C_symbol=C_symbol)
     data.frame(from = from, to = to, by = by, length = length, stringsAsFactors = FALSE)
 }
 
@@ -274,17 +287,54 @@ C_general_matrix_assignment <- function(varInfo, leftVar, rightVar, func = matri
 C_matrix_assignment <- function(bodyCode, loopInd1, loopStart1 = "0", loopEnd1, 
     loopInd2 = NULL, loopStart2 = "0", loopEnd2 = NULL, loopCode0 = NULL, 
     loopCode1 = NULL, loopCode2 = NULL, endCode1 = NULL, endCode2 = NULL) {
-    code = code = c(paste0("for(", GPUVar$default_index_type, " ", loopInd1, 
-        "=", loopStart1, ";", loopInd1, "<", loopEnd1, ";", loopInd1, "++){"), 
-        loopCode1)
-    if (!is.null(loopInd2)) {
-        code = c(code, paste0("for(", GPUVar$default_index_type, " ", loopInd2, 
-            "=", loopStart2, ";", loopInd2, "<", loopEnd2, ";", loopInd2, 
-            "++){"), loopCode2)
-        endCode2 = c(endCode2, "}")
+  loopLen1=CSimplify(paste0(loopEnd1,"-",loopStart1))
+  loopLen2=paste0(loopEnd2,"-",loopStart2)
+  
+  if(loopLen1=="0")
+    return(NULL)
+  if(!is.null(loopEnd2)){
+    loopLen2=CSimplify(loopLen2)
+    if(loopLen2=="0")
+      return(NULL)
+  }
+  if(loopLen1=="1"){
+    if(isSymbol(loopStart1)||isNumeric(loopStart1)){
+    loop1Def=paste0("#define ",loopInd1," ",loopStart1)
+    }else{
+      loop1Def=paste0("#define ",loopInd1," (",loopStart1,")")
     }
-    code = c(loopCode0, code, bodyCode, endCode2, endCode1, "}")
-    code
+    loop1Def=c("{",loop1Def)
+    loopCode1=gsub("break;","//break;",loopCode1,fixed=TRUE)
+    endCode1=gsub("break;","//break;",endCode1,fixed=TRUE)
+    endCode1=c(endCode1,paste0("#undef ",loopInd1))
+  }else{
+    loop1Def=paste0(
+      "for(", GPUVar$default_index_type, " ", loopInd1, 
+      "=", loopStart1, ";", loopInd1, "<", loopEnd1, ";", loopInd1, "++){")
+  }
+  if(loopLen2=="1"){
+    if(isSymbol(loopStart2)||isNumeric(loopStart2)){
+      loop2Def=paste0("#define ",loopInd2," ",loopStart2)
+    }else{
+      loop2Def=paste0("#define ",loopInd2," (",loopStart2,")")
+    }
+    loop2Def=c("{",loop2Def)
+    loopCode2=gsub("break;","//break;",loopCode2,fixed=TRUE)
+    endCode2=gsub("break;","//break;",endCode2,fixed=TRUE)
+    endCode2=c(endCode2,paste0("#undef ",loopInd2))
+  }else{
+  loop2Def=paste0(
+    "for(", GPUVar$default_index_type, " ", loopInd2, "=", 
+                  loopStart2, ";", loopInd2, "<", loopEnd2, ";", loopInd2,  "++){")
+  }
+  loopCode2 = NULL
+  
+  if (!is.null(loopInd2)) {
+    loopCode2 = c(loop2Def, loopCode2)
+    endCode2 = c(endCode2, "}")
+  }
+  code = c(loopCode0, loop1Def,loopCode1,loopCode2, bodyCode, endCode2, endCode1, "}")
+  code
 }
 
 matrix_assignment_func_doNothing <- function(value_left, value_right) {

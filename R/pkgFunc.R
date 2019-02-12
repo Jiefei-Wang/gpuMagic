@@ -14,18 +14,9 @@ GPUVar <- local({
     GPUVar_env$global_share_size = "gpu_gs_size_arg"
     GPUVar_env$local_share_size = "gpu_ls_size_arg"
     
-    # matrix number info
-    GPUVar_env$global_private_matrixNum = "gpu_gp_matrixNum"
-    GPUVar_env$global_share_matrixNum = "gpu_gs_matrixNum"
-    GPUVar_env$local_share_matrixNum = "gpu_ls_matrixNum"
-    GPUVar_env$local_private_matrixNum = "gpu_lp_matrixNum"
-    
-    # matrix transpose info
-    GPUVar_env$gp_transpose = "gpu_gp_transpose"
-    GPUVar_env$gs_transpose = "gpu_gs_transpose"
-    GPUVar_env$lp_transpose = "gpu_lp_transpose"
-    GPUVar_env$ls_transpose = "gpu_ls_transpose"
-    
+    # matrix dimension info 
+    # the order is gp_size1,gp_size2,gs~,lp~,ls~
+    GPUVar_env$matrix_size_info="gpu_matrix_size_info"
     
     # worker private data, loacted in global memory
     GPUVar_env$global_private_data = "gpu_gp_data"
@@ -100,7 +91,6 @@ GPUVar <- local({
     GPUVar_env$vectorSize = 4
     # in byte
     GPUVar_env$private_vector_size = 24 * 1024
-    
     
     return(GPUVar_env)
 })

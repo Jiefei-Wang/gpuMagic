@@ -16,7 +16,7 @@ getEmpVarInfoTbl<-function(){
     curInfo=eval(callFunc[[1]][[2]],envir=globalenv())
     print.varInfo(curInfo,simplify=FALSE,printDef = TRUE)
   }
-  varInfo
+  structure(varInfo,class="varInfo")
 }
 
 copyVarInfoTbl <- function(varInfo, resetVersion = TRUE) {

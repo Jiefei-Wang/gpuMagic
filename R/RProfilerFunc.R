@@ -305,22 +305,28 @@ profile_arithmetic <- function(varInfo, Exp) {
             ExpInfo$size2 = leftInfo$size2
         } else {
             # If two elements are all matrix, use the dimension of the first matrix
-            ExpInfo$size1 = leftInfo$size1
-            ExpInfo$size2 = leftInfo$size2
+            ExpInfo$size1 = Simplify2(
+              paste0("max(",leftInfo$size1,",",rightInfo$size1,")"))
+            ExpInfo$size2 = Simplify2(
+              paste0("max(",leftInfo$size2,",",rightInfo$size2,")"))
         }
     }
     
-    check = "FALSE"
-    if (!isNA(leftInfo$size1) && !isNA(rightInfo$size1)) 
-        check = paste0(check, "||(", leftInfo$size1, "!=", rightInfo$size1, 
-            ")&&(", leftInfo$size1, "!=1)&&(", rightInfo$size1, "!=1)")
-    
-    if (!isNA(leftInfo$size2) && !isNA(rightInfo$size2)) 
-        check = paste0(check, "||(", leftInfo$size2, "!=", rightInfo$size2, 
-            ")&&(", leftInfo$size2, "!=1)&&(", rightInfo$size2, "!=1)")
-    
-    if (check != "FALSE") 
-        check = substr(check, 8, nchar(check))
+    if (!isNA(leftInfo$size1) && !isNA(rightInfo$size1)&&
+        !isNA(leftInfo$size2) && !isNA(rightInfo$size2)){ 
+      #Check row
+        check = paste0("((", leftInfo$size1, "!=", rightInfo$size1,")")
+      #Check column
+        check = paste0(check,
+                       "||(", leftInfo$size2, "!=", rightInfo$size2,"))")
+        #Check if one of them is an scalar
+        check=paste0(check,
+                     "&&!(", leftInfo$size1, "==1&&",leftInfo$size2,"==1)&&",
+                     "!(", rightInfo$size1, "==1&&",rightInfo$size2, "==1)")
+    }else{
+      check="FALSE"
+    }
+    check=Simplify2(check,parentheses=FALSE)
     errorCheck = setErrorCheck(level = "error", code = deparse(Exp), check = check, 
         msg = "Uncomfortable matrix dimension has been found")
     res$ExpInfo = ExpInfo
@@ -594,10 +600,10 @@ profile_seq <- function(varInfo, Exp) {
         # expInfo$value=paste0('seq(',fromInfo$value,',',toInfo$value,',',byInfo$value,')')
         expInfo$size1 = Simplify2(paste0("floor((", toInfo$value, "-", 
             fromInfo$value, ")/", byInfo$value, ")+1"))
-        expInfo$size2 = 1
         # expInfo$compileValue=TRUE
     }
-    expInfo$designSize1 = 4
+    expInfo$size2 = 1
+    expInfo$designSize1 = 3
     expInfo$designSize2 = 1
     expInfo$isSpecial = TRUE
     expInfo$location = "local"
