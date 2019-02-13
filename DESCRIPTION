@@ -1,11 +1,13 @@
 Package: gpuMagic
 Type: Package
-Title: An R interface to ultilize the power of GPU
+Title: An openCL compiler with the capacity to compile the R function and run the code on GPU
 Version: 0.1.0
 Date: 2018-10-07
 Author: Jiefei Wang
 Maintainer: Jiefei Wang <jwang96@buffalo.edu>
-Description: The package compiles the R function and uses GPU to run the R code.
+Description: The package aims to help the users to write the OpenCL code with little or no effort. 
+  It is able to compile an user-defined R function and run it on a device.
+  The user can also write and run his own openCL code directly without knowing OpenCL a lot.
 License: GPL-3
 LinkingTo: Rcpp
 Depends: 
