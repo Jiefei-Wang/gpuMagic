@@ -19,7 +19,7 @@ $(SHLIB): ../inst/include/lib/OpenCL.lib
 
 ../inst/include/lib/OpenCL.lib:
 	cd ../inst/include/ && $(MAKE) ICD_WIN ICD_OS=icd_windows \
-	CC=$(CC) CFLAGS="$(ALL_CFLAGS)" AR="$(AR)"
+	CC="$(CC)" CFLAGS="$(ALL_CFLAGS)" AR="$(AR)"
 	
 ### Define objects
 

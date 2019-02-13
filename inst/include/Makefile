@@ -9,16 +9,16 @@ OBJ=$(ODIR)/icd.o $(ODIR)/icd_dispatch.o $(ODIR)/$(ICD_OS).o
 
 
 ICD_WIN: $(CLDIR)/OpenCL.lib
-ICD_LINUX: $(CLDIR)/OpenCL.so
+ICD_LINUX: $(CLDIR)/libOpenCL.a
 
 
 $(CLDIR)/OpenCL.lib: $(OBJ)
 	@mkdir -p $(CLDIR)
 	$(AR) rcs $@ $^
 
-$(CLDIR)/OpenCL.so: $(OBJ)
+$(CLDIR)/libOpenCL.a: $(OBJ)
 	@mkdir -p $(CLDIR)
-	$(CC) -shared -o $@ $^
+	$(AR) rcs $@ $^
 
 	
 $(ODIR)/%.o:%.c
