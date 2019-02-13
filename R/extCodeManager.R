@@ -136,7 +136,7 @@ removeRedundantVar <- function(extCode, var) {
     varNames = extCode$varDef$varName
     newCode = extCode$varDef[varNames != var, ]
     allVarDef = newCode$varDef
-    relatedVars = unique(unlist(sapply(allVarDef, extractVars)))
+    relatedVars = unique(unlist(lapply(allVarDef, extractVars)))
     if (var %in% relatedVars) {
         return(extCode)
     } else {
@@ -153,7 +153,7 @@ addValueRecord <- function(extCode, value) {
 
 getAllVarsInRecord <- function(extCode) {
     if (!is.null(extCode$valueRecord)) 
-        res = unique(as.vector(unlist(sapply(extCode$valueRecord, extractVars))))
+        res = unique(as.vector(unlist(lapply(extCode$valueRecord, extractVars))))
     res
 }
 # Get the number of variable definition in extra code
@@ -176,7 +176,7 @@ getVarsNum <- function(extCode) {
 
 hoistOpt <- function(extCode, Exp) {
     code = C_to_R(Exp)
-    code = sapply(expandExp(code), Simplify)
+    code = vapply(expandExp(code), Simplify,character(1))
     codeInfo = list()
     baseLevel = c()
     # Decompose the code and find the base level for each code

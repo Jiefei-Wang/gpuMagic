@@ -263,72 +263,88 @@ profile_matrix <- function(varInfo, Exp) {
     ExpInfo
 }
 
+profile_elementOP<-function(varInfo, Exp){
+  leftExp = Exp[[2]]
+  rightExp = Exp[[3]]
+  
+  leftInfoPack = getExpInfo(varInfo, leftExp)
+  rightInfoPack = getExpInfo(varInfo, rightExp)
+  
+  
+  leftInfo = leftInfoPack$ExpInfo
+  rightInfo = rightInfoPack$ExpInfo
+  
+  res = combineExpInfo(Exp, leftInfoPack, rightInfoPack)
+  
+  if (leftInfo$dataType == T_scale && rightInfo$dataType == T_scale) {
+    ExpInfo = getEmpyTable(type = T_scale)
+  } else {
+    ExpInfo = getEmpyTable(type = T_matrix)
+  }
+  ExpInfo$precisionType = typeInherit(leftInfo$precisionType, rightInfo$precisionType)
+  
+  if (ExpInfo$dataType == T_scale) {
+    ExpInfo$value = Simplify2(paste0(leftInfo$value, deparse(Exp[[1]]), 
+                                     rightInfo$value))
+  }
+  
+  # Find the right size for the matrix
+  if (leftInfo$dataType == T_scale) {
+    ExpInfo$size1 = rightInfo$size1
+    ExpInfo$size2 = rightInfo$size2
+  } else {
+    if (rightInfo$dataType == T_scale) {
+      ExpInfo$size1 = leftInfo$size1
+      ExpInfo$size2 = leftInfo$size2
+    } else {
+      # If two elements are all matrix, use the dimension of the first matrix
+      ExpInfo$size1 = Simplify2(
+        paste0("max(",leftInfo$size1,",",rightInfo$size1,")"))
+      ExpInfo$size2 = Simplify2(
+        paste0("max(",leftInfo$size2,",",rightInfo$size2,")"))
+    }
+  }
+  
+  check=errorCheck_matrix_matrix(
+    leftInfo$size1,leftInfo$size2,
+    rightInfo$size1,rightInfo$size2)
+  
+  errorCheck = setErrorCheck(level = "error", code = deparse(Exp), check = check, 
+                             msg = "Uncomfortable matrix dimension has been found")
+  res$ExpInfo = ExpInfo
+  res$errorCheck = rbind(res$errorCheck, errorCheck)
+  return(res)
+}
+
+
 
 # Exp=parse(text='1/100')[[1]]
 profile_arithmetic <- function(varInfo, Exp) {
-    leftExp = Exp[[2]]
-    rightExp = Exp[[3]]
-    op = Exp[[1]]
-    
-    leftInfoPack = getExpInfo(varInfo, leftExp)
-    rightInfoPack = getExpInfo(varInfo, rightExp)
-    
-    
-    leftInfo = leftInfoPack$ExpInfo
-    rightInfo = rightInfoPack$ExpInfo
-    
-    res = combineExpInfo(Exp, leftInfoPack, rightInfoPack)
-    
-    if (leftInfo$dataType == T_scale && rightInfo$dataType == T_scale) {
-        ExpInfo = getEmpyTable(type = T_scale)
-    } else {
-        ExpInfo = getEmpyTable(type = T_matrix)
-    }
-    ExpInfo$precisionType = typeInherit(leftInfo$precisionType, rightInfo$precisionType)
-    
-    if (op == "/") 
-        ExpInfo$precisionType = GPUVar$default_float
-    
-    
-    if (ExpInfo$dataType == T_scale) {
-        ExpInfo$value = Simplify2(paste0(leftInfo$value, deparse(Exp[[1]]), 
-            rightInfo$value))
-    }
-    
-    # Find the right size for the matrix
-    if (leftInfo$dataType == T_scale) {
-        ExpInfo$size1 = rightInfo$size1
-        ExpInfo$size2 = rightInfo$size2
-    } else {
-        if (rightInfo$dataType == T_scale) {
-            ExpInfo$size1 = leftInfo$size1
-            ExpInfo$size2 = leftInfo$size2
-        } else {
-            # If two elements are all matrix, use the dimension of the first matrix
-            ExpInfo$size1 = Simplify2(
-              paste0("max(",leftInfo$size1,",",rightInfo$size1,")"))
-            ExpInfo$size2 = Simplify2(
-              paste0("max(",leftInfo$size2,",",rightInfo$size2,")"))
-        }
-    }
-    
-    check=errorCheck_matrix_matrix(
-      leftInfo$size1,leftInfo$size2,
-      rightInfo$size1,rightInfo$size2)
-    
-    errorCheck = setErrorCheck(level = "error", code = deparse(Exp), check = check, 
-        msg = "Uncomfortable matrix dimension has been found")
-    res$ExpInfo = ExpInfo
-    res$errorCheck = rbind(res$errorCheck, errorCheck)
-    return(res)
+  op=deparse(Exp[[1]])
+  res=profile_elementOP(varInfo, Exp)
+  if (op == "/") 
+    res$ExpInfo$precisionType =typeInherit(res$ExpInfo$precisionType,GPUVar$default_float)
+  if(op %in%c("+","-","*","/","^"))
+    res$ExpInfo$precisionType =typeTruncate(res$ExpInfo$precisionType)
+  
+  return(res)
 }
 
 profile_logical <- function(varInfo, Exp) {
-    res = profile_arithmetic(varInfo, Exp)
+    res = profile_elementOP(varInfo, Exp)
     res$ExpInfo$precisionType = "bool"
     res
 }
 
+profile_abs <- function(varInfo, Exp) {
+  res = getExpInfo(varInfo, Exp[[2]])
+  precision=res$ExpInfo$precisionType
+  if(precision%in%getIntegerType())
+     res$Exp=parse(text =paste0("abs_int(",deparse(res$Exp),")") )[[1]]
+  else
+    res$Exp=parse(text =paste0("abs_float(",deparse(res$Exp),")") )[[1]]
+  res
+}
 
 
 # %*%
@@ -351,7 +367,7 @@ profile_matrixMult <- function(varInfo, Exp) {
         "!=", rightInfo$size1), msg = "Uncomfortable matrix dimension has been found")
     
     res$ExpInfo = ExpInfo
-    res$errorCheck = errorCheck
+    res$errorCheck = rbind(res$errorCheck, errorCheck)
     res
 }
 
@@ -647,6 +663,5 @@ profile_colSums <- function(varInfo, Exp) {
   res$Exp=parse(text=paste0("colSums(",deparse(res$Exp),")"))[[1]]
   return(res)
 }
-
 
 

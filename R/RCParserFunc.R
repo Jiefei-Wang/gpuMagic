@@ -73,7 +73,8 @@ C_element_OP <- function(varInfo, Exp) {
     }
     return(code)
 }
-# 0-based index Return: list:value,extCode
+# 0-based index 
+# Return: list:value,extCode
 C_element_getCExp <- function(varInfo, Exp, sub, extCode = NULL, opt = NULL) {
     if (is.null(extCode)) 
         extCode = createExtCode(opt)
@@ -96,7 +97,16 @@ C_element_getCExp <- function(varInfo, Exp, sub, extCode = NULL, opt = NULL) {
     stop("Unsupported function: ", deparse(Exp))
     
 }
-
+C_element_parenthesis <- function(varInfo, Exp, sub, opt, extCode) {
+  element = Exp[[2]]
+  res = C_element_getCExp(varInfo, element, sub, extCode = extCode, opt = opt)
+  if(!isSingleValue(res$value)){
+    res$value = paste0("(", res$value, ")")
+  }else{
+    warning("unnecessary parenthesis has been found: ",deparse(Exp))
+  }
+  return(res)
+}
 
 C_element_arithmatic <- function(varInfo, Exp, sub, opt, extCode) {
     op = deparse(Exp[[1]])
@@ -106,9 +116,17 @@ C_element_arithmatic <- function(varInfo, Exp, sub, opt, extCode) {
     right_res = C_element_getCExp(varInfo, rightEle, sub, extCode = left_res$extCode, opt = opt)
     
     extCode = right_res$extCode
-    value = paste0(left_res$value, op, right_res$value)
-    if (op == "/") 
+    value=NULL
+    if(op%in%c("+","-","*","/",">","<",">=","<=","==","!=")){
+      value = paste0(left_res$value, op, right_res$value)
+      if (op == "/") 
         value = paste0("(", GPUVar$default_float, ")", value)
+    }
+    if(op=="^"){
+      value = paste0("pow(",left_res$value,",", right_res$value,")")
+    }
+    if(is.null(value))
+      stop("Unexpected error")
     res = list(value = value, extCode = extCode)
     return(res)
 }
@@ -126,7 +144,22 @@ C_element_ceil <- function(varInfo, Exp, sub, opt, extCode) {
     return(res)
 }
 
-
+C_element_power<-function(varInfo, Exp, sub, opt, extCode){
+  leftEle = Exp[[2]]
+  rightEle = Exp[[3]]
+  left_res = C_element_getCExp(varInfo, leftEle, sub, extCode = extCode, opt = opt)
+  right_res = C_element_getCExp(varInfo, rightEle, sub, extCode = left_res$extCode, opt = opt)
+  
+}
+C_element_abs<-function(varInfo, Exp, sub, opt, extCode){
+  element = Exp[[2]]
+  res = C_element_getCExp(varInfo, element, sub, extCode = extCode, opt = opt)
+  if(Exp[[1]]=="abs_int")
+    res$value = paste0("abs(", res$value, ")")
+  else
+    res$value = paste0("fabs(", res$value, ")")
+  return(res)
+}
 
 # ================Regular functions==================
 
@@ -467,6 +500,7 @@ C_rowSums_right<-function(varInfo, Exp){
                              endCode1 = assignment)
   code
 }
+
 
 
 ########################################## Super lengthy function##############################

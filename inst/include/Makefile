@@ -15,7 +15,10 @@ ICD_LINUX: $(CLDIR)/OpenCL.so
 $(CLDIR)/OpenCL.lib: $(OBJ)
 	@mkdir -p $(CLDIR)
 	$(AR) rcs $@ $^
-	
+
+$(CLDIR)/OpenCL.so: $(OBJ)
+	@mkdir -p $(CLDIR)
+	$(CC) -shared -o $@ $^
 
 	
 $(ODIR)/%.o:%.c

@@ -117,8 +117,8 @@
         }
         memPercent = paste0("(", ceiling(usedMem/maxMem * 100), "%)")
         
-        usedMem_char = sapply(usedMem, format_memory_size_output)
-        maxMem_char = sapply(maxMem, format_memory_size_output)
+        usedMem_char = vapply(usedMem, format_memory_size_output,character(1))
+        maxMem_char = vapply(maxMem, format_memory_size_output,character(1))
         
         usedMem_char = paste0("--Used: ", usedMem_char, memPercent)
         maxMem_char = paste0("--Total: ", maxMem_char)

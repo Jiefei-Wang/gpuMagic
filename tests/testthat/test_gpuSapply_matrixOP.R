@@ -129,3 +129,27 @@ test_that("Matrix add, one argument is a scalar",{
   res_gpu=gpuSapply(1:m,testFunc,A,B)
   expect_equal(res_gpu,t(A+B))
 })
+
+test_that("power function, one argument is a scalar",{
+  testFunc<-function(ind,A,B){
+    C=B[,ind]^A
+    return.nocpy(C)
+  }
+  
+  A=3
+  B=matrix(runif(n*m),m,n)
+  res_gpu=gpuSapply(1:n,testFunc,A,B)
+  expect_equal(res_gpu,B^A)
+})
+
+test_that("abs function",{
+  testFunc<-function(ind,A,B){
+    C=abs(B[,ind])+A[,ind]
+    return.nocpy(C)
+  }
+  
+  A=matrix(runif(n*m),m,n)
+  B=matrix(runif(n*m),m,n)-0.5
+  res_gpu=gpuSapply(1:n,testFunc,A,B)
+  expect_equal(res_gpu,abs(B)+A)
+})

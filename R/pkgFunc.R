@@ -98,7 +98,8 @@ GPUVar <- local({
 
 
 
-.elementFuncs = c("+", "-", "*", "/", ">", ">=", "<", "<=", "==")
+.elementFuncs = c("+", "-", "*", "/", ">", ">=", "<", "<=", "==","^",
+                  "abs")
 .elementTransformation = c("floor", "ceiling")
 
 .elementOp = c(.elementFuncs, .elementTransformation)
@@ -113,15 +114,6 @@ GPUVar <- local({
 .profileFuncs[["ncol"]] = profile_size
 .profileFuncs[["length"]] = profile_size
 .profileFuncs[["matrix"]] = profile_matrix
-.profileFuncs[["+"]] = profile_arithmetic
-.profileFuncs[["-"]] = profile_arithmetic
-.profileFuncs[["*"]] = profile_arithmetic
-.profileFuncs[["/"]] = profile_arithmetic
-.profileFuncs[[">"]] = profile_logical
-.profileFuncs[[">="]] = profile_logical
-.profileFuncs[["<"]] = profile_logical
-.profileFuncs[["<="]] = profile_logical
-.profileFuncs[["=="]] = profile_logical
 .profileFuncs[["["]] = profile_subset
 .profileFuncs[["floor"]] = profile_floor
 .profileFuncs[["ceiling"]] = profile_ceil
@@ -133,6 +125,20 @@ GPUVar <- local({
 .profileFuncs[["rowSums"]]=profile_rowSums
 .profileFuncs[["colSums"]]=profile_colSums
 
+
+#element op
+.profileFuncs[["+"]] = profile_arithmetic
+.profileFuncs[["-"]] = profile_arithmetic
+.profileFuncs[["*"]] = profile_arithmetic
+.profileFuncs[["/"]] = profile_arithmetic
+.profileFuncs[["^"]] = profile_arithmetic
+.profileFuncs[[">"]] = profile_logical
+.profileFuncs[[">="]] = profile_logical
+.profileFuncs[["<"]] = profile_logical
+.profileFuncs[["<="]] = profile_logical
+.profileFuncs[["=="]] = profile_logical
+.profileFuncs[["!="]] = profile_logical
+.profileFuncs[["abs"]] = profile_abs
 
 
 
@@ -174,6 +180,7 @@ GPUVar <- local({
 
 
 # Element op
+.cFuncs[["("]]=C_element_parenthesis
 .cFuncs[["<-+"]] = C_element_arithmatic
 .cFuncs[["<--"]] = C_element_arithmatic
 .cFuncs[["<-*"]] = C_element_arithmatic
@@ -183,8 +190,12 @@ GPUVar <- local({
 .cFuncs[["<-<"]] = C_element_arithmatic
 .cFuncs[["<-<="]] = C_element_arithmatic
 .cFuncs[["<-=="]] = C_element_arithmatic
+.cFuncs[["<-!="]] = C_element_arithmatic
+.cFuncs[["<-^"]] = C_element_arithmatic
 .cFuncs[["<-floor"]] = C_element_floor
 .cFuncs[["<-ceiling"]] = C_element_ceil
+.cFuncs[["<-abs_int"]] = C_element_abs
+.cFuncs[["<-abs_float"]] = C_element_abs
 
 
 
@@ -323,6 +334,8 @@ subRef <- function(variable, i = "", j = "") {
 #' #return.nocpy(x)
 #' @export
 return.nocpy = return
+
+
 #' @details 
 #' `t.nocpy`: The function transposes `x` without allocating the memory. It only works for the openCL code, 
 #' if it is called in R, the function `t()` will be called instead
@@ -330,9 +343,14 @@ return.nocpy = return
 #' @return `t.nocpy`: the transpose of `x`
 #' @rdname no_copy_method
 #' @aliases t.nocpy
+#' @usage t.nocpy(x)
 #' @examples 
 #' #x=t.nocpy(x)
-#' @usage t.nocpy(x)
-#' @export
-t.nocpy = t
+#' @export 
+t.nocpy=function(x){
+  t(x)
+}
+
+
+
 

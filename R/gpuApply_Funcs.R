@@ -102,7 +102,7 @@ fillGPUdata <- function(GPUcode1, .options, .device) {
     # gp_totalsize, return size
     kernel_args$sizeInfo = rep(0, 2)
     gp_totalsize=0
-    returnSize=0
+    returnSize=1
     
     
     #The size of the matrix in gp,gs,lp,ls
@@ -128,6 +128,10 @@ fillGPUdata <- function(GPUcode1, .options, .device) {
     if (!is.null(varInfo$returnInfo)) {
         returnInfo = varInfo$returnInfo
         returnSizeVector = returnInfo$size1 * returnInfo$size2
+        if(sum(is.na(returnSizeVector))>0) {
+          warning("Undetermined return size has been found!")
+          returnSizeVector=returnSizeVector[!is.na(returnSizeVector)]
+        }
         if (length(returnSizeVector) != 0) {
             if (sum(returnSizeVector[1] != returnSizeVector) > 0) 
                 warning("Multiple return size has been found!")

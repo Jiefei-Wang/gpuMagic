@@ -144,8 +144,21 @@ isSymbol <- function(x) {
     x = as.symbol(x)
     length(grep("`", capture.output(x))) == 0
 }
-
-
+#Check if the variable x can be treated as a single value
+#It means no operation can has higher priority than the opration inside x
+isSingleValue<-function(x){
+  if(isSymbol(x))
+    return(TRUE)
+  if(isNumeric(x))
+    return(TRUE)
+  x=toExpression(C_to_R(x))
+  if(is.call(x)){
+    op=deparse(x[[1]])
+    if(op%in%c("[","("))
+      return(TRUE)
+  }
+  return(FALSE)
+}
 
 
 getSeqAddress <- function(varInfo, var,C_symbol=FALSE) {

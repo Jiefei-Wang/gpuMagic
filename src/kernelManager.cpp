@@ -255,7 +255,7 @@ cl_program kernelManager::createProgram(deviceIdentifier deviceId, programSignat
 		errorHandle(errorInfo.c_str());
 		return NULL;
 	}
-	message(programSig.compiler_flag.c_str());
+	//message(programSig.compiler_flag.c_str());
 	error = clBuildProgram(program, 1, &dc.device_id, programSig.compiler_flag.c_str(), 0, 0);
 	switch (error) {
 	case CL_SUCCESS:

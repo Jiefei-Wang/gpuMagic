@@ -142,6 +142,8 @@ gpuSapply_singleDev <- function(X, FUN, ..., .macroParms = NULL, .device,
     if (.block) {
         res = download(res)
         res = as.matrix(res)
+        if(length(X)==length(res))
+          res=as.vector(res)
     }
     return(res)
 }

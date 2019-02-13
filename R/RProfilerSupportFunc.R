@@ -27,7 +27,7 @@ profileVar <- function(parms, macroParms) {
         info$initialization = FALSE
         
         
-        if (!isNA(info$value)) {
+        if (varName[i] %in% macroParms) {
             info$value = paste0("(", varInfo$parmsTblName, "[[", i, "]])")
         }
         info$dataType = T_matrix
@@ -154,8 +154,8 @@ typeInherit <- function(type1, type2) {
     if (!is.character(type2)) 
         type2 = as.character(type2)
     
-    group_float = c("half", "float", "double")
-    group_int = c("bool", "char", "int", "long", "uint", "ulong")
+    group_float = getFloatingPointType()
+    group_int = getIntegerType()
     
     target_size = max(getTypeSize(type1), getTypeSize(type2))
     if (type1 %in% group_float || type2 %in% group_float) {
@@ -211,7 +211,7 @@ formatCall <- function(Exp, generalType = FALSE) {
 # Test if x is an NA value, support character.
 isNA <- function(x) {
     if (is.character(x)) 
-        return(x == "NA")
+        return(CSimplify(x) == "NA")
     return(is.na(x))
 }
 # Test if an input is a number x can be a character or an expression

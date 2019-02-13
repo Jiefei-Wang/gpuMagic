@@ -9,7 +9,12 @@ getTypeNum <- function(type) {
             type))
 }
 
-
+getFloatingPointType<-function(type){
+  c("half","float","double")
+}
+getIntegerType<-function(type){
+  c("bool","char","uint","int","ulong","long")
+}
 getTypeCXXStr <- function(type) {
   if(!is.null(attr(type,"infoType"))&&attr(type,"infoType")=="singleInfo")
     type=type$precisionType
