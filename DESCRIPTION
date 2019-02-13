@@ -6,8 +6,8 @@ Date: 2018-10-07
 Author: Jiefei Wang
 Maintainer: Jiefei Wang <jwang96@buffalo.edu>
 Description: The package aims to help the users to write the OpenCL code with little or no effort. 
-  It is able to compile an user-defined R function and run it on a device.
-  The user can also write and run his own openCL code directly without knowing OpenCL a lot.
+  It is able to compile an user-defined R function and run it on a device such as CPU and GPU. 
+  The user can also write and run his openCL code directly by calling .kernel function.
 License: GPL-3
 LinkingTo: Rcpp
 Depends: 

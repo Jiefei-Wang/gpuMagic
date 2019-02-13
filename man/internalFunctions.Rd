@@ -7,6 +7,7 @@
 \alias{gpu_cast_int}
 \alias{gpu_cast_long}
 \alias{gpu_cast_ulong}
+\alias{isgreater}
 \alias{extractVars}
 \alias{extractVars.default}
 \alias{extractVars.extCode}
@@ -25,6 +26,8 @@ gpu_cast_long(x)
 
 gpu_cast_ulong(x)
 
+isgreater(x, y)
+
 extractVars(x)
 
 \method{extractVars}{default}(x)
@@ -35,6 +38,8 @@ extractVars(x)
 }
 \arguments{
 \item{x}{Internal usage only}
+
+\item{y}{Internal usage only}
 }
 \value{
 A double type data
@@ -42,6 +47,8 @@ A double type data
 A vector of variables
 }
 \description{
+Internal usage only, the package export this function only for the other package to access.
+
 Internal usage only, the package export this function only for the other package to access.
 
 Internal usage only, the package export this function only for the other package to access.

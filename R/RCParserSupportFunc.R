@@ -80,7 +80,13 @@ C_to_R <- function(code) {
 R_to_C <- function(code) {
     gsub("gpu_cast_(float|double|uint|int|long|ulong)", "\\(\\1\\)", code)
 }
-CSimplify <- function(Exp, C = TRUE) {
+addParenthesis=function(x){
+  if(!isSymbol(x)&&!isNumeric(x)){
+    x=paste0("(",x,")")
+  }
+  return(x)
+}
+CSimplify <- function(Exp, C = TRUE,parenthesis=FALSE) {
     code = toCharacter(Exp)
     
     if (code == "") 
@@ -90,11 +96,16 @@ CSimplify <- function(Exp, C = TRUE) {
     code = Simplify(code)
     if (C) 
         code = R_to_C(code)
+    if(parenthesis){
+      code=addParenthesis(code)
+    }
     return(code)
+        
 }
 #' Internal usage only, the package export this function only for the other package to access.
 #' 
 #' @param x Internal usage only
+#' @param y Internal usage only
 #' @rdname internalFunctions
 #' @examples 
 #' gpu_cast_float(10)
@@ -139,6 +150,16 @@ gpu_cast_long <- function(x) {
 gpu_cast_ulong <- function(x) {
     trunc(x)
 }
+#' Internal usage only, the package export this function only for the other package to access.
+#' 
+#' @rdname internalFunctions
+#' @export
+isgreater<-function(x,y){
+  if(isNumeric(x)&&isNumeric(y))
+    return(as.integer(x>y))
+  else
+    return(FALSE)
+}
 # Check if x is a valid symbol(no `` around the x)
 isSymbol <- function(x) {
     x = as.symbol(x)
@@ -164,7 +185,7 @@ isSingleValue<-function(x){
 getSeqAddress <- function(varInfo, var,C_symbol=FALSE) {
     curInfo = getVarInfo(varInfo, var)
     ad = curInfo$address
-    if (!(curInfo$location == "local" && !curInfo$shared)) {
+    if (curInfo$isPointer) {
         ad = paste0("(*", ad, ")")
     }
     from = paste0(ad, ".s0")

@@ -97,10 +97,11 @@ Here we discuss some common questions that you will have when using the function
 
 ##Important note
 + All objects in openCL is either a scalar or a matrix, vector is not supported
-+ Do not allocate(create) variables in for loop or if body, it may cause an unexpected error.
++ `NA` and `NULL` values are not supported, I did not test them yes but it should be OK to pass them to the device, it just may not work as your expect. This feature will be added in the near future.
++ Do not allocate(create) variables in for loop or if statement., it may cause an unexpected error. Please allocate them before the loop or if statement.
 + Be careful when you do the self assignment, the code like `A[1:2]=A[2:1]` will not works, since the package does not have a temporary space to store the intermediate results and therefore the assignment will be excuted in sequence, so the above code is equivalent to `A[1]=A[2];A[2]=A[1]`. The value in `A[2]` will be incorrect.
 + For saving the memory space, the function arguments are shared by all threads. Therefore changing the value of the function arguments is depreciated unless the change made by one thread will not be read by the other threads.
-
++If you find any bugs in the package that prevent you from running the openCL code, a temporary solution would be using the scalar opration, because most bugs are introduced by the poorly design of the matrix operation.
 ## Dynamic allocation? Nope!
 In R language, it is fairly easy to create a matrix without know its size in advance, for example,
 ```{r,eval = FALSE}
@@ -185,8 +186,12 @@ The language used in the package is only a subset of the R language, it fully su
 ##Error check? Partially!
 For the performance reason, the package only performs the error check in the compilation stage. Therefore, when an error occures on GPU, the code will continue to run silently, and crash R at some point without any hint. It is always a good idea to run a sample code with `sapply` function to check the possible error before you start your car without the safety belt.
 
-##Sequence variable? Yep! Just one exception.
-For the sequence variable, you can create it without the limitation. As you see in the `dynamic_example2` function, we have implicitly created a sequence variable `1:n`, whose size is unknown. You can use `seq` or `:` to create the sequence. the only exception is for the `:` function: you can only create an increasing sequence. For the decreasing sequence, you need to use `seq` function. For more detail about `seq`, please refer to the function list at the end of this documentation.
+##Sequence variable? Yep! Just one exception
+For the sequence variable, you can create it without the limitation. As you see in the `dynamic_example2` function, we have implicitly created a sequence variable `1:n`, whose size is unknown. You can use `seq` or `:` to create the sequence. the only exception is that you cannot change the value of the sequence variable, because the variable is in a compact format and does not own a memory. If you do want to create a sequence variable in the memory, an alternative way is to create the sequence first and assign it to a new variable, then the compiler will allocate the memory for the new variable
+
+##Calling another user-defined R function inside the R function? Already in my agenda!
+The current version does not support to call the other user-defined R function inside your main function, this feature is under development and will come in the near future.
+
 
 #More examples
 
@@ -280,7 +285,6 @@ parms[which.min(res_cpu),]
 #Supported functions
 The package currently supports a limited funtions, the usage of them are similar but not promised to be the same as the R functions. For example, the **drop** argument in ***[*** function is not supported yet. Therefore, in the current stage, it is better to only call the simplest form of the function. The current available functions are:
 
-
 | Function | Note                                         |
 |----------|----------------------------------------------|
 | nrow     | the value can be used to create other matrix |
@@ -306,11 +310,15 @@ The package currently supports a limited funtions, the usage of them are similar
 | ==       |                                              |
 | abs      |                                              |
 | %*%      |                                              |
-| seq      | Support ***from, to, by***    arguments only |
-| :        |                                              |
 | return   |                                              |
-| gMatrix  | Explicitly declare a matrix(Depreciated)     |
-| gNumber  | Explicitly declare a scalar(Depreciated)     |
+
+| Explicit declaration   function | note                                                                                       |
+|-----------------------------|--------------------------------------------------------------------------------------------|
+| subRef                      | Create a reference object to a subset of a matrix, the usage is same as   ***[*** function |
+| seq                         | Support ***from, to, by,length.out***    arguments only                                    |
+| :                           |                                                                                            |
+| gMatrix                     | Declare a matrix(Depreciated)                                                              |
+| gNumber                     | Declare a scalar(Depreciated)                                                              |
 
 
 Besides the traditional R function, the package also provide a few no-copy methods. 

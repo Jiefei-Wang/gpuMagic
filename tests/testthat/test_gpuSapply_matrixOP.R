@@ -50,6 +50,50 @@ test_that("Lazy reference, matrix subsetting and Arithmatic operation",{
   expect_equal(sum(abs(error)),0)
 })
 
+
+test_that("Sequence add, positive step",{
+  testFunc<-function(ind,n){
+    tmp=1:n+1:n
+    return(tmp)
+  }
+  res_gpu=gpuSapply(1,testFunc,n,.macroParms = "n")
+  res_cpu=sapply(1,testFunc,n)
+  error=range(res_gpu-res_cpu)
+  expect_equal(sum(abs(error)),0)
+})
+
+test_that("Sequence add, negative step",{
+  testFunc<-function(ind,n){
+    tmp=n:1+n:1
+    return(tmp)
+  }
+  res_gpu=gpuSapply(1,testFunc,n,.macroParms = "n")
+  res_cpu=sapply(1,testFunc,n)
+  error=range(res_gpu-res_cpu)
+  expect_equal(sum(abs(error)),0)
+})
+
+test_that("Sequence add, positve step, fix length",{
+  testFunc<-function(ind,n,m){
+    tmp=seq(1,n,length.out = m)+seq(1,n,length.out = m)
+    return(tmp)
+  }
+  res_gpu=gpuSapply(1,testFunc,n,m,.macroParms = c("n","m"))
+  res_cpu=sapply(1,testFunc,n,m)
+  error=range(res_gpu-res_cpu)
+  expect_equal(sum(abs(error)),0)
+})
+test_that("Sequence add, negativ step, fix length",{
+  testFunc<-function(ind,n,m){
+    tmp=seq(n,1,length.out = m)+seq(n,1,length.out = m)
+    return(tmp)
+  }
+  res_gpu=gpuSapply(1,testFunc,n,m,.macroParms = c("n","m"))
+  res_cpu=sapply(1,testFunc,n,m)
+  error=range(res_gpu-res_cpu)
+  expect_equal(sum(abs(error)),0)
+})
+
 test_that("Sequence, no-creation method",{
   testFunc<-function(ind,A,B){
     tmp=A[1:4,ind]+B[1:4,ind]

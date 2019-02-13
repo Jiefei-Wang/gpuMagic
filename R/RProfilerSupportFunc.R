@@ -79,8 +79,10 @@ matchFunArg <- function(fun, Exp) {
 }
 
 # Get the right expression profile Return value would be a list with
-# the following elements: ExpInfo:the expression info Exp: the
-# expression errorCheck: The error check item extCode: the extra code
+# the following elements: 
+# ExpInfo:the expression info Exp: the
+# expression errorCheck: The error check item 
+# extCode: the extra code
 # that needs to be added before the expression
 getExpInfo <- function(varInfo, Exp) {
     res = getExpInfo_hidden(varInfo, Exp)
@@ -133,7 +135,7 @@ getExpInfo_hidden <- function(varInfo, Exp) {
     stop("Unknow code: ", deparse(Exp))
 }
 # combine the expression info from several expInfo
-combineExpInfo <- function(Exp, ...) {
+combineExpInfo <- function(Exp, ...,offset=0) {
     parms = list(...)
     errorCheck = NULL
     extCode = NULL
@@ -141,7 +143,9 @@ combineExpInfo <- function(Exp, ...) {
         curInfo = parms[[i]]
         errorCheck = rbind(errorCheck, curInfo$errorCheck)
         extCode = c(extCode, curInfo$extCode)
-        Exp[[i + 1]] = curInfo$Exp
+        if(!is.null(curInfo$Exp)){
+          Exp[[i + 1+offset]] = curInfo$Exp
+        }
     }
     return(list(errorCheck = errorCheck, extCode = extCode, Exp = Exp))
 }
@@ -234,6 +238,11 @@ isNumeric <- function(x) {
     res = is.numeric(xExp)
     return(res)
 }
+
+#Test if a value is an integer
+is.wholenumber=function(x, tol = .Machine$double.eps^0.5)  
+{abs(x - round(x)) < tol}
+
 
 toCharacter <- function(x) {
     if (is.language(x)) {

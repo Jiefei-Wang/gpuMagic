@@ -107,7 +107,7 @@ getDeviceList = function() {
     updateDeviceInfo()
     deviceInfo = .gpuResourcesManager$globalVars$deviceInfo[, c("id", "platform", 
         "device", "deviceName", "globalMemory")]
-    deviceInfo$globalMemory = sapply(deviceInfo$globalMemory, format_memory_size_output)
+    deviceInfo$globalMemory = vapply(deviceInfo$globalMemory, format_memory_size_output,character(1))
     print(deviceInfo, row.names = FALSE, right = FALSE)
     invisible()
 }

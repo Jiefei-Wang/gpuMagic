@@ -301,9 +301,9 @@ C_setVersion <- function(varInfo, Exp) {
     return("")
 }
 
-# Exp=parse(text='A=seq(1,10,1)')[[1]]
+# Exp=parse(text='A=seq(1,10,length.out=gpu_global_id)')[[1]]
 C_seq_right <- function(varInfo, Exp) {
-    seq <- function(from, to, by = 1) {
+    seq <- function(from, to, by=NULL ,length.out=NULL) {
     }
     leftVar = Exp[[2]]
     rightExp = Exp[[3]]
@@ -314,29 +314,37 @@ C_seq_right <- function(varInfo, Exp) {
     from = args$from
     to = args$to
     by = args$by
+    length.out=args$length.out
     from_C = C_element_getCExp(varInfo, from, sub = 1)
     to_C = C_element_getCExp(varInfo, to, sub = 1, extCode = from_C$extCode)
-    by_C = C_element_getCExp(varInfo, by, sub = 1, extCode = to_C$extCode)
     
-    # Manually simplify the length
-    part1 = CSimplify(paste0(to_C$value, "/", by_C$value))
-    part2 = CSimplify(paste0(from_C$value, "/", by_C$value))
-    if (!xor(isNumeric(part1), isNumeric(part2))) {
-        seq_size = CSimplify(paste0("floor((", GPUVar$default_float, ")(", part1, "-", part2, "))+1"))
-    } else {
-        if (isNumeric(part1)) {
-            seq_size = CSimplify(paste0("-floor((", GPUVar$default_float, ")(", part2, "))+", part1, "+1"))
-        } else {
-            if (isNumeric(part2)) {
-                seq_size = CSimplify(paste0("floor((", GPUVar$default_float, ")(", part1, "))-", part2, "+1"))
-            }
-        }
+    by_C=list()
+    if(is.null(length.out)){
+      if(is.null(by)){
+        by_C$value=CSimplify(paste0("isgreater((",GPUVar$default_float,")(",
+                                    to_C$value,"-",from_C$value,"),0)*2-1"))
+        by_C$extCode=to_C$extCode
+      }else{
+        by_C = C_element_getCExp(varInfo, by, sub = 1, extCode = to_C$extCode)
+      }
+      by_C$value=addParenthesis(by_C$value)
+      seq_size=CSimplify(paste0(
+        "floor((", GPUVar$default_float, ")(",
+        to_C$value,"-",from_C$value,")/",by_C$value,")+1"
+      ),parenthesis = TRUE)
+      extCode = by_C$extCode
+      
+    }else{
+      length_C=C_element_getCExp(varInfo, length.out, sub = 1, extCode = to_C$extCode)
+      seq_size=addParenthesis(length_C$value)
+      extCode = length_C$extCode
+      by_C$value=CSimplify(paste0("(",to_C$value,"-",from_C$value,")/(",seq_size,"-1)"))
     }
     
-    
-    extCode = by_C$extCode
-    
+    from_C$value=addParenthesis(from_C$value)
+    to_C$value=addParenthesis(to_C$value)
     extCode_seq = finalizeExtCode(extCode)
+    
     # assign a sequence to a sequence variable
     if (leftInfo$isSeq) {
         seqAd = getSeqAddress(varInfo, leftVar,C_symbol=TRUE)

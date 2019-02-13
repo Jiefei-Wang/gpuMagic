@@ -583,41 +583,79 @@ profile_transpose_nocpy <- function(varInfo, Exp) {
 
 
 
-# Exp=quote(seq(1,gpu_global_id))
+# Exp=quote(seq(1,gpu_global_id,length.out=5))
 profile_seq <- function(varInfo, Exp) {
-    seq <- function(from, to, by = 1) {
+    seq <- function(from, to, by=NULL ,length.out=NULL) {
     }
+    Exp=standardise_call(Exp)
     args = matchFunArg(seq, Exp)
-    fromInfo = getExpInfo(varInfo, args$from)$ExpInfo
-    toInfo = getExpInfo(varInfo, args$to)$ExpInfo
-    byInfo = getExpInfo(varInfo, args$by)$ExpInfo
-    if (fromInfo$dataType != "scale" || toInfo$dataType != "scale" || byInfo$dataType != 
-        "scale") {
+    fromInfoPack=getExpInfo(varInfo, args$from)
+    toInfoPack=getExpInfo(varInfo, args$to)
+    
+    fromInfo = fromInfoPack$ExpInfo
+    toInfo = toInfoPack$ExpInfo
+    ExpInfo = getEmpyTable()
+    if(is.null(args$length.out)){
+      if(is.null(args$by)){
+        byInfoPack=getExpInfo(varInfo, 1)
+      }else{
+        byInfoPack=getExpInfo(varInfo, args$by)
+      }
+      byInfo = byInfoPack$ExpInfo
+      res=combineExpInfo(Exp,fromInfoPack,toInfoPack)
+      if(!is.null(args$by)){
+        res=combineExpInfo(Exp,byInfoPack,offset=2)
+      }
+      
+      if (fromInfo$dataType != "scale" || toInfo$dataType != "scale" || byInfo$dataType != 
+          "scale") {
         stop("The function argument is not a scalar: ", deparse(Exp))
+      }
+      precision = typeInherit(fromInfo$precisionType, toInfo$precisionType)
+      precision = typeInherit(precision, byInfo$precisionType)
+      
+      if (!isNA(fromInfo$value) && !isNA(toInfo$value) && !isNA(byInfo$value)) {
+        ExpInfo$size1 = Simplify2(paste0("abs(trunc((", toInfo$value, "-", 
+                                         fromInfo$value, ")/(", byInfo$value, ")))+1"))
+      }
+    }else{
+      #If the length.out has been specified
+      lengthInfoPack=getExpInfo(varInfo, args$length.out)
+      lengthInfo=lengthInfoPack$ExpInfo
+      res=combineExpInfo(Exp,fromInfoPack,toInfoPack,lengthInfoPack)
+      if (fromInfo$dataType != "scale" || toInfo$dataType != "scale" || lengthInfo$dataType != 
+          "scale") {
+        stop("The function argument is not a scalar: ", deparse(Exp))
+      }
+      lengthType=GPUVar$default_float
+      if(isNumeric(fromInfo$value)&&isNumeric(toInfo$value)&&isNumeric(lengthInfo$value)){
+        byInfo=Simplify(paste0("(", toInfo$value, "-", 
+                                         fromInfo$value, ")/(",lengthInfo$value,"-1)"))
+        if(is.wholenumber(as.numeric(byInfo))&&
+           is.wholenumber(as.numeric(fromInfo$value))){
+          lengthType=GPUVar$default_int
+        }
+      }
+      precision = typeInherit(fromInfo$precisionType, toInfo$precisionType)
+      precision = typeInherit(precision, lengthType)
+      if(!isNA(lengthInfo$value)){
+        ExpInfo$size1=lengthInfo$value
+      }
     }
-    precision = typeInherit(fromInfo$precisionType, toInfo$precisionType)
-    precision = typeInherit(precision, byInfo$precisionType)
+    ExpInfo$precisionType = precision
+    ExpInfo$size2 = 1
+    ExpInfo$designSize1 = 3
+    ExpInfo$designSize2 = 1
+    ExpInfo$isSpecial = TRUE
+    ExpInfo$location = "local"
+    ExpInfo$shared = FALSE
+    ExpInfo$specialType = "seq"
+    ExpInfo$specialContent = paste0("seq(", deparse(args$from), ",", deparse(args$to), 
+        ",", deparse(args$by),",",deparse(args$length.out), ")")
     
-    expInfo = getEmpyTable()
-    expInfo$precisionType = precision
     
-    if (!isNA(fromInfo$value) && !isNA(toInfo$value) && !isNA(byInfo$value)) {
-        # expInfo$value=paste0('seq(',fromInfo$value,',',toInfo$value,',',byInfo$value,')')
-        expInfo$size1 = Simplify2(paste0("floor((", toInfo$value, "-", 
-            fromInfo$value, ")/", byInfo$value, ")+1"))
-        # expInfo$compileValue=TRUE
-    }
-    expInfo$size2 = 1
-    expInfo$designSize1 = 3
-    expInfo$designSize2 = 1
-    expInfo$isSpecial = TRUE
-    expInfo$location = "local"
-    expInfo$shared = FALSE
-    expInfo$specialType = "seq"
-    expInfo$specialContent = paste0("seq(", deparse(args$from), ",", deparse(args$to), 
-        ",", deparse(args$by), ")")
-    
-    expInfo
+    res$ExpInfo=ExpInfo
+    res
 }
 
 
