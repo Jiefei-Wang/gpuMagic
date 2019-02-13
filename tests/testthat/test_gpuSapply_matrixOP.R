@@ -1,4 +1,4 @@
-context("sapply statistics function")
+context("sapply matrix operation")
 
 m=100
 n=200
