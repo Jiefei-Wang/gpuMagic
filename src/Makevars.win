@@ -1,0 +1,26 @@
+
+
+CXX_STD=CXX11
+CL_INC=../inst/include/inc
+#CL_INC="${CUDA_PATH}/include"
+#CUDA_LIB = "${CUDA_PATH}/lib/x64"
+
+# This defines what the shared object libraries will be
+#PKG_LIBS=  -L${CUDA_LIB} -lOpenCL
+PKG_LIBS = -L../inst/include/lib -lOpenCL
+
+
+
+PKG_CPPFLAGS = -I${R_HOME}/include -I${CL_INC} -DCL_TARGET_OPENCL_VERSION=220 -DCL_USE_DEPRECATED_OPENCL_1_2_APIS
+
+
+$(SHLIB): ../inst/include/lib/OpenCL.lib
+
+
+../inst/include/lib/OpenCL.lib:
+	cd ../inst/include/ && $(MAKE) ICD_WIN ICD_OS=icd_windows \
+	CC="$(CC)" CFLAGS="$(ALL_CFLAGS)" AR="$(AR)"
+	
+### Define objects
+
+#$(warning $(CXX))
