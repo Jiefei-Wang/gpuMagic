@@ -67,7 +67,11 @@
 #include <CL/cl_dx9_media_sharing.h>
 #endif
 #if !defined(__ANDROID__)
+#ifdef __APPLE__
+#include <OpenGL/gl.h>
+#else
 #include <GL/gl.h>
+#endif
 #else
 #include <GLES/gl.h>
 #endif
