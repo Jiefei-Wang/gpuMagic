@@ -81,6 +81,8 @@ getSingleDeviceInfo <- function(platform, device) {
 #' opt=gpuMagic.getOptions()
 #' print(opt)
 #' @return No return value, the result will be printed in the console
+#' @rdname printFunctions
+#' @method print options
 #' @export
 print.options <- function(x, ...) {
     x = unlist(x)
@@ -88,6 +90,13 @@ print.options <- function(x, ...) {
     value = StrAlign(as.character(x), sep = "\\l")
     final = paste0(paste(name, value, sep = ": "), collapse = "\n")
     cat(final)
+}
+
+#' @rdname printFunctions
+#' @method print plainText
+#' @export
+print.plainText<-function(x,...){
+  cat(x)
 }
 
 # ===========================Obtain device infomation==============

@@ -292,7 +292,7 @@ compileGPUCode <- function(X, FUN, ..., .macroParms = NULL, .options = gpuSapply
         .options)
     GPUcode1$gpu_code = opt_matrixDim(GPUcode1$varInfo, GPUcode1$gpu_code, 
         .options)
-    
+    GPUcode1$gpu_code=structure(GPUcode1$gpu_code,class="plainText")
     
     GPUcode1
 }

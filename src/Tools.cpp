@@ -1,13 +1,13 @@
-#include"Tools.h"
+#include "Tools.h"
 using namespace std;
 #include <iostream>
-#include "R.h"
 #ifdef __APPLE__
 #include <OpenCL/opencl.h>
 #else
 #include <CL/cl.h>
 #endif
 
+#include "R.h"
 
 size_t getTypeSize(dtype type)
 {

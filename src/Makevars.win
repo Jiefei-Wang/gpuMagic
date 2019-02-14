@@ -1,26 +1,34 @@
-
+.PHONY: clean
 
 CXX_STD=CXX11
-CL_INC=../inst/include/inc
-#CL_INC="${CUDA_PATH}/include"
-#CUDA_LIB = "${CUDA_PATH}/lib/x64"
+CL_DIR=../inst/include
 
-# This defines what the shared object libraries will be
-#PKG_LIBS=  -L${CUDA_LIB} -lOpenCL
-PKG_LIBS = -L../inst/include/lib -lOpenCL
+CL_INC=$(CL_DIR)/inc
+PKG_DIR=$(CL_DIR)/lib$(WIN)
 
-
-
+PKG_LIBS = -L$(PKG_DIR) -lOpenCL
 PKG_CPPFLAGS = -I${R_HOME}/include -I${CL_INC} -DCL_TARGET_OPENCL_VERSION=220 -DCL_USE_DEPRECATED_OPENCL_1_2_APIS
 
+openCL_OBJ=OpenCL.lib
+openCL_OBJ_FULL_PATH=$(PKG_DIR)/$(openCL_OBJ)
 
-$(SHLIB): ../inst/include/lib/OpenCL.lib
+$(SHLIB): $(openCL_OBJ_FULL_PATH)
 
 
-../inst/include/lib/OpenCL.lib:
-	cd ../inst/include/ && $(MAKE) ICD_WIN ICD_OS=icd_windows \
-	CC="$(CC)" CFLAGS="$(ALL_CFLAGS)" AR="$(AR)"
+
+$(openCL_OBJ_FULL_PATH):
+	cd $(CL_DIR) && $(MAKE) ICD ICD_OS=icd_windows \
+	CC="$(CC)" CFLAGS="$(ALL_CFLAGS)" AR="$(AR)" WIN=$(WIN) openCL_OBJ=$(openCL_OBJ) MAKE=$(MAKE)
+	
+clean:
+	$(RM) *.lib
+	$(RM) *.so
+	$(RM) *.o
+	$(RM) $(PKG_DIR)/*
+	
 	
 ### Define objects
 
 #$(warning $(CXX))
+
+

@@ -1,28 +1,25 @@
-.PHONY: ICD_WIN ICD_LINUX
+.PHONY: clean ICD
 
 CPPFLAGS  = -I./inc -DCL_TARGET_OPENCL_VERSION=220
-ODIR=output
-CLDIR=lib
+ODIR=lib$(WIN)
 
 
 OBJ=$(ODIR)/icd.o $(ODIR)/icd_dispatch.o $(ODIR)/$(ICD_OS).o
 
+openCL_OBJ_FULL_PATH=$(ODIR)/$(openCL_OBJ)
 
-ICD_WIN: $(CLDIR)/OpenCL.lib
-ICD_LINUX: $(CLDIR)/libOpenCL.a
+ICD: $(openCL_OBJ_FULL_PATH)
 
 
-$(CLDIR)/OpenCL.lib: $(OBJ)
-	@mkdir -p $(CLDIR)
+$(openCL_OBJ_FULL_PATH): $(OBJ)
+	@mkdir -p $(ODIR)
 	$(AR) rcs $@ $^
-
-$(CLDIR)/libOpenCL.a: $(OBJ)
-	@mkdir -p $(CLDIR)
-	$(AR) rcs $@ $^
+	$(MAKE) clean
 
 	
 $(ODIR)/%.o:%.c
 	@mkdir -p $(ODIR)
 	$(CC) -o $@ -c $^ $(CFLAGS) $(CPPFLAGS)
 
-
+clean:
+	$(RM) $(ODIR)/*.o

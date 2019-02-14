@@ -1,11 +1,13 @@
 
-#include "C_Interface.h"
-#include "Tools.h"
+
 #include "kernelManager.h"
 #include "openArray.h"
 #include <string> 
 #include <typeinfo>
 using namespace std;
+#include "Tools.h"
+
+#include "C_Interface.h"
 
 #define asString(x) string(CHAR(asChar(x)))
 

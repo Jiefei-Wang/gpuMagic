@@ -1,0 +1,45 @@
+---
+title: "A geek's handbook: Decrypt gpuMagic"
+author: 
+- name: Jiefei Wang
+  affiliation: Roswell Park Comprehensive Cancer Center, Buffalo, NY
+date: "`r Sys.Date()`"
+output:
+    BiocStyle::html_document:
+        toc: true
+        toc_float: true
+vignette: >
+  %\VignetteIndexEntry{quickStart}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+package: gpuMagic
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+library("gpuMagic")
+```
+In this documentation, you will learn how the magic happens and how to make your own ingredients. The reader should have the basic understanding of the C language, the knowledge of the openCL language is preferred but not required.
+
+#A basic introduction to the openCL 
+The openCL language is based on the C language with a certain extension, which means if you know how to write C code, it should not be too hard to understand the openCL code. The main difficulty of writing the openCL code is not on the language side, it is on the algorithm. Unlike the regular C code, the structure of modern GPU is similar and also different from the modern CPU. The similarity is that you can almost do anything with the GPU, just like you did with the CPU. The differences is that they excude the code in difference manner. Not understanding the differences may not prevent you from writting a runnable code, but it can seriously degrade the performance of your program.
+
+To understand the differences between CPU and GPU, it is critical to know that the GPU is so fast(usually 10-100x faster than CPU), such that the memory speed cannot fully satisfy the need of GPU. Therefore, unlike the CPU code, if you do not carefully design your code, it is very possible that you cannot reach 100% usage of GPU. To solve this problem, openCL provides three memory spaces to accelerate the memory access, they are: `private`, `local`, `global`. In term of speed, access to the private space has the lowest latency and highest bandwidth, and `global` space has the worst one, `local` spcae is in the middle between the above two. In term of memory size, `global` has the largest capacity(Usually above 1GB)， `private` and `local` have almost the same but extremely small capacity(Usually 64K). 
+
+With three difference memory space, the most common optimization strategy would be moving the frequent-used data to the `private` space. However, due to the limitation of the `private` memory, it is more common to use the `local` memory instead. As long as you can handle the memory use efficiently, you will be able to explore at least 50% power of the GPU.
+
+There do have a lot of other differences between CPU and GPU. We will not introduce them here, but you can find it anywhere from the internet. 
+
+#General workflow for the package compiler
+
+
+
+
+
+
+
+
+

@@ -187,10 +187,10 @@ updateDeviceInfo <- function(initialOnly = FALSE) {
     }
     
     if (length(deviceInfo) == 0) {
-        message("No device has been found, please make sure the computer has a graphic card or the driver has been properly installed.")
-        message("Hint:", "\nFor CPU, you can install the intel's / ATI's graphic driver for the intel's / AMD's CPU respectively.", 
-            "\nFor GPU, you need to download the graphic driver from your vendor's website.")
-        return()
+      stop("No device has been found, please make sure the computer has a graphic card or the driver has been properly installed.",
+              "Hint:", 
+              "\nFor CPU, you can install the intel's / ATI's graphic driver for the intel's / AMD's CPU respectively.", 
+              "\nFor GPU, you need to download the graphic driver from your vendor's website.")
     }
     deviceInfo$haslocalMemory = deviceInfo$haslocalMemory == 1
     deviceInfo$id = as.integer(deviceInfo$id + 1)
@@ -203,6 +203,7 @@ selectDevice = function(devices) {
     .gpuResourcesManager$releaseAll()
     updateDeviceInfo(initialOnly = TRUE)
     deviceInfo = .gpuResourcesManager$globalVars$deviceInfo
+    
     if (range(devices)[1] <= 0 || range(devices)[2] > nrow(deviceInfo)) {
         stop("Invalid device id!")
     }

@@ -219,16 +219,20 @@ getVarProperty<-function(varInfo,varName,property,version="auto"){
   return(value)
 }
 
-
-print.varInfo<-function(varInfo,simplify=TRUE,printDef=FALSE){
+#' @rdname printFunctions
+#' @method print varInfo
+#' @param simplify Specify whether only the important properties should be printed
+#' @param printDef Whether the variable definition should be printed(version=0)
+#' @export
+print.varInfo<-function(x,simplify=TRUE,printDef=FALSE,...){
   simplifyTbl=c("var","dataType","precisionType","size1","size2",
                 "value","specialType","specialContent","version","address")
   info=c()
-  for(i in keys(varInfo$profile)){
-    var_tbl=varInfo$profile[[i]]
+  for(i in keys(x$profile)){
+    var_tbl=x$profile[[i]]
     varName=var_tbl$var
     varVersion=var_tbl$version
-    var_tbl=getVarInfo(varInfo,varName,varVersion)
+    var_tbl=getVarInfo(x,varName,varVersion)
     if(!printDef&&varVersion==0)
       next
     if(simplify)

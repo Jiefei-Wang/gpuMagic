@@ -6,5 +6,5 @@
 inst/doc
 inst/record/
 inst/script/
-inst/include/lib/
-inst/include/output/
+inst/include/lib32/
+inst/include/lib64/
