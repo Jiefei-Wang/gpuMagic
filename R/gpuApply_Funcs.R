@@ -3,7 +3,7 @@ saveGPUcode <- function(GPUcode) {
     GPUcode_hash = GPUcode
     GPUcode_hash$parms = NULL
     for (i in seq_along(GPUcode_hash$varInfo)) {
-        if (class(GPUcode_hash$varInfo[[i]]) == "hash") 
+        if (is(GPUcode_hash$varInfo[[i]],"hash")) 
             GPUcode_hash$varInfo[[i]] = copy(GPUcode_hash$varInfo[[i]])
     }
     GPUcode_hash$parmsName = names(GPUcode$parms)
@@ -28,7 +28,7 @@ createSapplySignature <- function(parms, FUN, .macroParms, .device, .options) {
         if (sum(dim(parms[[i]])) == 2) 
             varSig = paste0(varSig, T_scale) else varSig = paste0(varSig, T_matrix)
         # Precision type of the parameter when it is a gpuMatrix class
-        if (class(parms[[i]]) == "gpuMatrix") {
+        if (is(parms[[i]],"gpuMatrix")) {
             varSig = paste0(varSig, parms[[i]]$type)
         }
         # When it is a macro, add the dim and data
@@ -76,7 +76,7 @@ fillGPUdata <- function(GPUcode1, .options, .device) {
     
     # Convert all the parameters into the gpuMatrix objects
     for (varName in names(parms)) {
-        if (class(parms[[varName]]) == "gpuMatrix") {
+        if (is(parms[[varName]], "gpuMatrix")) {
             curInfo = getVarInfo(varInfo, varName)
             if (curInfo$precisionType != .type(parms[[varName]])) {
                 stop("The data type of the variable ", varName, " are not compatible with the code,\n", 
@@ -312,15 +312,14 @@ matchParms <- function(X, parms, FUN) {
 
 formatParms <- function(parms) {
     for (i in seq_along(parms)) {
-        if (class(parms[[i]]) != "gpuMatrix" && class(parms[[i]]) != "matrix") {
+        if (!is(parms[[i]],"gpuMatrix") && !is(parms[[i]],"matrix")) {
             parms[[i]] = as.matrix(parms[[i]])
         }
     }
     parms
 }
 
-# =========================optimization
-# functions==============================
+# =========================optimization functions==============================
 opt_workerNumber <- function(varInfo, code, .options) {
     targetCode = paste0("//Thread number optimization\n")
     

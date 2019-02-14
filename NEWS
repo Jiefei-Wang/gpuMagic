@@ -1,2 +1,4 @@
 Changes in version 0.1.0 (2019-02-13)
 + Submitted to Bioconductor
+Changes in version 0.1.1 (2019-02-13)
++ Trying to fix the build error

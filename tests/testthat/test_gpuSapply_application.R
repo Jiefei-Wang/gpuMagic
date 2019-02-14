@@ -37,8 +37,6 @@ expect_equal(sum(abs(res_gpu-res_cpu)),0)
 })
 
 
-
-
 test_that("Brute-force search",{
 computeLoss<-function(ind,x,y,parms){
   #Find the parameters for the thread

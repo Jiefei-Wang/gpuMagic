@@ -9,7 +9,7 @@ profileVar <- function(parms, macroParms) {
     
     varName = names(parms)
     for (i in seq_len(length(parms))) {
-        if (class(parms[[i]]) == "gpuMatrix") {
+        if (is(parms[[i]],"gpuMatrix")) {
             curPrecision = .type(parms[[i]])
             curDim = dim(parms[[i]])
         } else {

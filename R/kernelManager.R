@@ -118,11 +118,11 @@
     
     dataType = c()
     for (i in seq_len(length(parms))) {
-        if (class(parms[[i]]) == "list") {
+        if (is(parms[[i]],"list")) {
             dataType[i] = parms[[i]]$type
             next
         }
-        if (class(parms[[i]]) != "gpuMatrix") {
+        if (is(parms[[i]],"gpuMatrix")) {
             parms[[i]] = gpuMatrix(parms[[i]], device = deviceId)
         }
         dataType[i] = .type(parms[[i]])
@@ -165,7 +165,7 @@
     global_memory = 0
     share_memory = 0
     for (i in seq_len(length(parms))) {
-        if (class(parms[[i]]) == "list") {
+        if (is(parms[[i]],"list")) {
             share_memory = share_memory + parms[[i]]$size
             
             .Call(C_setSharedParameter, device[1], device[2], sig_hash, 
