@@ -1,7 +1,7 @@
 Package: gpuMagic
 Type: Package
 Title: An openCL compiler with the capacity to compile the R function and run the code on GPU
-Version: 0.1.4
+Version: 0.1.5
 Date: 2018-10-07
 Author: Jiefei Wang
 Maintainer: Jiefei Wang <jwang96@buffalo.edu>
@@ -25,7 +25,7 @@ Imports: Rcpp,
 biocViews: Infrastructure
 BugReports: https://github.com/Jiefei-Wang/gpuMagic/issues
 SystemRequirements: C++11, OpenCL driver.
-  For windows user, 32-bit system is not supported.
+  For windows user, an ICD loader is required for the 32-bit system.
 RoxygenNote: 6.1.1
 Roxygen: list(markdown = TRUE)
 Suggests: testthat,

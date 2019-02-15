@@ -12,8 +12,20 @@ PKG_CPPFLAGS = -I${R_HOME}/include -I${CL_INC} -DCL_TARGET_OPENCL_VERSION=220 -D
 openCL_OBJ=OpenCL.lib
 openCL_OBJ_FULL_PATH=$(PKG_DIR)/$(openCL_OBJ)
 
+$(SHLIB): $(openCL_OBJ_FULL_PATH)
 
 
+
+$(openCL_OBJ_FULL_PATH):
+	cd $(CL_DIR) && $(MAKE) ICD ICD_OS=icd_windows \
+	CC="$(CC)" CFLAGS="$(ALL_CFLAGS)" AR="$(AR)" WIN=$(WIN) openCL_OBJ=$(openCL_OBJ) MAKE=$(MAKE)
+	
+clean:
+	$(RM) *.lib
+	$(RM) *.so
+	$(RM) *.o
+	$(RM) $(PKG_DIR)/*
+	
 	
 ### Define objects
 
