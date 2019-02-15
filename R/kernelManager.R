@@ -122,7 +122,7 @@
             dataType[i] = parms[[i]]$type
             next
         }
-        if (is(parms[[i]],"gpuMatrix")) {
+        if (!is(parms[[i]],"gpuMatrix")) {
             parms[[i]] = gpuMatrix(parms[[i]], device = deviceId)
         }
         dataType[i] = .type(parms[[i]])

@@ -99,7 +99,7 @@ GPUVar <- local({
 
 
 .elementFuncs = c("+", "-", "*", "/", ">", ">=", "<", "<=", "==","^",
-                  "abs")
+                  "abs_int","abs_float")
 .elementTransformation = c("floor", "ceiling")
 
 .elementOp = c(.elementFuncs, .elementTransformation)

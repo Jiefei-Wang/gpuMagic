@@ -205,7 +205,7 @@ hoistOpt <- function(extCode, Exp) {
             if (curLevel != curBase) {
                 varDef = CSimplify(constructCode(curInfo, curLevel))
                 
-                res = getVarFromExtCode(extCode, GPUVar$default_index_type, 
+                res = getVarFromExtCode(extCode, GPUVar$default_int, 
                   varDef)
                 varName = res$var
                 extCode = res$extCode
@@ -221,7 +221,7 @@ hoistOpt <- function(extCode, Exp) {
             next
         if (i != getLevelNum(extCode)) {
             varDef = CSimplify(paste0(baseRes[[i]], collapse = "+"))
-            res = getVarFromExtCode(extCode, GPUVar$default_index_type, 
+            res = getVarFromExtCode(extCode, GPUVar$default_int, 
                 varDef)
             varName = res$var
             baseRes[[totalLevel]] = c(baseRes[[totalLevel]], varName)

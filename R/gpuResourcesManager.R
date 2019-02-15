@@ -187,7 +187,7 @@ updateDeviceInfo <- function(initialOnly = FALSE) {
     }
     
     if (length(deviceInfo) == 0) {
-      stop("No device has been found, please make sure the computer has a graphic card or the driver has been properly installed.",
+      stop("No device has been found, please make sure the computer has a graphic card or the driver has been properly installed.\n",
               "Hint:", 
               "\nFor CPU, you can install the intel's / ATI's graphic driver for the intel's / AMD's CPU respectively.", 
               "\nFor GPU, you need to download the graphic driver from your vendor's website.")

@@ -91,6 +91,8 @@ getExpInfo <- function(varInfo, Exp) {
     }
     if (is.null(res[["Exp"]])) 
         res[["Exp"]] = Exp
+    res$ExpInfo$size1=Simplify2(res$ExpInfo$size1)
+    res$ExpInfo$size2=Simplify2(res$ExpInfo$size2)
     
     ExpInfo = res$ExpInfo
     
@@ -321,6 +323,18 @@ Simplify_plus<-function(Exp){
     if(func=="max"||func=="min"){
       if(Exp1_char==Exp2_char)
         return(Exp1)
+      if(Exp1_char=="1"&&is.call(Exp2)&&deparse(Exp2[[1]])%in%c("length","nrow","ncol")){
+        if(func=="max")
+          return(Exp2)
+        else
+          return(1)
+      }
+      if(Exp2_char=="1"&&is.call(Exp1)&&deparse(Exp1[[1]])%in%c("length","nrow","ncol")){
+        if(func=="max")
+          return(Exp1)
+        else
+          return(1)
+      }
       symbolList=extractVarIfFuncIsSame(Exp,func)
       if(length(symbolList)>2){
         symbolList_new=unique(symbolList)
@@ -363,7 +377,13 @@ Simplify_plus<-function(Exp){
       }
     }
     if(func=="("){
-      if(length(Exp1)==1){
+      if(is.call(Exp1)){
+        funcGroup=getGroup(deparse(Exp1[[1]]))
+        mathOP=length(funcGroup)!=0&&funcGroup[[1]]=="Arith"
+        }else{
+        mathOP=FALSE
+        }
+      if(length(Exp1)==1||!mathOP){
         return(Exp1)
       }
     }

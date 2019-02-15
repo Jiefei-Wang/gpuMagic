@@ -8,29 +8,24 @@ CL_DIR=../inst/include
 CL_INC=$(CL_DIR)/inc
 PKG_DIR=$(CL_DIR)/lib$(WIN)
 
-PKG_LIBS = -L$(PKG_DIR) -lOpenCL
 PKG_CPPFLAGS = -I${R_HOME}/include -I${CL_INC} -DCL_TARGET_OPENCL_VERSION=220 -DCL_USE_DEPRECATED_OPENCL_1_2_APIS
 
-openCL_OBJ=libOpenCL.a
-openCL_OBJ_FULL_PATH=$(PKG_DIR)/$(openCL_OBJ)
-
-$(SHLIB): $(openCL_OBJ_FULL_PATH)
-
-
-
-$(openCL_OBJ_FULL_PATH):
-	cd $(CL_DIR) && $(MAKE) ICD ICD_OS=icd_linux \
-	CC="$(CC)" CFLAGS="$(ALL_CFLAGS)" AR="$(AR)" WIN=$(WIN) openCL_OBJ=$(openCL_OBJ) MAKE=$(MAKE)
+ifdef __APPLE__
+	PKG_LIBS = -framework OpenCL 
+else
+	PKG_LIBS = -L$(PKG_DIR) -lOpenCL
 	
-clean:
-	$(RM) *.lib
-	$(RM) *.so
-	$(RM) *.o
-	$(RM) $(PKG_DIR)/*
+	openCL_OBJ=libOpenCL.a
+	openCL_OBJ_FULL_PATH=$(PKG_DIR)/$(openCL_OBJ)
 	
 	
-### Define objects
+	$(SHLIB): $(openCL_OBJ_FULL_PATH)
+	
+	
+	$(openCL_OBJ_FULL_PATH):
+		cd $(CL_DIR) && $(MAKE) ICD ICD_OS=icd_linux \
+		CC="$(CC)" CFLAGS="$(ALL_CFLAGS)" AR="$(AR)" WIN=$(WIN) openCL_OBJ=$(openCL_OBJ) MAKE=$(MAKE)
+endif
 
-#$(warning $(CXX))
 
 

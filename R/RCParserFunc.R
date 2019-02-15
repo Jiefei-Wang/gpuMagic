@@ -473,6 +473,7 @@ C_colSums_right<-function(varInfo, Exp){
                               loopInd2 = "gpu_sum_i", loopEnd2 = size_right_1, 
                               loopCode0 = extCode$L0, loopCode1 = c(tmpDef,extCode$L1), loopCode2 = extCode$L2,
                               endCode1 = assignment)
+  
   code
 }
 

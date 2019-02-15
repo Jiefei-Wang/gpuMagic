@@ -371,8 +371,6 @@ C_matrix_assignment <- function(bodyCode, loopInd1, loopStart1 = "0", loopEnd1,
     "for(", GPUVar$default_index_type, " ", loopInd2, "=", 
                   loopStart2, ";", loopInd2, "<", loopEnd2, ";", loopInd2,  "++){")
   }
-  loopCode2 = NULL
-  
   if (!is.null(loopInd2)) {
     loopCode2 = c(loop2Def, loopCode2)
     endCode2 = c(endCode2, "}")

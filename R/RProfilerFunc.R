@@ -59,6 +59,10 @@ profiler_assignment_exitingVar <- function(level, varInfo, curExp) {
             
             # Check if the property is the same between the left and right
             # expression
+            if(curProp%in% c("size1","size2")){
+              leftInfo[[curProp]]=Simplify(leftInfo[[curProp]])
+              rightInfo[[curProp]]=Simplify(rightInfo[[curProp]])
+            }
             if (inheritProp && leftInfo[[curProp]] != rightInfo[[curProp]]) {
                 curAct = inheritAct[[defineType]][[curProp]][["act"]]
                 curWarningLevel = inheritAct[[defineType]][[curProp]][["warningLevel"]]
