@@ -535,11 +535,18 @@ C_matMul_right <- function(varInfo, Exp) {
     
     
     # define macro for the matrix dimension
-    dimMacroDef = c(paste0("gpu_A_row ", R_nrow(varInfo, rightVar1)), paste0("gpu_A_col ", R_ncol(varInfo, rightVar1)), 
-        paste0("gpu_B_row ", R_nrow(varInfo, rightVar2)), paste0("gpu_B_col ", R_ncol(varInfo, rightVar2)), paste0("gpu_vectorize_size ", 
-            vectorize_size), paste0("gpu_private_length (", privateVecLength, "/cl_local_thread_num)"), paste0("gpu_private_vectorize_length (gpu_private_length/gpu_vectorize_size)"))
+    dimMacroDef = c(
+      paste0("gpu_A_row ", R_nrow(varInfo, rightVar1)), paste0("gpu_A_col ", R_ncol(varInfo, rightVar1)), 
+      paste0("gpu_B_row ", R_nrow(varInfo, rightVar2)), paste0("gpu_B_col ", R_ncol(varInfo, rightVar2)), 
+      paste0("gpu_vectorize_size ", vectorize_size), 
+      paste0("gpu_private_length (", privateVecLength, "/cl_local_thread_num)"), 
+      paste0("gpu_private_vectorize_length (gpu_private_length/gpu_vectorize_size)")
+    )
     dimMacroDef = paste0("#define ", dimMacroDef)
-    dimMacroUndef = c("gpu_A_row", "gpu_A_col", "gpu_B_row", "gpu_B_col", "gpu_vectorize_size", "gpu_private_length", "gpu_private_vectorize_length")
+    dimMacroUndef = c("gpu_A_row", "gpu_A_col", "gpu_B_row", 
+                      "gpu_B_col", "gpu_vectorize_size", 
+                      "gpu_private_length", "gpu_private_vectorize_length"
+    )
     dimMacroUndef = paste0("#undef ", dimMacroUndef)
     
     

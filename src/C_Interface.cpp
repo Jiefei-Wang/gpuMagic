@@ -27,7 +27,7 @@ SEXP getDeviceInfo(SEXP platform, SEXP device)
 {
 	deviceIdentifier id = { asInteger(platform) ,asInteger(device) };
 	deviceInfo info = kernelManager::getDeviceInfo(id);
-	SEXP info_R = PROTECT(allocVector(VECSXP, 7));
+	SEXP info_R = PROTECT(allocVector(VECSXP, 8));
 
 	SET_VECTOR_ELT(info_R, 0, PROTECT(mkString(info.device_name.c_str())));
 	SET_VECTOR_ELT(info_R, 1, PROTECT(ScalarInteger(info.device_type)));
@@ -36,8 +36,9 @@ SEXP getDeviceInfo(SEXP platform, SEXP device)
 	SET_VECTOR_ELT(info_R, 4, PROTECT(ScalarLogical(info.has_local_memory)));
 	SET_VECTOR_ELT(info_R, 5, PROTECT(mkString(info.opencl_version.c_str())));
 	SET_VECTOR_ELT(info_R, 6, PROTECT(ScalarInteger(info.compute_unit_num)));
+	SET_VECTOR_ELT(info_R, 7, PROTECT(ScalarInteger(info.work_group_size)));
 
-	unprotect(8);
+	unprotect(9);
 	return(info_R);
 }
 

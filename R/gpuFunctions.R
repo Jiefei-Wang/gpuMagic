@@ -53,16 +53,9 @@ getDeviceNum <- function(platform) {
     res
 }
 getSingleDeviceInfo <- function(platform, device) {
-    deviceName = paste0(rep(" ", 100), collapse = "")
-    deviceType = 0L
-    global_memory = 0
-    local_memory = 0
-    haslocalMemory = 0L
-    opencl_version = paste0(rep(" ", 100), collapse = "")
-    compute_unit_num = 0L
     deviceInfo = .Call(C_getDeviceInfo, as.integer(platform), as.integer(device))
     names(deviceInfo) = c("deviceName", "deviceType", "globalMemory", "localMemory", 
-        "haslocalMemory", "opencl_version", "compute_unit_num")
+        "haslocalMemory", "opencl_version", "compute_unit_num","work_group_size")
     deviceInfo = as.data.frame(deviceInfo, stringsAsFactors = FALSE)
     deviceInfo = cbind(data.frame(id = NA, platform = platform, device = device), 
         deviceInfo)

@@ -7,3 +7,5 @@ Changes in version 0.1.2 (2019-02-13)
 Changes in version 0.1.3 (2019-02-15)
 + Adding Mac builder flag
 + Bugs fixing
+Changes in version 0.1.7 (2019-02-15)
++ Fix the incorrect local thread number

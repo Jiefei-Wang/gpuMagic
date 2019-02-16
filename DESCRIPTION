@@ -56,7 +56,9 @@ Collate:
     'gpuRefAddress.R'
     'gpuResourcesManager.R'
     'kernelManager.R'
+    'managerTools.R'
     'pkgSetting.R'
+    'tools.R'
     'varInfoManager.R'
 VignetteBuilder: knitr
 Encoding: UTF-8

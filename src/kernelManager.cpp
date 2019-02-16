@@ -95,6 +95,10 @@ deviceInfo kernelManager::getDeviceInfo(deviceIdentifier deviceId)
 	clGetDeviceInfo(device, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(cl_uint), &cu, NULL);
 	info.compute_unit_num = cu;
 
+	size_t gs;
+	clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size_t), &gs, NULL);
+	info.work_group_size = gs;
+
 	delete[] buffer;
 	return info;
 }

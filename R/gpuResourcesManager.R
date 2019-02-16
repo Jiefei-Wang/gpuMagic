@@ -172,8 +172,8 @@ updateDeviceInfo <- function(initialOnly = FALSE) {
         if (!is.null(.gpuResourcesManager$globalVars$deviceInfo)) 
             return()
     }
+  
     platformNum = getPlatformNum()
-    
     deviceInfo = c()
     id = 0
     for (i in seq_len(platformNum) - 1) {

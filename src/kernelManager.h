@@ -75,6 +75,7 @@ struct deviceInfo
 	bool has_local_memory;
 	std::string opencl_version;
 	unsigned int compute_unit_num;
+	unsigned int work_group_size;
 };
 //This struct storage the device and platform id in numeric form
 struct deviceIdentifier {

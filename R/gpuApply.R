@@ -116,11 +116,9 @@ gpuSapply_singleDev <- function(X, FUN, ..., .macroParms = NULL, .device,
     CheckCodeError(GPUcode1, parms)
     GPUcode2 = fillGPUdata(GPUcode1, .options = .options, .device = .device)
     
-    .options$kernelOption$localThreadNumMacro = TRUE
+    .options$kernelOption$localThreadNumMacro=TRUE
     if (optimization$thread.number == TRUE) {
-        if (.options$kernelOption$localThreadNum == "auto") 
-            kernelNum = as.numeric(gpuMagic.getOptions("default.thread.num")) else kernelNum = .options$kernelOption$localThreadNum
-        
+        kernelNum=getThreadNumber(.options$kernelOption)
         .globalThreadNum = ceiling(length(X)/kernelNum) * kernelNum
         .options$kernelOption$localThreadNum = kernelNum
     } else {

@@ -93,44 +93,47 @@
     srcSig = codePack$srcSig
     
     
-    if (kernelOption$localThreadNumMacro) {
-        if (kernelOption$localThreadNum != "auto") {
-            threadMacro = paste0("#define cl_local_thread_num ", kernelOption$localThreadNum)
-            srcSig = paste0(srcSig, kernelOption$localThreadNum)
-            src = paste0(threadMacro, "\n", src)
-        } else {
-            warning("I cannot define the local thread number macro if the local thread number is undetermined.")
-        }
-        
-    }
-    
-    
     # Find the device and platform id
     if (length(.device) > 1) 
-        stop("Multiple devices are not supported!")
+      stop("Multiple devices are not supported!")
     if (.device == "auto") {
-        deviceId = getFirstSelectedDevice()
+      deviceId = getFirstSelectedDevice()
     } else {
-        deviceId = .device
+      deviceId = .device
     }
     device = getSelectedDevice(deviceId)
     
-    
     dataType = c()
     for (i in seq_len(length(parms))) {
-        if (is(parms[[i]],"list")) {
-            dataType[i] = parms[[i]]$type
-            next
-        }
-        if (!is(parms[[i]],"gpuMatrix")) {
-            parms[[i]] = gpuMatrix(parms[[i]], device = deviceId)
-        }
-        dataType[i] = .type(parms[[i]])
-        if (.device(parms[[i]]) != deviceId) 
-            stop("The data is not in the same device!")
+      if (is(parms[[i]],"list")) {
+        dataType[i] = parms[[i]]$type
+        next
+      }
+      if (!is(parms[[i]],"gpuMatrix")) {
+        parms[[i]] = gpuMatrix(parms[[i]], device = deviceId)
+      }
+      dataType[i] = .type(parms[[i]])
+      if (.device(parms[[i]]) != deviceId) 
+        stop("The data is not in the same device!")
     }
     
+    #Find the global thread number
+    if (.globalThreadNum == "length(FirstArg)") {
+      .globalThreadNum = length(parms[[1]])
+    }
     
+    #Find the local thread number
+    localThreadNum=getThreadNumber(kernelOption)
+    #Limit the thread number to the hardware limitation
+    localThreadNum=min(localThreadNum,getDeviceInfo(deviceId)$work_group_size)
+    #Make sure the number is compatible with the global thread number
+    localThreadNum=gcd(localThreadNum,.globalThreadNum)
+    
+    if (kernelOption$localThreadNumMacro) {
+      threadMacro = paste0("#define cl_local_thread_num ", localThreadNum)
+      srcSig = paste0(srcSig, localThreadNum)
+      src = paste0(threadMacro, "\n", src)
+    }
     
     # Create the signature for the kernel function
     sig = paste0(srcSig, kernelOption$flag, kernelOption$signature)
@@ -183,24 +186,21 @@
         message("Shared memory: ", format_memory_size_output(share_memory))
     }
     
-    if (.globalThreadNum == "length(FirstArg)") {
-        .globalThreadNum = length(parms[[1]])
-    }
-    
-    if (kernelOption$localThreadNum == "auto") {
-        localThreadNum = 0
-        localThreadNum_output = getGroupSize(device, sig_hash, kernel)
-    } else {
-        localThreadNum = kernelOption$localThreadNum
-        localThreadNum_output = kernelOption$localThreadNum
-    }
     
     
     if (verbose || kernelMsg$thread.num.msg) {
         message("OpenCL thread Number report:")
         message(paste0("Total thread number: ", .globalThreadNum))
-        message(paste0("block number: ", .globalThreadNum/localThreadNum_output))
-        message(paste0("Thread number per block: ", localThreadNum_output))
+        message(paste0("block number: ", .globalThreadNum/localThreadNum))
+        message(paste0("Thread number per block: ", localThreadNum))
+    }
+    
+    localThreadNum_preferred=getGroupSize(device,sig_hash,kernel)
+    if(localThreadNum_preferred<localThreadNum){
+      if(verbose&&kernelOption$localThreadNumMacro){
+        message("The current thread number is larger than the preferred setting, please consider to reduce it\n",
+                "current value:",localThreadNum,"  Preferred value:",localThreadNum_preferred)
+      }
     }
     
     .Call(C_launchKernel, device[1], device[2], sig_hash, kernel, as.integer(.globalThreadNum), 
@@ -236,16 +236,23 @@
 #' @return A list of available options
 #' @export
 kernel.getOption <- function() {
-    curOp = list()
-    curOp$verbose = FALSE
-    
-    curOp$kernelMsg = data.frame(compilation.msg = FALSE, memory.usage.msg = FALSE, 
-        thread.num.msg = FALSE, insufficient.thread.num.warning = TRUE)
-    
-    curOp$kernelOption = data.frame(localThreadNum = "auto", localThreadNumMacro = FALSE, 
-        signature = "", flag = "", autoType = TRUE, stringsAsFactors = FALSE)
-    curOp = structure(curOp, class = "options")
-    curOp
+  curOp = list()
+  curOp$verbose = FALSE
+  
+  curOp$kernelMsg = data.frame(
+    compilation.msg = FALSE, 
+    memory.usage.msg = FALSE, 
+    thread.num.msg = FALSE)
+  
+  curOp$kernelOption = data.frame(
+    localThreadNum = "auto", 
+    localThreadNumMacro = FALSE, 
+    signature = "", 
+    flag = "", 
+    autoType = TRUE, 
+    stringsAsFactors = FALSE)
+  curOp = structure(curOp, class = "options")
+  curOp
 }
 
 kernel.getSharedMem <- function(length, type) {
