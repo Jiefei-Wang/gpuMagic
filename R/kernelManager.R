@@ -129,6 +129,9 @@
     #Make sure the number is compatible with the global thread number
     localThreadNum=gcd(localThreadNum,.globalThreadNum)
     
+    stop("The device max work group size is:",getDeviceInfo(deviceId)$work_group_size,
+            "\nThe current setting is:",localThreadNum)
+    
     if (kernelOption$localThreadNumMacro) {
       threadMacro = paste0("#define cl_local_thread_num ", localThreadNum)
       srcSig = paste0(srcSig, localThreadNum)
