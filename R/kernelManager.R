@@ -129,8 +129,6 @@
     #Make sure the number is compatible with the global thread number
     localThreadNum=gcd(localThreadNum,.globalThreadNum)
     
-    stop("The device max work group size is:",getDeviceInfo(deviceId)$work_group_size,
-            "\nThe current setting is:",localThreadNum)
     
     if (kernelOption$localThreadNumMacro) {
       threadMacro = paste0("#define cl_local_thread_num ", localThreadNum)
@@ -204,6 +202,7 @@
         message("The current thread number is larger than the preferred setting, please consider to reduce it\n",
                 "current value:",localThreadNum,"  Preferred value:",localThreadNum_preferred)
       }
+      localThreadNum=localThreadNum_preferred
     }
     
     .Call(C_launchKernel, device[1], device[2], sig_hash, kernel, as.integer(.globalThreadNum), 
