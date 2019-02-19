@@ -187,13 +187,13 @@ extract_for_if_Var <- function(parsedExp) {
             loopBody_new = c(loopBody_new[1], index_var_code, loopBody_new[-1])
             curExp[[4]] = as.call(loopBody_new)
           }else{
-            index_def_code = paste0(index_var, "=Scalar(precision=\"", 
-                                    GPUVar$default_index_type, "\",constDef=TRUE)")
+            index_def_code = parse(text=paste0(index_var, "=Scalar(precision=\"", 
+                                    GPUVar$default_index_type, "\",constDef=TRUE)"))[[1]]
             #index_release_code=parse(text=paste0("compiler.release(",index_var,")"))[[1]]
             #index_var_release_code=NULL
             index_release_code=NULL
           }
-          code = c(code, curExp,index_release_code)
+          code = c(code, index_def_code,curExp,index_release_code)
           next
         }
         # if (curExp[[1]] == "if") {

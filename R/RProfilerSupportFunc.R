@@ -2,7 +2,7 @@
 # ===========================profiler 1========================
 
 # Profile a parameter and give the profile table back
-profileVar <- function(parms, macroParms) {
+profileVar <- function(parms, parmsWithValue,parmsConst) {
     varInfo = getEmpVarInfoTbl()
     varInfo$parmsTblName = "parms"
     varInfo$requiredVar = c()
@@ -22,12 +22,12 @@ profileVar <- function(parms, macroParms) {
         
         info$precisionType = curPrecision
         info$shared = TRUE
-        info$constVal = varName[i] %in% macroParms
+        info$constVal = varName[i] %in% parmsConst
         info$require = TRUE
         info$initialization = FALSE
         
         
-        if (varName[i] %in% macroParms) {
+        if (varName[i] %in% parmsWithValue) {
             info$value = paste0("(", varInfo$parmsTblName, "[[", i, "]])")
         }
         info$dataType = T_matrix

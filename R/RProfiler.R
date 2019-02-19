@@ -12,11 +12,11 @@ RProfile1 <- function(codeMetaInfo2) {
     func_args = profileMeta1$parms
     
     # profile the function arguments and the preserved variable
-    varInfo = profileVar(func_args, profileMeta1$macroParms)
+    varInfo = profileVar(func_args, profileMeta1$parmsWithValue, profileMeta1$parmsConst)
     gpuIndex = getEmpyTable(type = T_scale)
     gpuIndex$var = GPUVar$gpu_global_id
     gpuIndex$precisionType = GPUVar$default_index_type
-    gpuIndex$initialization = FALSE
+    gpuIndex$initial_ad = FALSE
     varInfo = addVarInfo(varInfo, gpuIndex)
     
     profileMeta1$varInfo = varInfo

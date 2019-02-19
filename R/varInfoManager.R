@@ -45,14 +45,14 @@ getEmpyTable<-function(type=""){
     size1="NA",size2="NA",value="NA",transpose=FALSE,
     version=1,
     #Physical storage information
-    address="NA",designSize1="NA",designSize2="NA",totalSize="NA",
+    address="NA",designSize="NA",
     #How does a matrix align in the momery
     storageMode="column",
     location="global",shared=FALSE,
     #compilation property
     require=FALSE,constVal=FALSE,constDef=FALSE,
     #Specify whether the address will be initialized
-    initial_ad=TRUE,initial_dim=TRUE,
+    initial_ad=TRUE,
     #special type: ref,seq
     isSpecial=FALSE,specialType="NA",specialContent="NA",
     redirect="NA",isPointer=NA,
@@ -71,9 +71,9 @@ getEmpyTable<-function(type=""){
 
 
 
-primaryProp=c("dataType","precisionType","address","designSize1","designSize2","totalSize",
+primaryProp=c("dataType","precisionType","address","designSize",
               "shared","location",
-              "require","constVal","constDef","initialization","redirect","isPointer")
+              "require","constVal","constDef","initial_ad","redirect","isPointer")
 
 
 
@@ -131,11 +131,8 @@ getAllVars<-function(varInfo){
 setVarInfo_hidden<-function(varInfo,info){
   initVarDef<-function(info){
     info$version=0
-    if(isNA(info$designSize1))
-      info$designSize1=info$size1
-    if(isNA(info$designSize2))
-      info$designSize2=info$size2
-    info$totalSize=Simplify(paste0("(",info$designSize1,")*(",info$designSize2,")"))
+    if(isNA(info$designSize))
+      info$designSize=paste0("(",info$size1,")*(",info$size2,")")
     return(info)
   }
   var_char=info$var
