@@ -1,5 +1,6 @@
 # 1.Rename the first function argument and add the looped variable in a
-# code format 2.special treatment for the break and next
+# code format 
+# 2.special treatment for the break and next
 codePreprocessing <- function(codeMetaInfo) {
     GPUVar$resetTmpCount()
     loopVar = names(codeMetaInfo$parms)[[1]]
@@ -36,7 +37,7 @@ RLevel1_parserFunc <- function(level, codeMetaInfo, curExp) {
     }
     
     if (is.call(curExp)) {
-        if (curExp[[1]] == "=" || curExp[[1]] == "==") {
+        if (curExp[[1]] == "=") {
             result = simplifySingleCode(curExp)
             return(result)
         }

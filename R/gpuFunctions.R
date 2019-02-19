@@ -1,12 +1,11 @@
-
 checkTypeSupport <- function(type) {
-    if (!(type %in% gpuMagic.getAvailableType())) 
-        stop("The variable type ", type, " is not supported")
+  if (!(type %in% gpuMagic.getAvailableType())) 
+    stop("The variable type ", type, " is not supported")
 }
 getTypeNum <- function(type) {
-    switch(type, bool = 1L, char = 1L, half = 2L, float = 3L, double = 4L, 
-        int = 5L, long = 6L, uint = 7L, ulong = 8L, stop("invalid type: ", 
-            type))
+  switch(type, bool = 1L, char = 1L, half = 2L, float = 3L, double = 4L, 
+         int = 5L, long = 6L, uint = 7L, ulong = 8L, stop("invalid type: ", 
+                                                          type))
 }
 
 getFloatingPointType<-function(type){
@@ -18,54 +17,29 @@ getIntegerType<-function(type){
 getTypeCXXStr <- function(type) {
   if(!is.null(attr(type,"infoType"))&&attr(type,"infoType")=="singleInfo")
     type=type$precisionType
-    switch(type, bool = "bool", char = "char", half = "half", float = "float", 
-        double = "double", int = "int", long = "long", uint = "uint", ulong = "ulong", 
-        stop("invalid type: ", type))
+  switch(type, bool = "bool", char = "char", half = "half", float = "float", 
+         double = "double", int = "int", long = "long", uint = "uint", ulong = "ulong", 
+         stop("invalid type: ", type))
 }
 
 # in byte
 getTypeSize <- function(type) {
-    switch(type, bool = 1L, char = 1L, half = 2L, float = 4L, double = 8L, 
-        int = 4L, long = 8L, uint = 4L, ulong = 8L, stop("invalid type: ", 
-            type))
+  switch(type, bool = 1L, char = 1L, half = 2L, float = 4L, double = 8L, 
+         int = 4L, long = 8L, uint = 4L, ulong = 8L, stop("invalid type: ", 
+                                                          type))
 }
 getDataType <- function(data) {
-    if (typeof(data) == "double" || typeof(data) == "numeric") 
-        return(GPUVar$default_float)
-    if (typeof(data) == "integer") 
-        return(as.character(gpuMagic.getOptions("default.int")))
-    stop("The given type is not defined")
+  if (typeof(data) == "double" || typeof(data) == "numeric") 
+    return(GPUVar$default_float)
+  if (typeof(data) == "integer") 
+    return(as.character(gpuMagic.getOptions("default.int")))
+  stop("The given type is not defined")
 }
 convertDataType <- function(data, type) {
-    checkTypeSupport(type)
-    switch(type, bool = as.raw(data), char = as.raw(data), int = as.integer(data), 
-        as.double(data))
+  checkTypeSupport(type)
+  switch(type, bool = as.raw(data), char = as.raw(data), int = as.integer(data), 
+         as.double(data))
 }
-
-
-
-getPlatformNum <- function() {
-    res = .Call(C_getPlatformNum)
-    res
-}
-getDeviceNum <- function(platform) {
-    res = .Call(C_getDeviceNum, as.integer(platform))
-    res
-}
-getSingleDeviceInfo <- function(platform, device) {
-    deviceInfo = .Call(C_getDeviceInfo, as.integer(platform), as.integer(device))
-    names(deviceInfo) = c("deviceName", "deviceType", "globalMemory", "localMemory", 
-        "haslocalMemory", "opencl_version", "compute_unit_num","work_group_size")
-    deviceInfo = as.data.frame(deviceInfo, stringsAsFactors = FALSE)
-    deviceInfo = cbind(data.frame(id = NA, platform = platform, device = device), 
-        deviceInfo)
-    
-    deviceInfo$deviceType = switch(as.character(deviceInfo$deviceType), 
-        `0` = "CPU", `1` = "GPU", `2` = "other")
-    
-    deviceInfo
-}
-
 #' Print the available options in a pretty format
 #' 
 #' @param x an options object.

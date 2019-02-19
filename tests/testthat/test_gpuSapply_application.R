@@ -115,7 +115,7 @@ t_stat_cpu<-function(ind,data,sampleX,sampleY){
 
 x_sampleN=50
 y_sampleN=100
-permute_num=200
+permute_num=10
 total_sampleN=x_sampleN+y_sampleN
 nParms=20
 data=matrix(rnorm(total_sampleN*nParms),total_sampleN,nParms)

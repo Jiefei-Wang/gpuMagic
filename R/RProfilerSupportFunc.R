@@ -136,21 +136,6 @@ getExpInfo_hidden <- function(varInfo, Exp) {
     
     stop("Unknow code: ", deparse(Exp))
 }
-# combine the expression info from several expInfo
-combineExpInfo <- function(Exp, ...,offset=0) {
-    parms = list(...)
-    errorCheck = NULL
-    extCode = NULL
-    for (i in seq_along(parms)) {
-        curInfo = parms[[i]]
-        errorCheck = rbind(errorCheck, curInfo$errorCheck)
-        extCode = c(extCode, curInfo$extCode)
-        if(!is.null(curInfo$Exp)){
-          Exp[[i + 1+offset]] = curInfo$Exp
-        }
-    }
-    return(list(errorCheck = errorCheck, extCode = extCode, Exp = Exp))
-}
 
 # Determine which type can preserve the information of the information
 # in type1 and type2

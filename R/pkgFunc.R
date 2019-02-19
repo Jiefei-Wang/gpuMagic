@@ -99,12 +99,12 @@ GPUVar <- local({
 
 
 .elementFuncs = c("+", "-", "*", "/", ">", ">=", "<", "<=", "==","^",
-                  "abs_int","abs_float")
+                  "abs_int","abs_float","(","[")
 .elementTransformation = c("floor", "ceiling")
 
 .elementOp = c(.elementFuncs, .elementTransformation)
 .noParentElementOP = c("sum", "return")
-.noChildElementOP = c()
+.noChildElementOP = c("nrow","ncol")
 
 
 #' @include RProfilerFunc.R
@@ -117,8 +117,8 @@ GPUVar <- local({
 .profileFuncs[["["]] = profile_subset
 .profileFuncs[["floor"]] = profile_floor
 .profileFuncs[["ceiling"]] = profile_ceil
-.profileFuncs[["gMatrix"]] = profile_gMatrix
-.profileFuncs[["gNumber"]] = profile_gNumber
+.profileFuncs[["Matrix"]] = profile_Matrix
+.profileFuncs[["Scalar"]] = profile_Scalar
 .profileFuncs[["t"]] = profile_transpose
 .profileFuncs[["t.nocpy"]] = profile_transpose_nocpy
 .profileFuncs[["sum"]]=profile_sum
@@ -163,8 +163,8 @@ GPUVar <- local({
 .cFuncs[["<-nrow"]] = C_nrow_left_right
 .cFuncs[["<-ncol"]] = C_ncol_left_right
 .cFuncs[["<-["]] = C_subset_right
-.cFuncs[["<-gMatrix"]] = C_NULL
-.cFuncs[["<-gNumber"]] = C_NULL
+.cFuncs[["<-Matrix"]] = C_NULL
+.cFuncs[["<-Scalar"]] = C_NULL
 .cFuncs[["<-resize"]] = C_NULL
 .cFuncs[["<-subRef"]] = C_NULL
 .cFuncs[["<-%*%"]] = C_matMul_right
@@ -202,6 +202,8 @@ GPUVar <- local({
 .cFuncs[["length<-"]] = C_length_left_right
 .cFuncs[["nrow<-"]] = C_nrow_left_right
 .cFuncs[["ncol<-"]] = C_ncol_left_right
+###############################THIS NEEDS TO BE IMPLEMENTED################################
+.cFuncs[["[<-"]] = C_ncol_left_right
 
 
 .cFuncs[["return"]] = C_return
@@ -225,11 +227,11 @@ GPUVar <- local({
 #' (By default, the package will convert the variable to the default float type before doing the division).
 #' 
 #' @examples 
-#' a=gNumber(precision='double',constDef=FALSE)
+#' a=Scalar(precision='double',constDef=FALSE)
 #' 
 #' @return a variable initialize with 0.
 #' @export
-gNumber <- function(precision = GPUVar$default_float, constDef = FALSE) {
+Scalar <- function(precision = GPUVar$default_float, constDef = FALSE) {
     return(0)
 }
 #' Create a matrix
@@ -248,10 +250,10 @@ gNumber <- function(precision = GPUVar$default_float, constDef = FALSE) {
 #' @param location The physical memory location of the matrix, it can be either 'global' or 'local'. Do not use it if you don't know its meaning.
 #' @examples 
 #' #Create a 10-by-10 matrix
-#' A=gMatrix(10,10)
+#' A=Matrix(10,10)
 #' @return a matrix initialize with 0.
 #' @export
-gMatrix <- function(nrow = 1, ncol = 1, precision = GPUVar$default_float, 
+Matrix <- function(nrow = 1, ncol = 1, precision = GPUVar$default_float, 
     constDef = FALSE, shared = FALSE, location = "global") {
     return(matrix(NA, nrow, ncol))
 }
@@ -352,6 +354,30 @@ return.nocpy = return
 t.nocpy=function(x){
   t(x)
 }
+
+#Insert variable information into the varInfo
+compiler.addInfo<-function(varName,...){
+  
+}
+compiler.addScalarInfo<-function(varName,precisionType,...){
+  
+}
+#Change the variable property(Must defined)
+compiler.setProperty<-function(varName,...){
+  
+}
+compiler.define<-function(varName){
+  
+}
+compiler.promise<-function(precision,varName,definition){
+  
+}
+
+
+compiler.release<-function(varName){
+  
+}
+
 
 
 

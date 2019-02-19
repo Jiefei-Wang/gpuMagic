@@ -12,7 +12,7 @@ recompile_matrix <- function(varInfo, curExp) {
     if (length(ncol_ind) == 0) 
         colNum = 1 else colNum = deparse(rightExp[[ncol_ind]])
     data_value = deparse(rightExp[[data_ind]])
-    curCode = paste0(leftExp_char, "=gMatrix(nrow=", rowNum, ",ncol=", 
+    curCode = paste0(leftExp_char, "=Matrix(nrow=", rowNum, ",ncol=", 
         colNum, ",precision=\"", GPUVar$default_float, "\",loc=\"global\")")
     curCode = c(curCode, paste0("for(i in 1:", rowNum, "){"))
     curCode = c(curCode, paste0("for(j in 1:", colNum, "){"))

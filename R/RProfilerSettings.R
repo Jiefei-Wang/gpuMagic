@@ -1,4 +1,4 @@
-.profileExplicitDefine = c("gMatrix", "gNumber", "subRef", ":", "seq", 
+.profileExplicitDefine = c("Matrix", "Scalar", "subRef", ":", "seq", 
     "t.nocpy")
 # If the variable does not exist The inherit table determine whether
 # the property can be passed through the equal sign If the variable

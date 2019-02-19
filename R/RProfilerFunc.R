@@ -491,9 +491,9 @@ profile_return <- function(varInfo, Exp) {
     return(ExpInfoPack)
 }
 
-# Exp=quote(gMatrix(1,10))
-profile_gMatrix <- function(varInfo, Exp) {
-    args = matchFunArg(gMatrix, Exp)
+# Exp=quote(Matrix(1,10))
+profile_Matrix <- function(varInfo, Exp) {
+    args = matchFunArg(Matrix, Exp)
     rowInfoPack = getExpInfo(varInfo, args$nrow)
     colInfoPack = getExpInfo(varInfo, args$ncol)
     
@@ -518,9 +518,9 @@ profile_gMatrix <- function(varInfo, Exp) {
     return(ExpInfo)
 }
 
-# Exp=quote(gNumber())
-profile_gNumber <- function(varInfo, Exp) {
-    args = matchFunArg(gNumber, Exp)
+# Exp=quote(Scalar())
+profile_Scalar <- function(varInfo, Exp) {
+    args = matchFunArg(Scalar, Exp)
     ExpInfo = getEmpyTable(T_scale)
     ExpInfo$precisionType = args$precision
     ExpInfo$constDef = args$constDef

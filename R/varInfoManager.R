@@ -50,7 +50,9 @@ getEmpyTable<-function(type=""){
     storageMode="column",
     location="global",shared=FALSE,
     #compilation property
-    require=FALSE,constVal=FALSE,constDef=FALSE,initialization=TRUE,
+    require=FALSE,constVal=FALSE,constDef=FALSE,
+    #Specify whether the address will be initialized
+    initial_ad=TRUE,initial_dim=TRUE,
     #special type: ref,seq
     isSpecial=FALSE,specialType="NA",specialContent="NA",
     redirect="NA",isPointer=NA,

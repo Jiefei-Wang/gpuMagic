@@ -1,173 +1,218 @@
 # codeMetaInfo=curMetaInfo
 if (FALSE) {
-    parserFunc = RProfile2_parserFunc
-    checkFunc = RProfile2_checkFunc
-    updateFunc = RProfile2_updateFunc
-    codeMetaInfo = profileMeta1
+    parserFunc = RLevel1_parserFunc
+    checkFunc = RLevel1_checkFunc
+    updateFunc = RLevel1_updateFunc
+    codeMetaInfo = codeMetaInfo0
     level = c("top")
 }
-parserFrame <- function(parserFunc, checkFunc, updateFunc, codeMetaInfo, 
-    level = c("top")) {
-    curCodeMetaInfo = codeMetaInfo
-    parsedExp = codeMetaInfo$Exp
-    code = c()
-    for (i in seq(length(parsedExp))) {
-        # if(i==3) stop()
-        curExp = parsedExp[[i]]
-        if (curExp == "{" && length(curExp) == 1) {
-            next
-        }
-        if (!is.symbol(curExp) && !isNumeric(curExp)) {
-            if (curExp[[1]] == "for") {
-                loopIndExp = curExp[[3]]
-                curLevel = c(level, "for")
-                if (checkFunc(loopIndExp)) {
-                  res = ProcessCodeSingle(parserFunc, updateFunc, curCodeMetaInfo, 
-                    curLevel, parsedExp, code, i, loopIndExp)
-                  curCodeMetaInfo = res$codeMetaInfo
-                  parsedExp = res$parsedExp
-                  code = res$code
-                  loopIndExp = res$Exp
-                }
-                loopBodyExp = curExp[[4]]
-                res = ProcessCodeChunk(parserFunc, checkFunc, updateFunc, 
-                  curCodeMetaInfo, curLevel, parsedExp, code, i, loopBodyExp)
-                curCodeMetaInfo = res$codeMetaInfo
-                parsedExp = res$parsedExp
-                code = res$code
-                loopBodyExp = res$ExpChunk
-                
-                
-                curExp[[3]] = loopIndExp
-                curExp[[4]] = loopBodyExp
-                code = c(code, curExp)
-                next
-            }
-            
-            
-            if (curExp[[1]] == "if") {
-                conditionExp = curExp[[2]]
-                curLevel = c(level, "if")
-                if (checkFunc(conditionExp)) {
-                  res = ProcessCodeSingle(parserFunc, updateFunc, curCodeMetaInfo, 
-                    curLevel, parsedExp, code, i, conditionExp)
-                  curCodeMetaInfo = res$codeMetaInfo
-                  parsedExp = res$parsedExp
-                  code = res$code
-                  conditionExp = res$Exp
-                }
-                for (k in 3:4) {
-                  if (k > length(curExp)) 
-                    next
-                  conditionBodyExp = curExp[[k]]
-                  res = ProcessCodeChunk(parserFunc, checkFunc, updateFunc, 
-                    curCodeMetaInfo, curLevel, parsedExp, code, i, conditionBodyExp)
-                  curCodeMetaInfo = res$codeMetaInfo
-                  parsedExp = res$parsedExp
-                  code = res$code
-                  conditionBodyExp = res$ExpChunk
-                  
-                  curExp[[k]] = conditionBodyExp
-                }
-                
-                curExp[[2]] = conditionExp
-                code = c(code, curExp)
-                next
-            }
-        }
-        
-        # I don't know who will use double bracket But I add it for making sure
-        # it works
-        if (length(curExp) > 1 && curExp[[1]] == "{") {
-            warning("Unnecessary { has been found: ", deparse(curExp))
-            curLevel = c(level, "{")
-            res = ProcessCodeChunk(parserFunc, checkFunc, updateFunc, curCodeMetaInfo, 
-                curLevel, parsedExp, code, i, curExp)
-            curCodeMetaInfo = res$codeMetaInfo
-            parsedExp = res$parsedExp
-            code = res$code
-            curExp = res$ExpChunk
-            curExp[[1]] = NULL
-            code = c(code, curExp)
-            next
-        }
-        
-        if (checkFunc(curExp)) {
-            res = ProcessCodeSingle(parserFunc, updateFunc, curCodeMetaInfo, 
-                level, parsedExp, code, i, curExp)
-            curCodeMetaInfo = res$codeMetaInfo
-            parsedExp = res$parsedExp
-            code = c(res$code, res$Exp)
-            next
-        }
-    }
-    curCodeMetaInfo$Exp = code
-    return(curCodeMetaInfo)
+parserFrame <- function(parserFunc, checkFunc, updateFunc, codeMetaInfo) {
+  res=parserFrame_hidden(parserFunc, checkFunc, updateFunc, codeMetaInfo)
+  codeMetaInfo=res$codeMetaInfo
+  codeMetaInfo$Exp=res$processedExp
+  return(codeMetaInfo)
 }
+
+parserFrame_hidden<-function(parserFunc, checkFunc, updateFunc, codeMetaInfo, 
+                      level = c("top")){
+  codePack=list()
+  codePack$codeMetaInfo = codeMetaInfo
+  codePack$previousExp = codeMetaInfo$Exp
+  codePack$processedExp = c()
+  
+  codePack$codeMetaInfo$Exp=NULL
+  isTop=level[1]=="top"
+  for (i in seq_along(codePack$previousExp)) {
+    # if(i==3) stop()
+    curExp = codePack$previousExp[[i]]
+    if (curExp == "{" && length(curExp) == 1) {
+      next
+    }
+    codePack$curExp=curExp
+    codePack$i=i
+    if(isTop){
+      codePack$insertInMainBefore=NULL
+      codePack$insertInMainAfter=NULL
+    }
+    codePack$insertAfter=NULL
+    if (is.call(curExp)) {
+      if (curExp[[1]] == "for") {
+        if (checkFunc(loopIndExp)) {
+          curLevel = c(level, "for","condition")
+          codePack=processCodePack(parserFunc, checkFunc, updateFunc,
+                                   curLevel,codePack,3)
+        }
+        curLevel = c(level, "for","body")
+        codePack=processCodePack(parserFunc, checkFunc, updateFunc,
+                                 curLevel,codePack,4)
+        codePack=finializeCodePack(codePack,isTop)
+        next
+      }
+      
+      
+      if (curExp[[1]] == "if") {
+        conditionExp = curExp[[2]]
+        if (checkFunc(conditionExp)) {
+          curLevel = c(level, "if","condition")
+          codePack=processCodePack(parserFunc, checkFunc, updateFunc,
+                                   curLevel,codePack,2)
+        }
+        curLevel = c(level, "if",3,"body")
+        codePack=processCodePack(parserFunc, checkFunc, updateFunc,
+                                 curLevel,codePack,3)
+        if(length(curExp)>3){
+          curLevel = c(level, "if",4,"body")
+          codePack=processCodePack(parserFunc, checkFunc, updateFunc,
+                                   curLevel,codePack,4)
+        }
+        codePack=finializeCodePack(codePack,isTop)
+        next
+      }
+    }
+    # I don't know who will use double bracket But I add it for making sure
+    # it works
+    if (is.call(curExp) && curExp[[1]] == "{") {
+      message("Unnecessary { has been found: ", deparse(curExp))
+      curLevel = c(level, "{")
+      codePack=processCodePack(parserFunc, checkFunc, updateFunc,
+                               curLevel,codePack,2)
+      codePack=finializeCodePack(codePack,isTop)
+      next
+    }
+    
+    if (checkFunc(curExp)) {
+      curLevel = c(level, "singleCode")
+      codePack=processCodePack(parserFunc, checkFunc, updateFunc,
+                               curLevel,codePack,0)
+      codePack=finializeCodePack(codePack,isTop)
+      next
+    }
+  }
+  return(codePack)
+}
+
+
+processCodePack<-function(parserFunc, checkFunc, updateFunc,
+                curLevel,codePack,Exp_i){
+  
+  curExp=codePack$curExp
+  if(Exp_i!=0){
+    if(curLevel[length(curLevel)]=="body"){
+      sub_Exp=toCodeChunk(curExp[[Exp_i]])
+    }else{
+      sub_Exp=curExp[[Exp_i]]
+    }
+  }else{
+    sub_Exp=curExp
+  }
+  
+  if(is.call(sub_Exp)&&sub_Exp[[1]]=="{"){
+    res = ProcessCodeChunk(parserFunc,checkFunc, updateFunc, codePack$codeMetaInfo, 
+                            curLevel,codePack$previousExp, codePack$processedExp, codePack$i, sub_Exp)
+  }else{
+    res = ProcessCodeSingle(parserFunc, updateFunc, codePack$codeMetaInfo, 
+                            curLevel,codePack$previousExp, codePack$processedExp, codePack$i, sub_Exp)
+  }
+  
+  codePack$codeMetaInfo = res$codeMetaInfo
+  codePack$previousExp = res$previousExp
+  codePack$processedExp = res$processedExp
+  codePack$insertInMainBefore=c(codePack$insertInMainBefore,res$insertInMainBefore)
+  codePack$insertInMainAfter=c(codePack$insertInMainAfter,res$insertInMainAfter)
+  codePack$insertAfter=c(codePack$insertAfter,res$insertAfter)
+  
+  if(Exp_i!=0){
+    codePack$curExp[[Exp_i]] = res$Exp
+  }else{
+    codePack$curExp = res$Exp
+  }
+  codePack
+}
+
+finializeCodePack<-function(codePack,isTop){
+  if(isTop){
+    codePack$processedExp=c(codePack$processedExp,codePack$insertInMainBefore,codePack$curExp,codePack$insertAfter,codePack$insertInMainAfter)
+  }else{
+    codePack$processedExp=c(codePack$processedExp,codePack$curExp,codePack$insertAfter)
+  }
+  codePack
+}
+
 # inside the for and if loop
 ProcessCodeChunk <- function(parserFunc, checkFunc, updateFunc, codeMetaInfo, 
-    curLevel, parsedExp, code, i, ExpChunk) {
+    curLevel, previousExp, processedExp, i, ExpChunk) {
     curMetaInfo = codeMetaInfo
-    # Add a curly bracket when the loop does not have it
-    if (is.symbol(ExpChunk) || isNumeric(ExpChunk) || ExpChunk[[1]] != 
-        "{") {
-        ExpChunk = as.call(c(as.symbol("{"), ExpChunk))
-    }
-    ExpChunk = compressCodeChunk(ExpChunk)
+    
     curMetaInfo$Exp = ExpChunk
     curMetaInfo$renameList = NULL
-    res = parserFrame(parserFunc, checkFunc, updateFunc, curMetaInfo, curLevel)
-    if ("renameList" %in% names(res)) {
-        parsedExp = renamevariable(parsedExp, res$renameList, i)
-        codeMetaInfo$renameList = rbind(codeMetaInfo$renameList, res$renameList)
+    res = parserFrame_hidden(parserFunc, checkFunc, updateFunc, curMetaInfo, curLevel)
+    curMetaInfo=res$codeMetaInfo
+    if ("renameList" %in% names(curMetaInfo)) {
+      previousExp = renamevariable(previousExp, res$renameList, i)
+      codeMetaInfo$renameList = rbind(codeMetaInfo$renameList, res$renameList)
     }
-    res1 = updateFunc(type = "block", curLevel, codeMetaInfo, parsedExp, 
-        code, i, res)
+    #type, level, codeMetaInfo, parsedExp, code, i, res
+    res1 = updateFunc(type = "block", curLevel, codeMetaInfo, res$previousExp, 
+                      res$processedExp, i, res)
     if ("codeMetaInfo" %in% names(res1)) 
-        codeMetaInfo = res1$codeMetaInfo
-    if ("parsedExp" %in% names(res1)) 
-        parsedExp = res1$parsedExp
-    if ("code" %in% names(res1)) 
-        code = res1$code
-    ExpChunk = compressCodeChunk(res$Exp)
-    list(codeMetaInfo = codeMetaInfo, parsedExp = parsedExp, code = code, 
-        ExpChunk = ExpChunk)
+      codeMetaInfo = res1$codeMetaInfo
+    if ("processedExp" %in% names(res1)) 
+      ExpChunk=res1[["processedExp"]]
+    else
+      ExpChunk=res[["processedExp"]]
+    ExpChunk = toCodeChunk(ExpChunk)
+    list(codeMetaInfo = codeMetaInfo, previousExp = previousExp, processedExp = processedExp, 
+        Exp = ExpChunk,insertInMainBefore=res$insertInMainBefore,insertInMainAfter=res$insertInMainAfter)
 }
-# For a single line code parserFunc######## parserFunc should at least
-# return a list with Exp as the element, the Exp is the current
-# expression Optional return value: extCode: The expressions that will
-# be added before the current expression renameList: renaming a
-# variable, the framework is responsible to rename the variable in all
-# the expressions next to the current one, the current one shoul be
-# manually renamed. updateFunc######## updateFunc can be used to update
-# anything in the codeMetaInfo, parsedExp or code Optional return
-# value: codeMetaInfo: The description object to describe the property
-# of code parsedExp: The expression that is parsing, usually not change
+# For a single line code 
+# ########parserFunc######## 
+# parserFunc should at least return a list with Exp as the element, 
+# the Exp is the current expression 
+# Optional return value: 
+# insertBefore: The expressions that will be added before the current expression 
+# insertAfter: The expressions that will be added before the current expression 
+# insertInMainBefore: The code inserted before the code chunk(if and for body)
+# insertInMainAfter: The code inserted after the code chunk(if and for body)
+# renameList: renaming a variable, the framework is responsible to 
+# rename the variable in all the expressions next to the current one, the current one should be
+# manually renamed. 
+# #########updateFunc######## 
+# updateFunc can be used to update anything in the codeMetaInfo, 
+# parsedExp or code 
+# Optional return value: 
+# codeMetaInfo: The description object to describe the property of the code 
+# parsedExp: The expression that is parsing, usually not change
 # code: The parsed expression
-ProcessCodeSingle <- function(parserFunc, updateFunc, codeMetaInfo, curLevel, 
-    parsedExp, code, i, Exp) {
+ProcessCodeSingle <- function(parserFunc, updateFunc, codeMetaInfo, 
+                              curLevel, previousExp, processedExp, i, Exp) {
     res = parserFunc(curLevel, codeMetaInfo, Exp)
     
     Exp = res$Exp
-    code = c(code, res$extCode)
-    res1 = updateFunc(type = "normal", curLevel, codeMetaInfo, parsedExp, 
-        code, i, res)
+    processedExp = c(processedExp, res$insertBefore)
+    
+    res1 = updateFunc(type = "normal", curLevel, codeMetaInfo, previousExp, 
+                      processedExp, i, res)
     if ("codeMetaInfo" %in% names(res1)) 
         codeMetaInfo = res1$codeMetaInfo
-    if ("parsedExp" %in% names(res1)) 
-        parsedExp = res1$parsedExp
-    if ("code" %in% names(res1)) 
-        code = res1$code
+    if ("previousExp" %in% names(res1)) 
+      previousExp = res1$previousExp
+    if ("processedExp" %in% names(res1)) 
+      processedExp = res1$processedExp
     if ("renameList" %in% names(res)) {
-        parsedExp = renamevariable(parsedExp, res$renameList, i)
+      previousExp = renamevariable(previousExp, res$renameList, i)
         codeMetaInfo$renameList = rbind(codeMetaInfo$renameList, res$renameList)
     }
-    list(codeMetaInfo = codeMetaInfo, parsedExp = parsedExp, code = code, 
-        Exp = Exp)
+    
+    processedExp = c(processedExp)
+    
+    list(codeMetaInfo = codeMetaInfo, previousExp = previousExp, processedExp = processedExp, 
+        Exp = Exp,insertInMainBefore=res$insertInMainBefore,insertInMainAfter=res$insertInMainAfter,insertAfter=res$insertAfter)
 }
 renamevariable <- function(parsedExp, renameList, i) {
-    for (j in seq_len(nrow(renameList))) parsedExp = renameVarInCode(parsedExp, 
+    for (j in seq_len(nrow(renameList))) {
+      parsedExp = renameVarInCode(parsedExp, 
         i, renameList[j, 1], renameList[j, 2])
+    }
     parsedExp
 }
 renameVarInCode <- function(code, start, oldName, newName) {
@@ -189,4 +234,15 @@ general_updateFunc <- function(codeMetaInfo, parsedExp, code) {
     result$parsedExp = parsedExp
     result$code = code
     result
+}
+
+
+#Convert expressions to a code chunk
+toCodeChunk <- function(Exp) {
+  if (!(is.call(Exp) && Exp[[1]] == "{")) {
+    Exp = as.call(c(as.symbol("{"), Exp))
+  } else {
+    Exp = as.call(Exp)
+  }
+  return(Exp)
 }
