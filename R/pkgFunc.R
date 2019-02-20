@@ -329,11 +329,10 @@ subRef <- function(variable, i = "", j = "") {
 #' @rdname no_copy_method
 #' @aliases return.nocpy
 #' @usage return.nocpy(x)
-#' @method return nocpy
 #' @examples 
 #' x=matrix(0)
 #' #return.nocpy(x)
-#' @export
+#' @export return.nocpy
 return.nocpy = return
 
 
@@ -345,10 +344,9 @@ return.nocpy = return
 #' @rdname no_copy_method
 #' @aliases t.nocpy
 #' @usage t.nocpy(x)
-#' @method t nocpy
 #' @examples 
 #' #x=t.nocpy(x)
-#' @export 
+#' @export t.nocpy
 t.nocpy=function(x){
   t(x)
 }
