@@ -86,7 +86,7 @@ RProfile2_parserFunc <- function(level, codeMetaInfo, curExp) {
     # For the no copy return, the function will first try to redirect it to
     # the return variable in the function argument. If it is not possible,
     # the legacy method will be used.
-    if (curExp[[1]] == "return.nocpy") {
+    if (curExp[[1]] == "return_nocpy") {
         returnVar = deparse(curExp[[2]])
         returnInfo = redirectVar(varInfo, returnVar, GPUVar$return_variable)
         if (returnInfo$redirect == GPUVar$return_variable) {

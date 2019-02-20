@@ -565,7 +565,7 @@ profile_transpose <- function(varInfo, Exp) {
     
     return(ExpInfo)
 }
-# Exp=quote(t.nocpy(A))
+# Exp=quote(t_nocpy(A))
 profile_transpose_nocpy <- function(varInfo, Exp) {
     curVar = Exp[[2]]
     Exp = parse(text = paste0("subRef(", curVar, ",,)"))[[1]]
@@ -725,7 +725,7 @@ profile_selfTranspose<-function(varInfo,curExp){
   
   result$varInfo = varInfo
   result$extCode = bumpCode
-  result$Exp = curExp[[3]][[1]] = as.symbol("t.nocpy")
+  result$Exp = curExp[[3]][[1]] = as.symbol("t_nocpy")
   return(result)
 }
 

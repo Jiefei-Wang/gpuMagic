@@ -120,7 +120,7 @@ GPUVar <- local({
 .profileFuncs[["Matrix"]] = profile_Matrix
 .profileFuncs[["Scalar"]] = profile_Scalar
 .profileFuncs[["t"]] = profile_transpose
-.profileFuncs[["t.nocpy"]] = profile_transpose_nocpy
+.profileFuncs[["t_nocpy"]] = profile_transpose_nocpy
 .profileFuncs[["sum"]]=profile_sum
 .profileFuncs[["rowSums"]]=profile_rowSums
 .profileFuncs[["colSums"]]=profile_colSums
@@ -171,7 +171,7 @@ GPUVar <- local({
 .cFuncs[["<-seq"]] = C_seq_right
 .cFuncs[["<-:"]] = C_oneStepSeq_right
 .cFuncs[["<-t"]] = C_transpose_right
-.cFuncs[["<-t.nocpy"]] = C_NULL
+.cFuncs[["<-t_nocpy"]] = C_NULL
 
 # No parent opration
 .cFuncs[["<-sum"]] = C_sum_right
@@ -323,35 +323,33 @@ subRef <- function(variable, i = "", j = "") {
 #' Doing some opration without memory copy
 #' 
 #' @details 
-#' `return.nocpy`: The usage of the `return.nocpy` is same as `return`. This feature is for openCL code only, 
+#' `return_nocpy`: The usage of the `return_nocpy` is same as `return`. This feature is for openCL code only, 
 #' if it is called in R, the function `return()` will be called instead
 #' 
 #' @param x an object
-#' @return `return.nocpy`: No return value
+#' @return `return_nocpy`: No return value
 #' @rdname no_copy_method
-#' @aliases return.nocpy
-#' @usage return.nocpy(x)
-#' @method return nocpy
+#' @aliases return_nocpy
+#' @usage return_nocpy(x)
 #' @examples 
 #' x=matrix(0)
-#' #return.nocpy(x)
-#' @export
-return.nocpy = return
+#' #return_nocpy(x)
+#' @export return_nocpy
+return_nocpy = return
 
 
 #' @details 
-#' `t.nocpy`: The function transposes `x` without allocating the memory. It only works for the openCL code, 
+#' `t_nocpy`: The function transposes `x` without allocating the memory. It only works for the openCL code, 
 #' if it is called in R, the function `t()` will be called instead
 #' 
-#' @return `t.nocpy`: the transpose of `x`
+#' @return `t_nocpy`: the transpose of `x`
 #' @rdname no_copy_method
-#' @aliases t.nocpy
-#' @usage t.nocpy(x)
-#' @method t nocpy
+#' @aliases t_nocpy
+#' @usage t_nocpy(x)
 #' @examples 
-#' #x=t.nocpy(x)
-#' @export 
-t.nocpy=function(x){
+#' #x=t_nocpy(x)
+#' @export t_nocpy
+t_nocpy=function(x){
   t(x)
 }
 
