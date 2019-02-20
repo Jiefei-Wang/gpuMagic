@@ -48,6 +48,7 @@ Collate:
     'RProfilerSupportFunc.R'
     'RRecompiler.R'
     'extCodeManager.R'
+    'tools.R'
     'hash.R'
     'gpuApply.R'
     'gpuApply_Funcs.R'
@@ -58,7 +59,6 @@ Collate:
     'kernelManager.R'
     'managerTools.R'
     'pkgSetting.R'
-    'tools.R'
     'varInfoManager.R'
 VignetteBuilder: knitr
 Encoding: UTF-8

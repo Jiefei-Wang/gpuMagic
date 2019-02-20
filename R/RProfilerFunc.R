@@ -16,10 +16,10 @@ profiler_assignment_exitingVar <- function(level, varInfo, curExp) {
     rightInfoPack = getExpInfo(varInfo, curExp[[3]])
     rightInfo = rightInfoPack$ExpInfo
     
-    res = combineExpInfo(curExp, leftInfoPack, rightInfoPack)
-    errorCheck = res$errorCheck
-    extCode = res$extCode
-    curExp = res$Exp
+    result = combineExpInfo(curExp, leftInfoPack, rightInfoPack)
+    # errorCheck = res$errorCheck
+    # insertBefore = res$insertBefore
+    # curExp = res$Exp
     
     leftVar = curExp[[2]]
     rightExp = curExp[[3]]
@@ -36,7 +36,20 @@ profiler_assignment_exitingVar <- function(level, varInfo, curExp) {
     # If the left expression is a lazy reference, then do not perform the
     # profiling
     if (leftInfo$constDef || leftInfo$specialType == "ref") {
-        return(list(extCode = extCode, Exp = curExp, errorCheck = errorCheck))
+        return(result)
+    }
+    #If the left expression is a function, then check the matrix dimension
+    if(is.call(leftVar)){
+      left_func=deparse(leftVar[[1]])
+      if(!paste0(left_func,"<-")%in%names(.cFuncs)){
+        stop("The left function is not supported: ",deparse(curExp))
+      }
+      check=errorCheck_matrix_matrix(
+        leftInfo$size1,leftInfo$size2,
+        rightInfo$size1,rightInfo$size2)
+      errorCheck=setErrorCheck("error",deparse(curExp),check,"Uncomfortable matrix dimension is found")
+      result$errorCheck=rbind(result$errorCheck,errorCheck)
+      return(result)
     }
     
     if (leftInfo$constVal) {
@@ -79,6 +92,8 @@ profiler_assignment_exitingVar <- function(level, varInfo, curExp) {
             }
         }
     } else {
+      #Special type
+      #Perform special process
         if (leftInfo$specialType == "seq" && rightInfo$specialType != "seq") {
             stop("The sequence variable cannot be changed: ", deparse(curExp))
         }
@@ -107,32 +122,29 @@ profiler_assignment_exitingVar <- function(level, varInfo, curExp) {
     }
     
     
-    # check the precision, if it needs higher precision, then do the
-    # version bump changing the variable type inside the for loop need to
-    # be solved in recompiler##########
+    # check the precision, if it needs higher precision, then change the precision
+    ###########changing the variable type inside the for loop need to be solved in recompiler##########
     requiredPrecision = typeInherit(leftInfo$precisionType, rightInfo$precisionType)
     if (requiredPrecision != leftInfo$precisionType) {
         action = max(action, 1)
         leftInfo$precisionType = requiredPrecision
         
         # update the definition
-        leftDef = getVarInfo(varInfo, leftVar, version = 0)
+        leftDef = getVarInfo(varInfo, leftVar)
         leftDef$precisionType = requiredPrecision
         varInfo = setVarInfo(varInfo, leftDef)
     }
     
-    res = list()
     # Version bump
     if (action == 1) {
         leftInfo$version = leftInfo$version + 1
         varInfo = addVarInfo(varInfo, leftInfo)
         versionBump = getVersionBumpCode(leftVar, leftInfo$version)
-        extCode = c(extCode, versionBump)
         
-        res$varInfo = varInfo
-        res$Exp = curExp
-        res$extCode = extCode
-        return(res)
+        result$varInfo = varInfo
+        result$Exp = curExp
+        result$insertBefore = c(result$insertBefore, versionBump)
+        return(result)
     }
     # Rename variable
     if (action == 2) {
@@ -140,28 +152,25 @@ profiler_assignment_exitingVar <- function(level, varInfo, curExp) {
         curExp[[2]] = as.symbol(newVar)
         
         res = profiler_assignment_newVar(level, varInfo, curExp)
-        res$Exp = curExp
-        res$extCode = c(extCode, res$extCode)
         res$renameList = matrix(c(deparse(leftVar), newVar), 1)
         return(res)
     }
-    return(list(varInfo = varInfo, extCode = extCode))
-    
+    return(result)
 }
 
 # If the left variable does not exist
 # curExp=quote({D=1:gpu_global_id})[[2]]
 profiler_assignment_newVar <- function(level, varInfo, curExp) {
+    result=list(Exp=curExp,varInfo=varInfo)
     rightInfoPack = getExpInfo(varInfo, curExp[[3]])
     rightInfo = rightInfoPack$ExpInfo
     
+    result=combineExpInfo(result,rightInfoPack,offset = 3,autoOffset = FALSE)
     
-    errorCheck = rightInfoPack$errorCheck
-    extCode = rightInfoPack$extCode
-    curExp[[3]] = rightInfoPack$Exp
+    curExp = result$Exp
     
     leftVar = curExp[[2]]
-    rightExp = rightInfoPack$Exp
+    rightExp = curExp[[3]]
     
     # Determine if the right expression explicitly or implicitly defines a
     # variable
@@ -170,8 +179,9 @@ profiler_assignment_newVar <- function(level, varInfo, curExp) {
         leftInfo$version = 1
         leftInfo$var = deparse(leftVar)
         varInfo = addVarInfo(varInfo, leftInfo)
-        return(list(varInfo = varInfo, extCode = extCode, Exp = curExp, 
-            errorCheck = errorCheck))
+        
+        result$varInfo=varInfo
+        return(result)
     }
     
     
@@ -194,8 +204,8 @@ profiler_assignment_newVar <- function(level, varInfo, curExp) {
     
     varInfo = addVarInfo(varInfo, leftInfo)
     
-    res = list(varInfo = varInfo)
-    return(list(varInfo = varInfo, extCode = extCode, Exp = curExp, errorCheck = errorCheck))
+    result$varInfo=varInfo
+    return(result)
 }
 
 
@@ -310,7 +320,7 @@ profile_elementOP<-function(varInfo, Exp){
     rightInfo$size1,rightInfo$size2)
   
   errorCheck = setErrorCheck(level = "error", code = deparse(Exp), check = check, 
-                             msg = "Uncomfortable matrix dimension has been found")
+                             msg = "Uncomfortable matrix dimension is found")
   res$ExpInfo = ExpInfo
   res$errorCheck = rbind(res$errorCheck, errorCheck)
   return(res)
@@ -364,7 +374,7 @@ profile_matrixMult <- function(varInfo, Exp) {
     
     
     errorCheck = setErrorCheck(level = "error", code = deparse(Exp), check = paste0(leftInfo$size2, 
-        "!=", rightInfo$size1), msg = "Uncomfortable matrix dimension has been found")
+        "!=", rightInfo$size1), msg = "Uncomfortable matrix dimension is found")
     
     res$ExpInfo = ExpInfo
     res$errorCheck = rbind(res$errorCheck, errorCheck)
@@ -702,8 +712,6 @@ profile_colSums <- function(varInfo, Exp) {
   return(res)
 }
 
-
-
 #########################Special functions######################################
 
 profile_selfTranspose<-function(varInfo,curExp){
@@ -724,7 +732,7 @@ profile_selfTranspose<-function(varInfo,curExp){
   
   
   result$varInfo = varInfo
-  result$extCode = bumpCode
+  result$insertBefore = bumpCode
   result$Exp = curExp[[3]][[1]] = as.symbol("t_nocpy")
   return(result)
 }

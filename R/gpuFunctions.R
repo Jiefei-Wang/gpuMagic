@@ -56,7 +56,7 @@ print.options <- function(x, ...) {
     name = StrAlign(names(x), sep = "\\l")
     value = StrAlign(as.character(x), sep = "\\l")
     final = paste0(paste(name, value, sep = ": "), collapse = "\n")
-    cat(final)
+    cat(final,"\n")
 }
 
 #' @rdname printFunctions

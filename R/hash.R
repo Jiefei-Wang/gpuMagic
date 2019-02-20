@@ -1,5 +1,5 @@
 # This is a temporary replacement of the hash package
-#' @include RProfilerSupportFunc.R
+#' @include tools.R
 hash <- function() {
     x = new.env()
     x$data = list()

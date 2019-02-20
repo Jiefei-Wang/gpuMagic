@@ -149,8 +149,6 @@ GPUVar <- local({
 
 
 
-
-
 #' @include RRecompileFunc.R
 .recompileFuncs = list()
 .recompileFuncs$matrix = recompile_matrix
@@ -211,6 +209,7 @@ GPUVar <- local({
 .cFuncs[["next"]] = C_next
 .cFuncs[["message"]] = C_message
 .cFuncs[["setVersion"]] = C_setVersion
+
 
 
 

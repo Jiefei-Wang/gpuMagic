@@ -224,17 +224,19 @@ release_var<-function(varInfo,varName){
   curInfo=getVarInfo(varInfo,varName)
   if(!curInfo$isSpecial){
     if(curInfo$redirect=="NA"){
-      if(!varName%in%varInfo$obj_free)
-        varInfo$releasedObj=c(varInfo$obj_free,varName)
+      if(varName%in%varInfo$obj_inUsed){
+        ind=which(varInfo$obj_inUsed==varName)
+        varInfo$obj_free=c(varInfo$obj_free,varName)
+        varInfo$obj_inUsed=varInfo$obj_inUsed[-ind]
+      }else{
+        if(!varName%in%varInfo$obj_free){
+          varInfo$releasedObj=c(varInfo$obj_free,varName)
+        }
+      }
     }else{
       redirectVar=curInfo$redirect
-      if(redirectVar%in%varInfo$obj_inUsed){
-        ind=which(redirectVar%in%varInfo$obj_inUsed)
-        varInfo$obj_free=c(varInfo$obj_free,redirectVar)
-        varInfo$obj_inUsed=varInfo$obj_inUsed[-ind]
-      }
+      return(release_var(varInfo,redirectVar))
     }
-    
   }
   return(varInfo)
 }

@@ -70,17 +70,6 @@ combineInsertCode<-function(result,...,offset=0,autoOffset=TRUE){
   return(result)
 }
 
-# combine the expression info from several expInfo
-combineExpInfo <- function(result, ...,offset=0,autoOffset=TRUE) {
-  if(is.language(result))stop("Incorrect old code")
-  result=combineInsertCode(result, ...,offset=offset,autoOffset=autoOffset)
-  parms = list(...)
-  for (i in seq_along(parms)) {
-    curInfo = parms[[i]]
-    result$errorCheck = rbind(result$errorCheck, curInfo$errorCheck)
-  }
-  return(result)
-}
 
 
 # Determine which type can preserve the information of the information
@@ -155,6 +144,12 @@ isNumeric <- function(x) {
 is.wholenumber=function(x, tol = .Machine$double.eps^0.5)  
 {abs(x - round(x)) < tol}
 
+is.preservedFunc <- function(func) {
+  func = as.character(func)
+  length(grep(GPUVar$preservedFuncPrefix, func, fixed = TRUE)) != 0
+}
+
+
 
 toCharacter <- function(x) {
   if (is.language(x)) {
@@ -180,4 +175,24 @@ toExpression <- function(var) {
     var = parse(text = var_char)[[1]]
   }
   return(var)
+}
+
+
+
+# This function simplify the R code and make it ready to put in the
+# varInfo table
+Simplify2 <- function(Exp,parentheses=TRUE) {
+  res = Simplify(Exp)
+  # remove the space res=trimws(gsub(', ',',',res,fixed = TRUE)) If the
+  # result is a vector if(length(grep(' ',res,fixed = TRUE))!=0){
+  # res=paste0('c(',gsub(' +',',',res),')') return(res) }
+  if (isNumeric(res)) 
+    return(res)
+  res=parse(text=res)[[1]]
+  res=deparse(Simplify_plus(res))
+  if(parentheses){
+    return(paste0("(", res, ")"))
+  }else{
+    return(res)
+  }
 }
