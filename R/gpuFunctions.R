@@ -157,7 +157,7 @@ getCurDevice = function() {
 #' #Use the first device
 #' setDevice(1)
 #' #Use two devices
-#' setDevice(c(1,2))
+#' #setDevice(c(1,2))
 #' @return 'setDevice()': No return value
 #' @rdname DeviceInfo
 #' @export
