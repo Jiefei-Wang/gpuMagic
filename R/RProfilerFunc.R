@@ -59,10 +59,6 @@ profiler_assignment_exitingVar <- function(level, varInfo, curExp) {
             
             # Check if the property is the same between the left and right
             # expression
-            if(curProp%in% c("size1","size2")){
-              leftInfo[[curProp]]=Simplify(leftInfo[[curProp]])
-              rightInfo[[curProp]]=Simplify(rightInfo[[curProp]])
-            }
             if (inheritProp && leftInfo[[curProp]] != rightInfo[[curProp]]) {
                 curAct = inheritAct[[defineType]][[curProp]][["act"]]
                 curWarningLevel = inheritAct[[defineType]][[curProp]][["warningLevel"]]
@@ -706,4 +702,30 @@ profile_colSums <- function(varInfo, Exp) {
   return(res)
 }
 
+
+
+#########################Special functions######################################
+
+profile_selfTranspose<-function(varInfo,curExp){
+  curVar = curExp[[2]]
+  curInfo = getVarInfo(varInfo, curVar)
+  # Check if the target can be changed
+  if (getVarProperty(varInfo, curVar, "constVal")) {
+    stop("The const value cannot be changed", deparse(curExp))
+  }
+  # set the transpose
+  curInfo$version = curInfo$version + 1
+  bumpCode = getVersionBumpCode(curVar, curInfo$version)
+  tmp = curInfo$size1
+  curInfo$size1 = curInfo$size2
+  curInfo$size2 = tmp
+  curInfo$transpose = curInfo$transpose
+  varInfo = addVarInfo(varInfo, curInfo)
+  
+  
+  result$varInfo = varInfo
+  result$extCode = bumpCode
+  result$Exp = curExp[[3]][[1]] = as.symbol("t.nocpy")
+  return(result)
+}
 

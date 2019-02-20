@@ -1,9 +1,10 @@
 .profileExplicitDefine = c("Matrix", "Scalar", "subRef", ":", "seq", 
     "t.nocpy")
-# If the variable does not exist The inherit table determine whether
-# the property can be passed through the equal sign If the variable
-# exist Determine whether the property needs to be checked by the
-# profiler If the properties are not the same on both sides, an action
+# If the variable does not exist 
+# The inherit table determine whether the property can be passed through the equal sign 
+# If the variable exist 
+# Determine whether the property needs to be checked by the profiler 
+# If the properties are not the same on both sides, an action
 # is needed to fix it.
 
 inherit = list()

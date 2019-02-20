@@ -53,26 +53,8 @@ RProfile2_parserFunc <- function(level, codeMetaInfo, curExp) {
     # process transpose
     if (formattedExp_char == "var=t(var)") {
         if (curExp[[2]] == curExp[[3]][[2]]) {
-            curVar = curExp[[2]]
-            curInfo = getVarInfo(varInfo, curVar)
-            # Check if the target can be changed
-            if (getVarProperty(varInfo, curVar, "constVal")) {
-                stop("The const value cannot be changed", deparse(curExp))
-            }
-            # set the transpose
-            curInfo$version = curInfo$version + 1
-            bumpCode = getVersionBumpCode(curVar, curInfo$version)
-            tmp = curInfo$size1
-            curInfo$size1 = curInfo$size2
-            curInfo$size2 = tmp
-            curInfo$transpose = curInfo$transpose
-            varInfo = addVarInfo(varInfo, curInfo)
-            
-            
-            result$varInfo = varInfo
-            result$extCode = bumpCode
-            result$Exp = curExp[[3]][[1]] = as.symbol("t.nocpy")
-            return(result)
+          result=profile_selfTranspose(varInfo,curExp)
+          return(result)
         }
     }
     # stop when the code is like A=B%*%A, it is unsafe to do the operation
@@ -123,6 +105,12 @@ RProfile2_parserFunc <- function(level, codeMetaInfo, curExp) {
         varInfo$returnInfo = rbind(varInfo$returnInfo, returnInfo)
     }
     
+    if(curExp[[1]] == "compiler.release"){
+      for(i in seq_len(length(curExp)-1)+1){
+        varInfo=release_var(varInfo,curExp[[i]])
+      }
+    }
+    
     
     result$Exp = curExp
     result$renameList = renameList
@@ -151,3 +139,5 @@ RProfile2_updateFunc <- function(type, level, codeMetaInfo, parsedExp,
         res$errorCheck)
     result
 }
+
+

@@ -6,6 +6,8 @@ getEmpVarInfoTbl<-function(){
   #current version
   #Var: version
   varInfo$varVersion=hash()
+  varInfo$obj_freed=c()
+  varInfo$obj_inUsed=c()
   varInfo$printAll=function(){
     callFunc=sys.call()
     curInfo=eval(callFunc[[1]][[2]],envir=globalenv())
@@ -217,6 +219,27 @@ getVarProperty<-function(varInfo,varName,property,version="auto"){
   #value=var_tbl[[property]]
   return(value)
 }
+
+release_var<-function(varInfo,varName){
+  curInfo=getVarInfo(varInfo,varName)
+  if(!curInfo$isSpecial){
+    if(curInfo$redirect=="NA"){
+      if(!varName%in%varInfo$obj_free)
+        varInfo$releasedObj=c(varInfo$obj_free,varName)
+    }else{
+      redirectVar=curInfo$redirect
+      if(redirectVar%in%varInfo$obj_inUsed){
+        ind=which(redirectVar%in%varInfo$obj_inUsed)
+        varInfo$obj_free=c(varInfo$obj_free,redirectVar)
+        varInfo$obj_inUsed=varInfo$obj_inUsed[-ind]
+      }
+    }
+    
+  }
+  return(varInfo)
+}
+
+
 
 #' @rdname printFunctions
 #' @method print varInfo

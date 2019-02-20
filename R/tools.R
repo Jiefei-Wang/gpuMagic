@@ -82,3 +82,102 @@ combineExpInfo <- function(result, ...,offset=0,autoOffset=TRUE) {
   return(result)
 }
 
+
+# Determine which type can preserve the information of the information
+# in type1 and type2
+typeInherit <- function(type1, type2) {
+  if (!is.character(type1)) 
+    type1 = as.character(type1)
+  if (!is.character(type2)) 
+    type2 = as.character(type2)
+  
+  group_float = getFloatingPointType()
+  group_int = getIntegerType()
+  
+  target_size = max(getTypeSize(type1), getTypeSize(type2))
+  if (type1 %in% group_float || type2 %in% group_float) {
+    for (i in seq_along(group_float)) {
+      if (target_size == getTypeSize(group_float[i])) 
+        return(group_float[i])
+    }
+  }
+  if (type1 %in% group_int || type2 %in% group_int) {
+    for (i in seq_along(group_int)) {
+      if (target_size == getTypeSize(group_int[i])) 
+        return(group_int[i])
+    }
+  }
+  for (i in seq_along(group_float)) {
+    if (target_size == getTypeSize(group_float[i])) 
+      return(group_int[i])
+  }
+  stop("Unsupported variable type!")
+}
+
+typeTruncate <- function(type) {
+  if(type%in%c("bool","char"))
+    return("int")
+  if(type%in%c("half"))
+    return("float")
+  return(type)
+}
+
+
+
+# Test if x is an NA value, support character.
+isNA <- function(x) {
+  if (is.character(x)) 
+    return(CSimplify(x) == "NA")
+  return(is.na(x))
+}
+# Test if an input is a number x can be a character or an expression
+isNumeric <- function(x) {
+  if (!is.call(x) && length(x) > 1) 
+    return(FALSE)
+  
+  xExp = NULL
+  try({
+    xExp = toExpression(x)
+  }, silent = TRUE)
+  if (is.null(xExp)) 
+    return(FALSE)
+  if (is.call(xExp)) {
+    if (xExp[[1]] != "-" && xExp[[1]] != "+") 
+      return(FALSE)
+    if (length(xExp) != 2) 
+      return(FALSE) else return(isNumeric(xExp[[2]]))
+  }
+  res = is.numeric(xExp)
+  return(res)
+}
+
+#Test if a value is an integer
+is.wholenumber=function(x, tol = .Machine$double.eps^0.5)  
+{abs(x - round(x)) < tol}
+
+
+toCharacter <- function(x) {
+  if (is.language(x)) {
+    var_char = deparse(x)
+  } else {
+    if (is.character(x)) 
+      var_char = x else {
+        var_char = as.character(x)
+      }
+  }
+  var_char
+}
+# Convert an non-expression to the expression and return both
+# expression and characters
+toExpression <- function(var) {
+  if (is.language(var)) {
+    var_char = deparse(var)
+  } else {
+    if (is.character(var)) 
+      var_char = var else {
+        var_char = as.character(var)
+      }
+    var = parse(text = var_char)[[1]]
+  }
+  return(var)
+}

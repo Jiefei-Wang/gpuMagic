@@ -369,10 +369,12 @@ compiler.setProperty<-function(varName,...){
 compiler.define<-function(varName){
   
 }
-compiler.promise<-function(precision,varName,definition){
-  
+compiler.promiseDefine<-function(precision,varName,definition){
+  paste0(precision," ",varName,"=",definition,";")
 }
-
+compiler.promiseAssign<-function(varName,value){
+  paste0(varName,"=",value,";")
+}
 
 compiler.release<-function(varName){
   
