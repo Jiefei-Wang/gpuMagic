@@ -9,7 +9,7 @@ output:
         toc: true
         toc_float: true
 vignette: >
-  %\VignetteIndexEntry{quickStart}
+  %\VignetteIndexEntry{Advance}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 package: gpuMagic
