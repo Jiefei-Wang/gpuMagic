@@ -21,7 +21,7 @@ parserFrame_hidden<-function(parserFunc, checkFunc, updateFunc, codeMetaInfo,
   codePack$processedExp = c()
   
   codePack$codeMetaInfo$Exp=NULL
-  isTop=level[1]=="top"
+  isTop=length(level)==1
   for (i in seq_along(codePack$previousExp)) {
     # if(i==3) stop()
     curExp = codePack$previousExp[[i]]
@@ -37,6 +37,7 @@ parserFrame_hidden<-function(parserFunc, checkFunc, updateFunc, codeMetaInfo,
     codePack$insertAfter=NULL
     if (is.call(curExp)) {
       if (curExp[[1]] == "for") {
+        loopIndExp=curExp[[3]]
         if (checkFunc(loopIndExp)) {
           curLevel = c(level, "for","condition")
           codePack=processCodePack(parserFunc, checkFunc, updateFunc,
@@ -57,11 +58,11 @@ parserFrame_hidden<-function(parserFunc, checkFunc, updateFunc, codeMetaInfo,
           codePack=processCodePack(parserFunc, checkFunc, updateFunc,
                                    curLevel,codePack,2)
         }
-        curLevel = c(level, "if",3,"body")
+        curLevel = c(level, "if",1,"body")
         codePack=processCodePack(parserFunc, checkFunc, updateFunc,
                                  curLevel,codePack,3)
         if(length(curExp)>3){
-          curLevel = c(level, "if",4,"body")
+          curLevel = c(level, "if",2,"body")
           codePack=processCodePack(parserFunc, checkFunc, updateFunc,
                                    curLevel,codePack,4)
         }
@@ -149,10 +150,10 @@ ProcessCodeChunk <- function(parserFunc, checkFunc, updateFunc, codeMetaInfo,
     curMetaInfo=res$codeMetaInfo
     if ("renameList" %in% names(curMetaInfo)) {
       previousExp = renamevariable(previousExp, res$renameList, i)
-      codeMetaInfo$renameList = rbind(codeMetaInfo$renameList, res$renameList)
+      curMetaInfo$renameList = rbind(codeMetaInfo$renameList, curMetaInfo$renameList)
     }
     #type, level, codeMetaInfo, parsedExp, code, i, res
-    res1 = updateFunc(type = "block", curLevel, codeMetaInfo, res$previousExp, 
+    res1 = updateFunc(type = "block", curLevel, curMetaInfo, res$previousExp, 
                       res$processedExp, i, res)
     if ("codeMetaInfo" %in% names(res1)) 
       codeMetaInfo = res1$codeMetaInfo

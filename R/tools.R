@@ -7,7 +7,9 @@ removeExpParenthesis <- function(Exp) {
 
 # Exp=quote(a[1,]) This function will return a list of the arguments of
 # the [] function, the empty argments are expressed in character
-# example: a[1] ==>i=1,drop=TRUE a[1,] ==>i=1,b='',drop=TRUE
+# example: 
+# a[1] ==>i=1,drop=TRUE
+# a[1,] ==>i=1,b='',drop=TRUE
 # Exp=quote(a[])
 matchBracketFunc <- function(Exp) {
   res = list(drop = TRUE)
@@ -52,10 +54,16 @@ matchBracketFunc <- function(Exp) {
 #combine multiple results
 #result: a list with Exp as element
 #Exp: the current processing expression
+#infoPack: A list object. If the infoPack is not null, it will overwrite the ... parms
 #offset: if the result needs to replace an element of the expression, this is used to determine the offset of the index of the element
+#autoOffset: if true, the index starts from 2. If false, the index starts from 0.
 #insertBefore, insertAfter , insertInMainBefore, insertInMainAfter
-combineInsertCode<-function(result,...,offset=0,autoOffset=TRUE){
-  parms = list(...)
+combineInsertCode<-function(result,...,infoPack=NULL,offset=0,autoOffset=TRUE){
+  if(is.null(infoPack)){
+    parms = list(...)
+  }else{
+    parms = infoPack
+  }
   autoOffset=ifelse(autoOffset,1,-1)
   for (i in seq_along(parms)) {
     curInfo = parms[[i]]
@@ -113,13 +121,20 @@ typeTruncate <- function(type) {
 
 
 
-# Test if x is an NA value, support character.
-isNA <- function(x) {
-  if (is.character(x)) 
-    return(CSimplify(x) == "NA")
+# Test if x is an NA value
+# support character and expression.
+isNA <- function(x,C=TRUE) {
+  if (is.character(x)) {
+    if(C){
+      return(CSimplify(x) == "NA")
+    }else{
+      return(Simplify(x) == "NA")
+    }
+  }
   return(is.na(x))
 }
-# Test if an input is a number x can be a character or an expression
+# Test if an input is a number 
+# x can be a character or an expression
 isNumeric <- function(x) {
   if (!is.call(x) && length(x) > 1) 
     return(FALSE)
@@ -131,18 +146,19 @@ isNumeric <- function(x) {
   if (is.null(xExp)) 
     return(FALSE)
   if (is.call(xExp)) {
-    if (xExp[[1]] != "-" && xExp[[1]] != "+") 
-      return(FALSE)
-    if (length(xExp) != 2) 
-      return(FALSE) else return(isNumeric(xExp[[2]]))
+    if(xExp[[1]]=="(") return(isNumeric(xExp[[2]]))
+    return(FALSE)
   }
   res = is.numeric(xExp)
   return(res)
 }
 
 #Test if a value is an integer
-is.wholenumber=function(x, tol = .Machine$double.eps^0.5)  
-{abs(x - round(x)) < tol}
+is.wholenumber=function(x, tol = .Machine$double.eps^0.5) {
+  if(is.character(x)) x=as.numeric(x)
+  abs(x - round(x)) < tol
+  
+}
 
 is.preservedFunc <- function(func) {
   func = as.character(func)
@@ -181,18 +197,61 @@ toExpression <- function(var) {
 
 # This function simplify the R code and make it ready to put in the
 # varInfo table
-Simplify2 <- function(Exp,parentheses=TRUE) {
+Simplify2 <- function(Exp,parentheses=TRUE,enhance=TRUE) {
   res = Simplify(Exp)
-  # remove the space res=trimws(gsub(', ',',',res,fixed = TRUE)) If the
-  # result is a vector if(length(grep(' ',res,fixed = TRUE))!=0){
-  # res=paste0('c(',gsub(' +',',',res),')') return(res) }
   if (isNumeric(res)) 
     return(res)
-  res=parse(text=res)[[1]]
-  res=deparse(Simplify_plus(res))
+  if(enhance){
+    res=parse(text=res)[[1]]
+    res=deparse(Simplify_plus(res))
+  }
   if(parentheses){
     return(paste0("(", res, ")"))
   }else{
     return(res)
   }
+}
+
+hasVar<-function(x,...){
+  UseMethod("hasVar")
+}
+
+
+
+#' @return A vector of variables
+#' @rdname internalFunctions
+#' @export
+extractVars <- function(x) UseMethod("extractVars")
+#' @method extractVars default
+#' @rdname internalFunctions
+#' @export
+extractVars.default <- function(x) {
+  if(is.language(x)) 
+    return(extractVars.expression(x))
+  if(is.numeric(x))
+    return(NULL)
+  matchRes = gregexpr("[a-zA-Z0-9_]+", x)[[1]]
+  vars = vapply(
+    seq_along(matchRes), 
+    function(i, x, start, len) 
+      substr(x, start[i], start[i] + len[i] - 1), "",
+    x, matchRes, attr(matchRes, "match.length")
+  )
+  vars
+}
+
+#' @method extractVars expression
+#' @rdname internalFunctions
+#' @export
+extractVars.expression <- function(x) {
+  if(!is.call(x)){
+    return(deparse(x))
+  }
+  if(isNumeric(x))
+    return(NULL)
+  res=c()
+  for(i in seq_len(length(x)-1)+1){
+    res=c(res,extractVars(x[[i]]))
+  }
+  return(res)
 }

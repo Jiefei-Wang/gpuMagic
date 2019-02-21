@@ -1,10 +1,8 @@
 #' @importFrom pryr standardise_call
 #' @importFrom Deriv Simplify
-#' @importFrom Rcpp sourceCpp
 #' @importFrom digest digest
 #' @importFrom stringr str_match_all
 #' @importFrom DescTools StrAlign
-#' @importFrom future future value
 #' @importFrom utils ls.str
 #' @importFrom utils capture.output
 #' @import methods

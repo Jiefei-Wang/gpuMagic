@@ -87,6 +87,10 @@ addParenthesis=function(x){
   return(x)
 }
 CSimplify <- function(Exp, C = TRUE,parenthesis=FALSE) {
+  if(is.numeric(Exp)||is.language(Exp))
+    isExp=TRUE
+  else
+    isExp=FALSE
     code = toCharacter(Exp)
     
     if (code == "") 
@@ -99,8 +103,10 @@ CSimplify <- function(Exp, C = TRUE,parenthesis=FALSE) {
     if(parenthesis){
       code=addParenthesis(code)
     }
-    return(code)
-        
+    if(isExp)
+      return(parse(text=code)[[1]])
+    else
+      return(code)
 }
 #' Internal usage only, the package export this function only for the other package to access.
 #' 

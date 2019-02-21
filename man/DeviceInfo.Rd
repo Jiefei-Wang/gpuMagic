@@ -65,7 +65,7 @@ getCurDevice()
 #Use the first device
 setDevice(1)
 #Use two devices
-setDevice(c(1,2))
+#setDevice(c(1,2))
 #Get the index of the current devices
 getDeviceIndex()
 #Get the job status in the first device

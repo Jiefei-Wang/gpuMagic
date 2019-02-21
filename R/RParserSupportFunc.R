@@ -110,7 +110,7 @@ replaceCode <- function(Exp) {
     # Further simplify the code if needed
     res = simplifySingleCode(replaceCode)
     res$insertBefore=c(res$insertBefore,res$Exp)
-    res$insertAfter=c(res$insertAfter,releaseCode)
+    res$insertInMainAfter=c(res$insertInMainAfter,releaseCode)
     res$Exp=as.symbol(varName)
     
     res
@@ -196,21 +196,6 @@ extract_for_if_Var <- function(parsedExp) {
           code = c(code, index_def_code,curExp,index_release_code)
           next
         }
-        # if (curExp[[1]] == "if") {
-        #     condition = curExp[[2]]
-        #     if (!is.symbol(condition)) {
-        #         conditionVar = GPUVar$getTmpVar()
-        #         conditionVar_def_code = paste0(conditionVar, "=", deparse(condition))
-        #         
-        #         conditionVar_def_code = parse(text = conditionVar_def_code)[[1]]
-        #         
-        #         code = c(code, conditionVar_def_code)
-        #         curExp[[2]] = as.symbol(conditionVar)
-        #         
-        #     }
-        #     code = c(code, curExp)
-        #     next
-        # }
         
         code = c(code, curExp)
     }

@@ -6,8 +6,7 @@ getEmpVarInfoTbl<-function(){
   #current version
   #Var: version
   varInfo$varVersion=hash()
-  varInfo$obj_freed=c()
-  varInfo$obj_inUsed=c()
+  varInfo$memPool=createMemPool()
   varInfo$printAll=function(){
     callFunc=sys.call()
     curInfo=eval(callFunc[[1]][[2]],envir=globalenv())
@@ -49,7 +48,7 @@ getEmpyTable<-function(type=""){
     #Physical storage information
     address="NA",designSize="NA",
     #How does a matrix align in the momery
-    storageMode="column",
+    storageMode="mixed",
     location="global",shared=FALSE,
     #compilation property
     require=FALSE,constVal=FALSE,constDef=FALSE,
@@ -72,9 +71,9 @@ getEmpyTable<-function(type=""){
 }
 
 
-
+allProp=names(getEmpyTable())
 primaryProp=c("dataType","precisionType","address","designSize",
-              "shared","location",
+              "storageMode","shared","location",
               "require","constVal","constDef","initial_ad","redirect","isPointer")
 
 
@@ -84,14 +83,15 @@ isPrimary<-function(x){
 }
 
 #Check if a variable is in the table
-hasVar<-function(varInfo,varName,version="auto"){
+#x: varInfo
+hasVar.varInfo<-function(x,varName,version="auto"){
   varName=toCharacter(varName)
   if(length(version)==0) return(FALSE)
   if(version=="auto"){
     version=0
   }
   var_char=paste0(varName,"+",version)
-  return(has.key(var_char,varInfo$profile))
+  return(has.key(var_char,x$profile))
 }
 
 
@@ -134,8 +134,11 @@ setVarInfo_hidden<-function(varInfo,info){
   initVarDef<-function(info){
     info$version=0
     if(isNA(info$designSize))
-      info$designSize=paste0("(",info$size1,")*(",info$size2,")")
+      info$designSize=Simplify(paste0("(",info$size1,")*(",info$size2,")"))
     return(info)
+  }
+  if(sum(!names(info)%in%allProp)!=0){
+    stop("Incorrect variable info")
   }
   var_char=info$var
   version=info$version
@@ -146,15 +149,14 @@ setVarInfo_hidden<-function(varInfo,info){
     if(hasVar(varInfo,info$var,0)){
       varDef_tbl=varInfo$profile[[varDef_char]]
       varDef_tbl[1,primaryProp]=info[1,primaryProp]
-      varInfo$profile[[varDef_char]]=varDef_tbl
     }else{
       if(version!=1)
         stop("The variable definition is not found and the current version is not 1")
       
       varDef_tbl=initVarDef(info)
-      varInfo$profile[[varDef_char]]=varDef_tbl
     }
-    info$version=version
+    
+    varInfo$profile[[varDef_char]]=varDef_tbl
     varInfo$profile[[varCur_char]]=info
     if(has.key(var_char,varInfo$varVersion)){
       varInfo$varVersion[[var_char]]=max(varInfo$varVersion[[var_char]],version)
@@ -220,27 +222,6 @@ getVarProperty<-function(varInfo,varName,property,version="auto"){
   return(value)
 }
 
-release_var<-function(varInfo,varName){
-  curInfo=getVarInfo(varInfo,varName)
-  if(!curInfo$isSpecial){
-    if(curInfo$redirect=="NA"){
-      if(varName%in%varInfo$obj_inUsed){
-        ind=which(varInfo$obj_inUsed==varName)
-        varInfo$obj_free=c(varInfo$obj_free,varName)
-        varInfo$obj_inUsed=varInfo$obj_inUsed[-ind]
-      }else{
-        if(!varName%in%varInfo$obj_free){
-          varInfo$releasedObj=c(varInfo$obj_free,varName)
-        }
-      }
-    }else{
-      redirectVar=curInfo$redirect
-      return(release_var(varInfo,redirectVar))
-    }
-  }
-  return(varInfo)
-}
-
 
 
 #' @rdname printFunctions
@@ -267,5 +248,79 @@ print.varInfo<-function(x,simplify=TRUE,printDef=FALSE,...){
 }
 
 
+
+release_var<-function(varInfo,varName){
+  varName=toCharacter(varName)
+  curInfo=getVarInfo(varInfo,varName)
+  hasData=(!curInfo$isSpecial)||(curInfo$isSpecial&&curInfo$specialType%in%c("seq"))
+  if(hasData){
+    if(curInfo$redirect=="NA"){
+      varInfo$memPool=addVar(
+        varInfo$memPool,varName,
+        curInfo$precisionType,curInfo$designSize,curInfo$location,curInfo$shared,curInfo$isPointer,curInfo$specialType)
+      varInfo$memPool=markFree(varInfo$memPool,varName)
+    }else{
+      redirectVar=curInfo$redirect
+      return(release_var(varInfo,redirectVar))
+    }
+  }
+  return(varInfo)
+}
+
+
+
+
+
+createMemPool<-function(){
+  memPool=list()
+  memPool$obj_isUsed=c()
+  memPool$obj=data.frame(
+    var=character(),precision=character(),length=character(),
+    location=character(),shared=logical(),isPointer=logical(),
+    specialType=character(),stringsAsFactors = FALSE)
+  
+  structure(memPool,class="memPool")
+}
+extractVars.memPool<-function(x){
+  return(x$obj$var)
+}
+markFree<-function(memPool,varName){
+  ind=which(extractVars(memPool)==varName)
+  if(length(ind)==1){
+    memPool$obj_isUsed[ind]=FALSE
+  }
+  memPool
+}
+markUsed<-function(memPool,varName){
+  ind=which(extractVars(memPool)==varName)
+  if(length(ind)==1){
+    memPool$obj_isUsed[ind]=TRUE
+  }else{
+    stop("The variable name is not in the table:", varName)
+  }
+  memPool
+}
+addVar<-function(memPool,varName,precision,len,location,shared=FALSE,isPointer=NA,specialType="NA"){
+  if(hasVar(memPool,varName,precision,len,location,shared,isPointer)){
+    return(memPool)
+  }
+  curInfo=createMemPoolInfo(varName,precision,len,location,shared,isPointer,specialType)
+  memPool$obj=rbind(memPool$obj,curInfo)
+  memPool$obj_isUsed=c(memPool$obj_isUsed,FALSE)
+  memPool
+}
+hasVar.memPool<-function(x,varName,precision,len,location,shared=FALSE,isPointer=NA,specialType="NA"){
+  if(is.na(isPointer)){
+    ind=which(names(x$obj)=="isPointer")
+  }
+  curInfo=createMemPoolInfo(varName,precision,len,location,shared,isPointer,specialType)
+  res=apply(x$obj[,-ind],1, function(x,y)sum(x!=y)==0,y=curInfo[,-ind])
+  sum(res)>0
+}
+createMemPoolInfo<-function(varName,precision,len,location,shared=FALSE,isPointer=NA,specialType="NA"){
+  data.frame(
+    var=varName,precision=precision,length=len,
+    location=location,shared=shared,isPointer=isPointer,specialType=specialType,stringsAsFactors = FALSE)
+}
 
 

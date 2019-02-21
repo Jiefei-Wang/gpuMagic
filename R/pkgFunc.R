@@ -103,7 +103,7 @@ GPUVar <- local({
 .elementTransformation = c("floor", "ceiling")
 
 .elementOp = c(.elementFuncs, .elementTransformation)
-.noParentElementOP = c("sum", "return")
+.noParentElementOP = c("t","sum", "return")
 .noChildElementOP = c("nrow","ncol")
 
 
@@ -149,9 +149,7 @@ GPUVar <- local({
 
 
 
-#' @include RRecompileFunc.R
-.recompileFuncs = list()
-.recompileFuncs$matrix = recompile_matrix
+
 # .recompileFuncs[['%*%']]=recompile_matrixMult
 
 #' @include RCParserFunc.R

@@ -126,15 +126,14 @@ RProfile2_checkFunc <- function(curExp) {
     if (!is.call(curExp)) {
         return(FALSE)
     }
-    if (is.preservedFunc(curExp)) 
-        return(FALSE)
     return(TRUE)
 }
 
 RProfile2_updateFunc <- function(type, level, codeMetaInfo, parsedExp, 
     code, i, res) {
     result = general_updateFunc(codeMetaInfo, parsedExp, code)
-    result$codeMetaInfo$varInfo = res$varInfo
+    if("varInfo"%in%names(res))
+      result$codeMetaInfo$varInfo = res$varInfo
     result$codeMetaInfo$errorCheck = rbind(result$codeMetaInfo$errorCheck, 
         res$errorCheck)
     result

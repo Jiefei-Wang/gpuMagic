@@ -1,44 +1,9 @@
 ######## Helper functions###################
-#' @return A vector of variables
-#' @rdname internalFunctions
-#' @export
-extractVars <- function(x) UseMethod("extractVars")
-#' @method extractVars default
-#' @rdname internalFunctions
-#' @export
-extractVars.default <- function(x) {
-    if(is.language(x)) 
-      return(extractVars.expression(x))
-    if(is.numeric(x))
-      return(NULL)
-    matchRes = gregexpr("[a-zA-Z0-9_]+", x)[[1]]
-    vars = vapply(
-      seq_along(matchRes), 
-      function(i, x, start, len) 
-        substr(x, start[i], start[i] + len[i] - 1), "",
-      x, matchRes, attr(matchRes, "match.length")
-    )
-    vars
-}
-
 #' @method extractVars extCode
 #' @rdname internalFunctions
 #' @export
 extractVars.extCode <- function(x) {
-    x$varDef$varName[!is.na(x$varDef$precision)]
-}
-#' @method extractVars expression
-#' @rdname internalFunctions
-#' @export
-extractVars.expression <- function(x) {
-  if(!is.call(x)){
-    return(deparse(x))
-  }
-  res=c()
-  for(i in seq_len(length(x)-1)+1){
-    res=c(res,extractVars(x[[i]]))
-  }
-  return(res)
+  x$varDef$varName[!is.na(x$varDef$precision)]
 }
 ############# extCode definition##############
 createExtCode <- function(opt) {
@@ -106,8 +71,8 @@ finalizeExtCode <- function(extCode) {
     }
     value
 }
-hasVar.extCode <- function(extCode, var) {
-    var %in% extCode$varDef$varName
+hasVar.extCode <- function(x, var) {
+    var %in% x$varDef$varName
 }
 
 

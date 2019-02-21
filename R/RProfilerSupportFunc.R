@@ -24,7 +24,7 @@ profileVar <- function(parms, parmsWithValue,parmsConst) {
         info$shared = TRUE
         info$constVal = varName[i] %in% parmsConst
         info$require = TRUE
-        info$initialization = FALSE
+        info$initial_ad = FALSE
         
         
         if (varName[i] %in% parmsWithValue) {
@@ -96,10 +96,13 @@ getExpInfo <- function(varInfo, Exp) {
     res$ExpInfo$size2=Simplify2(res$ExpInfo$size2)
     
     ExpInfo = res$ExpInfo
+    #Remove the temporary variable
+    res$addition=NULL
     
     # If the variable is explicit definition
     if (is.call(Exp) && (deparse(Exp[[1]]) %in% .profileExplicitDefine)) 
         return(res)
+    
     # Some optimization
     if (!isNA(ExpInfo$size1) && !isNA(ExpInfo$size2) && Simplify(ExpInfo$size1) == 
         "1" && Simplify(ExpInfo$size2) == "1") {
@@ -140,10 +143,14 @@ getExpInfo_hidden <- function(varInfo, Exp) {
 
 
 # combine the expression info from several expInfo
-combineExpInfo <- function(result, ...,offset=0,autoOffset=TRUE) {
+combineExpInfo <- function(result, ...,infoPack=NULL,offset=0,autoOffset=TRUE) {
   if(is.language(result))stop("Incorrect old code")
-  result=combineInsertCode(result, ...,offset=offset,autoOffset=autoOffset)
-  parms = list(...)
+  result=combineInsertCode(result, ...,infoPack=infoPack,offset=offset,autoOffset=autoOffset)
+  if(is.null(infoPack)){
+    parms = list(...)
+  }else{
+    parms = infoPack
+  }
   for (i in seq_along(parms)) {
     curInfo = parms[[i]]
     result$errorCheck = rbind(result$errorCheck, curInfo$errorCheck)
