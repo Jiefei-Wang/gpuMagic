@@ -58,6 +58,7 @@ simplifyElementOp <- function(Exp, useElementOp = TRUE, isTop = TRUE) {
             child_eleOP = TRUE
         }
         for (i in seq_len(length(Exp) - 1) + 1) {
+            if(deparse(Exp[[i]])=="") next
             curExp = Exp[[i]]
             res = simplifyElementOp(curExp, useElementOp = child_eleOP, isTop = FALSE)
             result=combineInsertCode(result,res,offset=i,autoOffset=FALSE)
@@ -103,14 +104,13 @@ replaceCode <- function(Exp) {
         replaceCode = paste0(varName, "=", deparse(Exp))
     }
     
-    #replaceCode = paste0(varName, "=", deparse(Exp))
     
     replaceCode = parse(text = replaceCode)[[1]]
-    releaseCode=parse(text=paste0("compiler.release(",varName,")"))[[1]]
+    #releaseCode=parse(text=paste0("compiler.release(",varName,")"))[[1]]
     # Further simplify the code if needed
     res = simplifySingleCode(replaceCode)
     res$insertBefore=c(res$insertBefore,res$Exp)
-    res$insertInMainAfter=c(res$insertInMainAfter,releaseCode)
+    #res$insertInMainAfter=c(res$insertInMainAfter,releaseCode)
     res$Exp=as.symbol(varName)
     
     res

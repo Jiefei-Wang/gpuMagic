@@ -247,10 +247,11 @@ extractVars.expression <- function(x) {
   if(!is.call(x)){
     return(deparse(x))
   }
-  if(isNumeric(x))
+  if(isNumeric(x)||deparse(x)=="")
     return(NULL)
   res=c()
   for(i in seq_len(length(x)-1)+1){
+    if(!is.call(x[[i]])&&deparse(x[[i]])=="")next
     res=c(res,extractVars(x[[i]]))
   }
   return(res)

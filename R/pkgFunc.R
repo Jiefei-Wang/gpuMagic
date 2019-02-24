@@ -9,6 +9,13 @@ GPUVar <- local({
     GPUVar_env$default_int = "int"
     GPUVar_env$default_size_type = "uint"
     
+    
+    #gpu size prefix
+    GPUVar_env$matrix_size_prefix="gpu_size_of_"
+    
+    
+    
+    
     # matrix size info
     GPUVar_env$global_private_size = "gpu_gp_size_arg"
     GPUVar_env$global_share_size = "gpu_gs_size_arg"
@@ -58,14 +65,20 @@ GPUVar <- local({
     
     # Deducted variable
     GPUVar_env$gpu_global_id = "gpu_global_id"
+    GPUVar_env$gpu_global_size = "gpu_global_size"
     
-    # The offset to find the worker data space in the global memory It is
-    # not an argument
+    
+    # The offset to find the worker data space in the global memory 
+    # It is not an argument
     GPUVar_env$worker_offset = "gpu_worker_offset"
+    GPUVar_env$element_dist="gpu_element_dist"
     
     # parameters for creating the function
     GPUVar_env$functionCount = 0
     GPUVar_env$functionName = "gpu_kernel"
+    
+    GPUVar_env$variableDef="GPU_VARIABLE_DEF_"
+    
     
     # This number can be reset to 0 in the beggining of the parser The
     # parser can call it when it needs a new variable
@@ -158,7 +171,6 @@ GPUVar <- local({
 .cFuncs[["<-length"]] = C_length_left_right
 .cFuncs[["<-nrow"]] = C_nrow_left_right
 .cFuncs[["<-ncol"]] = C_ncol_left_right
-.cFuncs[["<-["]] = C_subset_right
 .cFuncs[["<-Matrix"]] = C_NULL
 .cFuncs[["<-Scalar"]] = C_NULL
 .cFuncs[["<-resize"]] = C_NULL
@@ -192,6 +204,7 @@ GPUVar <- local({
 .cFuncs[["<-ceiling"]] = C_element_ceil
 .cFuncs[["<-abs_int"]] = C_element_abs
 .cFuncs[["<-abs_float"]] = C_element_abs
+.cFuncs[["<-["]] = C_element_sub
 
 
 
@@ -208,8 +221,13 @@ GPUVar <- local({
 .cFuncs[["message"]] = C_message
 .cFuncs[["setVersion"]] = C_setVersion
 
-
-
+#' @include RCParserFunc_Rlevel.R
+.sizeFuncs=list()
+.sizeFuncs[["["]]=R_subset_size
+general_size_function_list=c("+","-","*","/",">","<",">=","<=","==","!=")
+for(i in general_size_function_list){
+  .sizeFuncs[[i]]=R_general_size
+}
 
 #' Create a scalar variable
 #' 
@@ -361,14 +379,18 @@ compiler.addScalarInfo<-function(varName,precisionType,...){
 compiler.setProperty<-function(varName,...){
   
 }
-compiler.define<-function(varName){
+
+#define the variable(s)
+compiler.define<-function(varName,...){
   
 }
+#If the variable is in used, then define it.
 compiler.promiseDefine<-function(precision,varName,definition){
-  paste0(precision," ",varName,"=",definition,";")
+  #paste0(precision," ",varName,"=",definition,";")
 }
+#If the variable is in used, then do the assignment
 compiler.promiseAssign<-function(varName,value){
-  paste0(varName,"=",value,";")
+  #paste0(varName,"=",value,";")
 }
 
 compiler.release<-function(varName){

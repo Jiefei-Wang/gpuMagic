@@ -1,75 +1,86 @@
 # ==================parser 1====================
-addvariableSizeInfo <- function(sizeInfo, curVarInfo) {
+getPointerType<-function(varInfo,curVar){
+  if(curVar==GPUVar$return_variable){
+    return(TRUE)
+  }
+  curInfo = getVarInfo(varInfo, curVar, 0)
+  if(!is.na(curInfo$isPointer))
+    return(curInfo$isPointer)
+  if(curInfo$redirect != "NA"){
+    return(getPointerType(varInfo,curInfo$redirect))
+  }
+  if(curInfo$isRef){
+    refVar=deparse(parse(text=curInfo$specialContent)[[1]][[2]])
+    return(getPointerType(varInfo,refVar))
+  }
+  location=curInfo$location
+  shared=curInfo$shared
+  if (curInfo$isSeq) {
+    if (location=="local"&&shared==FALSE) {
+      return(FALSE)
+    } else {
+      return(TRUE)
+    }
+  }
+  if(location=="local"&&shared==FALSE&&curInfo$dataType==T_scale){
+    return(FALSE)
+  }else{
+    return(TRUE)
+  }
+}
+
+addvariableSizeInfo <- function(sizeInfo, curInfo) {
   curSizeinfo = data.frame(
-    var = curVarInfo$var, precisionType = curVarInfo$precisionType, 
-    totalSize = Simplify(paste0("(", curVarInfo$totalSize, ")*", getTypeSize(curVarInfo$precisionType))), 
-    size1 = curVarInfo$size1, size2 = curVarInfo$size2, stringsAsFactors = FALSE)
+    var = curInfo$var, precisionType = curInfo$precisionType, 
+    size1 = curInfo$size1, size2 = curInfo$size2,
+    length = curInfo$designSize,
+    sizeInByte = Simplify(paste0("(", curInfo$designSize, ")*", getTypeSize(curInfo$precisionType))), 
+    stringsAsFactors = FALSE)
   
   
-    if (curVarInfo$redirect != "NA") {
-        curSizeinfo$totalSize = 0
+    if (curInfo$redirect != "NA"||curInfo$require) {
+        curSizeinfo$sizeInByte = 0
     }
     sizeInfo = rbind(sizeInfo, curSizeinfo)
     return(sizeInfo)
 }
-addVariableDeclaration <- function(varInfo,curVarInfo, data, offset, offsetInd,prefix) {
-  CXXtype = getTypeCXXStr(curVarInfo)
-  if (curVarInfo$isRef) {
-      return(list(code=NULL,Info=curVarInfo))
-    }
-  
-  
+
+addVariableDeclaration <- function(varInfo,curInfo, data, offset, offsetInd,prefix) {
+  CXXtype = getTypeCXXStr(curInfo$precisionType)
+  worker_offset=GPUVar$worker_offset
   location = paste0(prefix, " ")
+  curInfo$address = curInfo$var
+  
   
   # If the variable is a sequence
-  if (curVarInfo$isSeq) {
-    if (prefix == "private") {
-      curCode = paste0(CXXtype, 3, " ", curVarInfo$var, ";")
-      curVarInfo$isPointer=FALSE
+  if (curInfo$isSeq) {
+    if (!curInfo$isPointer) {
+      curCode = paste0(CXXtype, 3, " ", curInfo$var, ";")
     } else {
-      curCode = paste0(location, CXXtype, 3, "* ", curVarInfo$var, 
-                       "=", "(", location, CXXtype, 3, "*)(", data, "+", offset, 
-                       "[", offsetInd, "]);")
-      curVarInfo$isPointer=TRUE
+      curCode = paste0(location, CXXtype, 3, "* ", curInfo$var, 
+                       "=", "((", location, CXXtype, 3, "*)(", data, "+", offset, 
+                       "[", offsetInd, "]))+",worker_offset,";")
     }
-    curVarInfo$address = curVarInfo$var
-    return(list(code=curCode,Info=curVarInfo))
+    return(list(code=curCode,Info=curInfo))
   }
-  if (curVarInfo$redirect == "NA") {
-    designSize1=curVarInfo$designSize1
-    designSize2=curVarInfo$designSize2
-    if (prefix == "private") {
-      if(isNumeric(designSize1)&&isNumeric(designSize2)){
-        size=Simplify(paste0(designSize1,"*",designSize2))
-        curCode = paste0(location, CXXtype, " ", curVarInfo$var,"[",size,"];")
-        curVarInfo$isPointer=TRUE
-      }else{
-        stop("Dynamically allocate private memory is not allowed:", curVarInfo$var)
-      }
+  
+  designSize=curInfo$designSize
+  if (prefix == "private") {
+    if(isNumeric(designSize)){
+      curCode = paste0(location, CXXtype, " ", curInfo$var,"[",designSize,"];")
     }else{
-      if(designSize1=="1"&&designSize2=="1"&&curVarInfo$shared==FALSE){
-        curCode = paste0(location, CXXtype, " ", curVarInfo$var, "=", 
-                         "*((", location, CXXtype, "*)(", data, "+", offset, "[", offsetInd, 
-                         "]));")
-        curVarInfo$isPointer=FALSE
-      }else{
-        curCode = paste0(location, CXXtype, "* ", curVarInfo$var, "=", 
-                         "(", location, CXXtype, "*)(", data, "+", offset, "[", offsetInd, 
-                         "]);")
-        curVarInfo$isPointer=TRUE
-      }
+      stop("Dynamically allocate private memory is not allowed:", curInfo$var)
     }
-  } else {
-    curCode = paste0("#define ", curVarInfo$var, " ", curVarInfo$redirect)
-    if(curVarInfo$redirect==GPUVar$return_variable){
-      curVarInfo$isPointer=TRUE
-    }else{
-    parentInfo=getVarInfo(varInfo,curVarInfo$redirect)
-    curVarInfo$isPointer=parentInfo$isPointer
-    }
+  }else{
+      curCode = paste0(location, CXXtype, "* ", curInfo$var, "=", 
+                       "((", location, CXXtype, "*)(", data, "+", offset, "[", offsetInd, 
+                       "]))+",worker_offset,";")
   }
-  curVarInfo$address = curVarInfo$var
-  return(list(code=curCode,Info=curVarInfo))
+  return(list(code=curCode,Info=curInfo))
+}
+
+getSizeVar<-function(varName,i){
+  paste0(GPUVar$matrix_size_prefix, varName,"_dim_",i)
 }
 
 
@@ -197,7 +208,7 @@ getSeqAddress <- function(varInfo, var,C_symbol=FALSE) {
     from = paste0(ad, ".s0")
     to = paste0(ad, ".s1")
     by = paste0(ad, ".s2")
-    length = R_getVarSize1(varInfo,var,C_symbol=C_symbol)
+    length = getSizeVar(deparse(var),ind)
     data.frame(from = from, to = to, by = by, length = length, stringsAsFactors = FALSE)
 }
 
@@ -388,5 +399,7 @@ C_matrix_assignment <- function(bodyCode, loopInd1, loopStart1 = "0", loopEnd1,
 matrix_assignment_func_doNothing <- function(value_left, value_right) {
     paste0(value_left, "=", value_right)
 }
+
+
 
 

@@ -65,28 +65,39 @@ C_element_OP <- function(varInfo, Exp) {
     assignmentCode = paste0(leftElement$value, "=", rightElement$value, ";")
     if (leftInfo$dataType == T_scale) {
         extCode = unlist(extCode)
-        if (is.null(extCode)) 
-            code = assignmentCode else code = c("{", extCode, assignmentCode, "}")
+        if (is.null(extCode)) {
+          code = assignmentCode 
+        }else {
+          code = c("{", extCode, assignmentCode, "}")
+        }
     } else {
-        code = C_matrix_assignment(assignmentCode, loopInd1 = "gpu_element_j", loopEnd1 = R_ncol(varInfo, leftExp), loopInd2 = "gpu_element_i", 
-            loopEnd2 = R_nrow(varInfo, leftExp), loopCode0 = extCode$L0, loopCode1 = extCode$L1, loopCode2 = extCode$L2)
+      code = C_matrix_assignment(
+        assignmentCode, 
+        loopInd1 = "gpu_element_j", loopEnd1 = R_ncol(varInfo, leftExp), 
+        loopInd2 = "gpu_element_i",  loopEnd2 = R_nrow(varInfo, leftExp), 
+        loopCode0 = extCode$L0, loopCode1 = extCode$L1, loopCode2 = extCode$L2)
     }
     return(code)
 }
 # 0-based index 
-# Return: list:value,extCode
+# Return: 
+# list: value
+#       extCode
 C_element_getCExp <- function(varInfo, Exp, sub, extCode = NULL, opt = NULL) {
     if (is.null(extCode)) 
         extCode = createExtCode(opt)
-    if (isNumeric(Exp)) {
+    Exp = Simplify(Exp)
+    
+    if (is.numeric(Exp)) {
         res = list(value = toCharacter(Exp), extCode = extCode)
         return(res)
     }
     
-    if (is.symbol(Exp) || Exp[[1]] == "[") {
-        res = R_expression_sub(varInfo, Exp, sub = sub, sub_C = TRUE, opt = opt, extCode = extCode, base = 0)
-        return(res)
+    if (is.symbol(Exp)) {
+      res = R_expression_sub(varInfo, Exp, sub = sub, opt = opt, extCode = extCode)
+      return(res)
     }
+    
     
     func = paste0("<-", deparse(Exp[[1]]))
     C_func = .cFuncs[[func]]
@@ -160,6 +171,29 @@ C_element_abs<-function(varInfo, Exp, sub, opt, extCode){
     res$value = paste0("fabs(", res$value, ")")
   return(res)
 }
+processSub<-function(varInfo, Exp, sub, opt, extCode){
+  if(deparse(Exp)==""){
+    res = list(value = sub, extCode = extCode)
+    return(res)
+  }
+  res=C_element_getCExp(varInfo, Exp,sub,extCode = extCode, opt = opt)
+  res$value=CSimplify(paste0(res$value,"-1"))
+  return(res)
+}
+
+C_element_sub<-function(varInfo, Exp, sub, opt, extCode){
+  targetExp=Exp[[2]]
+  sub1=processSub(varInfo, Exp[[3]],sub[1],extCode = extCode, opt = opt)
+ 
+  
+  if (length(sub) == 1) {
+    res = C_element_getCExp(varInfo, targetExp,sub=sub1$value, extCode = sub1$extCode, opt = opt)
+  } else {
+    sub2=processSub(varInfo, Exp[[4]],sub[2],extCode = sub1$extCode, opt = opt)
+    res = C_element_getCExp(varInfo, targetExp,sub=c(sub1$value,sub2$value), extCode = sub2$extCode, opt = opt)
+  }
+  return(res)
+}
 
 # ================Regular functions==================
 
@@ -207,15 +241,6 @@ C_ncol_left_right <- function(varInfo, Exp) {
     return(code)
 }
 
-
-# assigning the matrix subset to a variable I NEED A DIMENSION CHECK#################### tmp1=subRef(A,1,)
-# Exp=parse(text='B=A[ind,]')[[1]]
-C_subset_right <- function(varInfo, Exp) {
-    leftVar = Exp[[2]]
-    rightExp = Exp[[3]]
-    code = C_general_matrix_assignment(varInfo, leftVar, rightExp)
-    code
-}
 
 # varInfo=GPUExp2$varInfo Exp=parse(text='return(C)')[[1]]
 C_return <- function(varInfo, Exp) {

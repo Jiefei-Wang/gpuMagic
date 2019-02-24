@@ -34,11 +34,11 @@ Suggests: testthat,
     BiocStyle
 Collate:
     'ParserFramework.R'
+    'RCParserFunc_Rlevel.R'
     'RCParserFunc.R'
     'RProfilerFunc.R'
     'pkgFunc.R'
     'RCParser.R'
-    'RCParserFunc_Rlevel.R'
     'RCParserSupportFunc.R'
     'ROptimizer.R'
     'ROptimizerSupportFunc.R'

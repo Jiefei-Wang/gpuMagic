@@ -15,8 +15,6 @@ getIntegerType<-function(type){
   c("bool","char","uint","int","ulong","long")
 }
 getTypeCXXStr <- function(type) {
-  if(!is.null(attr(type,"infoType"))&&attr(type,"infoType")=="singleInfo")
-    type=type$precisionType
   switch(type, bool = "bool", char = "char", half = "half", float = "float", 
          double = "double", int = "int", long = "long", uint = "uint", ulong = "ulong", 
          stop("invalid type: ", type))

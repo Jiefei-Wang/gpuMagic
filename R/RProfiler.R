@@ -32,7 +32,7 @@ RProfile2 <- function(profileMeta1) {
     if (DEBUG) {
         profileMeta1$varInfo = copyVarInfoTbl(profileMeta1$varInfo)
     }
-    profileMeta1$varInfo$errorCheck = c()
+    profileMeta1$errorCheck = NULL
     
     profileMeta2 = parserFrame(RProfile2_parserFunc, RProfile2_checkFunc, 
         RProfile2_updateFunc, profileMeta1)

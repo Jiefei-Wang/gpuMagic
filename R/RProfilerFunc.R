@@ -422,7 +422,7 @@ profile_elementOP<-function(varInfo, Exp,parmsIndex=seq_len(length(Exp)-1)+1){
     check=Simplify2(check,parentheses = FALSE)
     errorCheck = setErrorCheck(level = "error", code = deparse(Exp), check = check, 
                                msg = "Uncomfortable matrix dimension is found")
-    result$errorCheck = rbind(res$errorCheck, errorCheck)
+    result$errorCheck = rbind(result$errorCheck, errorCheck)
   }
   result$ExpInfo = ExpInfo
   if(hasValue){

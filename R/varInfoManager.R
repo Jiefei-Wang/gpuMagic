@@ -47,7 +47,7 @@ getEmpyTable<-function(type=""){
     version=1,
     #Physical storage information
     address="NA",designSize="NA",
-    #How does a matrix align in the momery
+    #How does a matrix align in the momery: mixed or single
     storageMode="mixed",
     location="global",shared=FALSE,
     #compilation property
@@ -135,8 +135,13 @@ setVarInfo_hidden<-function(varInfo,info){
     info$version=0
     if(isNA(info$designSize))
       info$designSize=Simplify(paste0("(",info$size1,")*(",info$size2,")"))
+    
+    if(info$shared)
+      info$storageMode="single"
     return(info)
   }
+  info$isSeq=NULL
+  info$isRef=NULL
   if(sum(!names(info)%in%allProp)!=0){
     stop("Incorrect variable info")
   }
@@ -154,6 +159,10 @@ setVarInfo_hidden<-function(varInfo,info){
         stop("The variable definition is not found and the current version is not 1")
       
       varDef_tbl=initVarDef(info)
+      #Find if the memory pool has the free variable
+      res=def_var(varInfo,varDef_tbl)
+      varInfo=res$varInfo
+      varDef_tbl=res$curInfo
     }
     
     varInfo$profile[[varDef_char]]=varDef_tbl
@@ -257,7 +266,8 @@ release_var<-function(varInfo,varName){
     if(curInfo$redirect=="NA"){
       varInfo$memPool=addVar(
         varInfo$memPool,varName,
-        curInfo$precisionType,curInfo$designSize,curInfo$location,curInfo$shared,curInfo$isPointer,curInfo$specialType)
+        curInfo$precisionType,curInfo$designSize,curInfo$location,
+        curInfo$shared,curInfo$isPointer,curInfo$specialType)
       varInfo$memPool=markFree(varInfo$memPool,varName)
     }else{
       redirectVar=curInfo$redirect
@@ -267,7 +277,25 @@ release_var<-function(varInfo,varName){
   return(varInfo)
 }
 
-
+def_var<-function(varInfo,curInfo){
+  varName=curInfo$var
+  hasData=(!curInfo$isSpecial)||(curInfo$isSpecial&&curInfo$specialType%in%c("seq"))
+  if(hasData){
+    if(curInfo$redirect=="NA"){
+      rediectVar=findFreeVar(
+        varInfo$memPool,
+        curInfo$precisionType,curInfo$designSize,curInfo$location,
+        curInfo$shared,curInfo$isPointer,curInfo$specialType)
+      if(!is.null(rediectVar)){
+        curInfo$redirect=rediectVar
+        curInfo$designSize=0
+        curInfo$initial_ad=FALSE
+        varInfo$memPool=markUsed(varInfo$memPool,rediectVar)
+      }
+    }
+  }
+  return(list(varInfo=varInfo,curInfo=curInfo))
+}
 
 
 
@@ -321,6 +349,23 @@ createMemPoolInfo<-function(varName,precision,len,location,shared=FALSE,isPointe
   data.frame(
     var=varName,precision=precision,length=len,
     location=location,shared=shared,isPointer=isPointer,specialType=specialType,stringsAsFactors = FALSE)
+}
+
+findFreeVar<-function(memPool,precision,len,location,shared=FALSE,isPointer=NA,specialType="NA"){
+  if(sum(memPool$obj_isUsed)==length(memPool$obj_isUsed))return(NULL)
+  if(is.na(isPointer)){
+    ind=which(names(memPool$obj)=="isPointer")
+  }
+  ind=c(ind,which(names(memPool$obj)=="var"))
+  poolVarInfo=memPool$obj[!memPool$obj_isUsed,]
+  curInfo=createMemPoolInfo("NA",precision,len,location,shared,isPointer,specialType)
+  res=apply(poolVarInfo[,-ind],1, function(x,y)sum(x!=y)==0,y=curInfo[,-ind])
+  res1=which(res)
+  if(length(res1)>0){
+    return(poolVarInfo[res1[1],]$var)
+  }else{
+    return(NULL)
+  }
 }
 
 
