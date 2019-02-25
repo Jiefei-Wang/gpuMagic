@@ -11,8 +11,29 @@ GPUVar <- local({
     
     
     #gpu size prefix
-    GPUVar_env$matrix_size_prefix="gpu_size_of_"
+    GPUVar_env$matrix_size_prefix="gpu_"
+    GPUVar_env$matrix_temporary_size="gpu_matrix_temporary_size"
+    GPUVar_env$promiseAssgin="//compiler promise assign:"
     
+    
+    #Matrix number
+    GPUVar_env$gp_number="gpu_gp_number"
+    GPUVar_env$gs_number="gpu_gs_number"
+    GPUVar_env$lp_number="gpu_lp_number"
+    GPUVar_env$ls_number="gpu_ls_number"
+    
+    
+    #This is the offset to find the data in the function argument
+    #It is a macro
+    GPUVar_env$global_private_offset="gpu_gp_offset"
+    GPUVar_env$global_shared_offset="gpu_gs_offset"
+    GPUVar_env$local_shared_offset="gpu_ls_offset"
+    
+    #The macro that find the gp,gs,lp,ls size
+    GPUVar_env$gp_size="gpu_gp_size"
+    GPUVar_env$gs_size="gpu_gs_size"
+    GPUVar_env$lp_size="gpu_lp_size"
+    GPUVar_env$ls_size="gpu_ls_size"
     
     
     
@@ -21,37 +42,22 @@ GPUVar <- local({
     GPUVar_env$global_share_size = "gpu_gs_size_arg"
     GPUVar_env$local_share_size = "gpu_ls_size_arg"
     
-    # matrix dimension info 
-    # the order is gp_size1,gp_size2,gs~,lp~,ls~
-    GPUVar_env$matrix_size_info="gpu_matrix_size_info"
     
     # worker private data, loacted in global memory
     GPUVar_env$global_private_data = "gpu_gp_data"
     GPUVar_env$global_private_totalSize = "gpu_gp_totalSize"
     
-    # Per worker length
-    GPUVar_env$global_private_size1 = "gpu_gp_size1"
-    GPUVar_env$global_private_size2 = "gpu_gp_size2"
     # Per worker offset
     GPUVar_env$global_private_offset = "gpu_gp_offset"
     
     # worker shared data, located in global memory
     GPUVar_env$global_shared_data = "gpu_gs_data"
-    GPUVar_env$global_shared_size1 = "gpu_gs_size1"
-    GPUVar_env$global_shared_size2 = "gpu_gs_size2"
-    GPUVar_env$global_shared_offset = "gpu_gs_offset"
     
     # worker private data, located in private/local memory
     GPUVar_env$local_private_data = "gpu_lp_data"
-    GPUVar_env$local_private_size1 = "gpu_lp_size1"
-    GPUVar_env$local_private_size2 = "gpu_lp_size2"
-    GPUVar_env$local_private_offset = "gpu_lp_offset"
     
     # worker shared data, located in local memory
     GPUVar_env$local_shared_data = "gpu_ls_data"
-    GPUVar_env$local_shared_size1 = "gpu_ls_size1"
-    GPUVar_env$local_shared_size2 = "gpu_ls_size2"
-    GPUVar_env$local_shared_offset = "gpu_ls_offset"
     
     
     # return value
@@ -220,6 +226,8 @@ GPUVar <- local({
 .cFuncs[["next"]] = C_next
 .cFuncs[["message"]] = C_message
 .cFuncs[["setVersion"]] = C_setVersion
+.cFuncs[["compiler.define"]] = C_compiler_define
+
 
 #' @include RCParserFunc_Rlevel.R
 .sizeFuncs=list()
@@ -385,8 +393,8 @@ compiler.define<-function(varName,...){
   
 }
 #If the variable is in used, then define it.
-compiler.promiseDefine<-function(precision,varName,definition){
-  #paste0(precision," ",varName,"=",definition,";")
+compiler.promiseDefine<-function(precision,varName){
+  #paste0(precision," ",varName;")
 }
 #If the variable is in used, then do the assignment
 compiler.promiseAssign<-function(varName,value){

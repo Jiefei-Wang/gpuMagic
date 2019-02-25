@@ -1,8 +1,9 @@
-# C_element_getCExp(varInfo,quote(A[ind,]),c(3,6)-1,opt=NULL)
+# C_element_getCExp(varInfo,quote((At+A)[ind,]),c(3,6)-1,opt=NULL)
 
 R_expression_sub <- function(varInfo, Exp, sub, opt = NULL, extCode = NULL) {
     # fill the vector with the first element to make the length of it
     # consistant with the length of Exp
+    
     curInfo = getVarInfo(varInfo, Exp)
     if (curInfo$isRef) {
       refExp = parse(text = curInfo$specialContent)[[1]]
@@ -47,33 +48,38 @@ R_expression_sub <- function(varInfo, Exp, sub, opt = NULL, extCode = NULL) {
 # Expression should be a variable or a matrix subset
 # R_oneIndex_exp_sub(varInfo,quote(A[tmp1]),3)
 R_oneIndex_exp_sub <- function(varInfo, Exp, k, opt = NULL, extCode = NULL) {
-    index_type=GPUVar$default_index_type
+    
     # If the expression is a variable
     curInfo = getVarInfo(varInfo, Exp)
     rowNum = R_nrow(varInfo,Exp)
-    
-    col_ind_var = GPUVar$getTmpVar()
-    col_ind_value = CSimplify(paste0("(", index_type, ")((", 
-                                    k, ")/(", rowNum, "))"))
-    # if the temporary variable is a constant, it will be plug into the
-    # code Otherwise, create a temporary variable for it
-    if (isNumeric(col_ind_value) || length(grep("/", col_ind_value, fixed = TRUE)) == 
-        0) {
-      col_ind_var = paste0("(", col_ind_value, ")")
-    } else {
-      res = getVarFromExtCode(extCode, index_type, col_ind_value)
-      col_ind_var = res$var
-      extCode = res$extCode
-    }
-    
-    i = paste0(k, "-", rowNum, "*", col_ind_var)
-    j = col_ind_var
-    
-    res = R_getVarSub(varInfo, Exp, i = i, j = j, opt = opt, extCode = extCode)
-    
+    res_index=one_to_two_index(k,extCode = extCode,rowNum=rowNum)
+    res = R_getVarSub(varInfo, Exp, i = res_index$i, j = res_index$j, opt = opt, extCode = res_index$extCode)
     return(res)
 }
 
+#Return: i, j, extCode
+one_to_two_index<-function(k,extCode,rowNum){
+  
+  index_type=GPUVar$default_index_type
+  col_ind_var = GPUVar$getTmpVar()
+  col_ind_value = CSimplify(paste0("(", index_type, ")((", 
+                                   k, ")/(", rowNum, "))"))
+  # if the temporary variable is a constant, it will be plug into the
+  # code Otherwise, create a temporary variable for it
+  if (isNumeric(col_ind_value) || length(grep("/", col_ind_value, fixed = TRUE)) == 
+      0) {
+    col_ind_var = col_ind_value
+  } else {
+    res = getVarFromExtCode(extCode, index_type, col_ind_value)
+    col_ind_var = res$var
+    extCode = res$extCode
+  }
+  
+  i = CSimplify(paste0(k, "-", rowNum, "*(", col_ind_var,")"))
+  j = CSimplify(col_ind_var)
+  
+  return(list(i=i,j=j,extCode=extCode))
+}
 # Get an element from the matrix(eg. A[i,j]), the transpose will be
 # taken into account 
 # i,j are either a number or a variable in C code , they are 0-based index
@@ -95,18 +101,23 @@ R_getVarSub <- function(varInfo, var, i, j = 1, opt = NULL, extCode = NULL) {
     #If the data is not a pointer, it is a scalar, then directly return the address
     if(is.na(isPointer)) stop("Unable to determine the type of the variable,",
                               " this is a bug in the package, please contact the author.")
-    if(!isPointer) 
-      return(list(value =address,extCode=extCode))
-    #If the data is a pointer, but the size is 1, then return the first element in the address
-    if((curInfo$size1=="1"&&curInfo$size2=="1")||curInfo$dataType==T_scale){
-      if(!curInfo$isSeq){
-        return(list(value =paste0(address,"[0]"),extCode=extCode))
-      }else{
-        seqInfo = getSeqAddress(varInfo, var)
-        return(list(value =seqInfo$from,extCode=extCode))
+    
+    
+    
+    if(!isPointer) {
+      if(!curInfo$isSeq)
+        return(list(value =address,extCode=extCode))
+    }else{
+      #If the data is a pointer, but the size is 1, then return the first element in the address
+      if((curInfo$size1=="1"&&curInfo$size2=="1")||curInfo$dataType==T_scale){
+        if(!curInfo$isSeq){
+          return(list(value =paste0(address,"[0]"),extCode=extCode))
+        }else{
+          seqInfo = getSeqAddress(varInfo, var)
+          return(list(value =seqInfo$from,extCode=extCode))
+        }
       }
     }
-    
     
     # compute the matrix offset
     size1 = R_getVarSize(varInfo, var,C_symbol = FALSE,ind=1,processTranspose = FALSE)
@@ -122,7 +133,6 @@ R_getVarSub <- function(varInfo, var, i, j = 1, opt = NULL, extCode = NULL) {
     
     if (curInfo$isSeq) {
       seqInfo = getSeqAddress(varInfo, var)
-      
       res = list(extCode=extCode)
       res$value = CSimplify(paste0(seqInfo$from, "+", "(", rowOffset, 
                                    "-1)*", seqInfo$by))
@@ -185,7 +195,7 @@ R_getVarSize <- function(varInfo, var,C_symbol, ind,processTranspose=TRUE) {
         return(res)
       }
       if (curInfo$isSeq) {
-        res=ifelse(ind==1,getSizeVar(var_char,ind),1)
+        res=ifelse(ind==1,getSizeVar(var_char,1),1)
         return(res)
       }
       if (curInfo$dataType == T_scale) 

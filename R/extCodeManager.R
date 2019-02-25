@@ -142,6 +142,7 @@ getVarsNum <- function(extCode) {
 hoistOpt <- function(extCode, Exp) {
     code = C_to_R(Exp)
     code = vapply(expandExp(code), Simplify,character(1))
+    #code=expandExp(code)
     codeInfo = list()
     baseLevel = c()
     # Decompose the code and find the base level for each code
@@ -226,9 +227,10 @@ constructCode <- function(codeInfo, level) {
 }
 
 # Decompose the code into different level The code should not be able
-# to separate by +,- operator The current supported decompose function
-# is *
+# to separate by +,- operator 
+# The current supported decompose function is *
 decomposeCode <- function(extCode, code) {
+  code = toExpression(code)
     code = decomposeCode_hidden(extCode, code)
     if (nrow(code) > 1) {
         for (i in seq_len(getLevelNum(extCode) - 1)) {
@@ -241,14 +243,14 @@ decomposeCode <- function(extCode, code) {
     code
 }
 decomposeCode_hidden <- function(extCode, code, operator = "") {
-    code = toExpression(code)
-    if (is.call(code)) {
+    
+    if (is.call(code)&&operator!="/") {
         func = deparse(code[[1]])
         if (func == "*") {
-            left = decomposeCode_hidden(extCode, code[[2]])
-            right = rbind(left, decomposeCode_hidden(extCode, code[[3]], 
-                operator = func))
-            return(right)
+            left = decomposeCode_hidden(extCode, code[[2]],operator=operator)
+            right = decomposeCode_hidden(extCode, code[[3]],operator = func)
+            res=rbind(left,right)
+            return(res)
         }
         if (func == "-") {
             res = decomposeCode_hidden(extCode, code[[2]])
@@ -256,7 +258,7 @@ decomposeCode_hidden <- function(extCode, code, operator = "") {
             return(res)
         }
         if (func == "(") {
-            res = decomposeCode_hidden(extCode, code[[2]])
+            res = decomposeCode_hidden(extCode, code[[2]],operator=operator)
             return(res)
         }
     }
@@ -278,7 +280,7 @@ findCodeLevel <- function(extCode, code) {
     level = findVarLevel(extCode, vars)
     return(level)
 }
-
+#code="gpu_element_dist * (10 * gpu_element_j + gpu_element_i)"
 # Expand the parathesis in the expression
 expandExp <- function(code) {
     code = toExpression(code)

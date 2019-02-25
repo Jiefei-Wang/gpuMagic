@@ -99,8 +99,8 @@ fillGPUdata <- function(GPUcode1, .options, .device) {
     
     kernel_args = list()
     
-    # gp_totalsize, return size
-    kernel_args$sizeInfo = rep(0, 2)
+    # return size, gp,gs,lp offset, gp,gs,lp,ls number, gp,gs,lp,ls dim(row,col) 
+    kernel_args$sizeInfo = NULL
     gp_totalsize=0
     returnSize=1
     
@@ -110,19 +110,19 @@ fillGPUdata <- function(GPUcode1, .options, .device) {
     
     sizeInfo_gp = getVarSizeInfo_C_level(varInfo$matrix_gp)
     # Total size per worker
-    gp_totalsize = sizeInfo_gp$totalSize
     matrix_size_info=c(matrix_size_info,sizeInfo_gp$dim)
     
     
     sizeInfo_gs = getVarSizeInfo_C_level(varInfo$matrix_gs)
     matrix_size_info=c(matrix_size_info,sizeInfo_gs$dim)
     
+    sizeInfo_lp = getVarSizeInfo_C_level(varInfo$matrix_lp)
+    matrix_size_info=c(matrix_size_info,sizeInfo_lp$dim)
+    
     sizeInfo_ls = getVarSizeInfo_C_level(varInfo$matrix_ls)
     matrix_size_info=c(matrix_size_info,sizeInfo_ls$dim)
     
-    sizeInfo_lp = getVarSizeInfo_C_level(varInfo$matrix_lp)
-    matrix_size_info=c(matrix_size_info,sizeInfo_lp$dim)
-    if(length(matrix_size_info)==0) matrix_size_info=0
+    
     
     
     if (!is.null(varInfo$returnInfo)) {
@@ -140,9 +140,10 @@ fillGPUdata <- function(GPUcode1, .options, .device) {
         }
     }
     
+    matrix_offset=c(sizeInfo_gp$matrixOffset,sizeInfo_gs$matrixOffset,sizeInfo_ls$matrixOffset)
+    kernel_args$sizeInfo = c(returnSize,matrix_offset,matrix_size_info)
     
-    kernel_args$sizeInfo = c(gp_totalsize,returnSize)
-    
+    if(length(matrix_size_info)==0) matrix_size_info=0
     # Allocate the gpu memory
     totalWorkerNum = length(parms[[1]])
     IntType = GPUVar$default_index_type
@@ -154,16 +155,6 @@ fillGPUdata <- function(GPUcode1, .options, .device) {
                                             type = "int", device = .device)
     device_argument$ls_data = kernel.getSharedMem(sizeInfo_ls$totalSize, 
                                                   type = "char")
-    
-    device_argument$gp_offset = gpuMatrix(sizeInfo_gp$matrixOffset, type = IntType, 
-                                          device = .device)
-    device_argument$gs_offset = gpuMatrix(sizeInfo_gs$matrixOffset, type = IntType, 
-                                          device = .device)
-    device_argument$ls_offset = gpuMatrix(sizeInfo_ls$matrixOffset, type = IntType, 
-                                          device = .device)
-    
-    device_argument$matrix_size_info = gpuMatrix(matrix_size_info, type = IntType, 
-                                        device = .device)
     
     
     # The return size for each thread

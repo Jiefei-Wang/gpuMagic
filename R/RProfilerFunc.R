@@ -175,6 +175,7 @@ profiler_assignment_exitingVar <- function(level, varInfo, curExp) {
 # curExp=quote({D=1:gpu_global_id})[[2]]
 profiler_assignment_newVar <- function(level, varInfo, curExp) {
     result=list(Exp=curExp,varInfo=varInfo)
+    
     rightInfoPack = getExpInfo(varInfo, curExp[[3]])
     rightInfo = rightInfoPack$ExpInfo
     
@@ -695,8 +696,8 @@ profile_transpose <- function(varInfo, Exp) {
 # Exp=quote(t_nocpy(A))
 profile_transpose_nocpy <- function(varInfo, Exp) {
     curVar = Exp[[2]]
-    Exp = parse(text = paste0("subRef(", curVar, ",,)"))[[1]]
-    info = getExpInfo(varInfo, Exp)
+    Exp_new = parse(text = paste0("subRef(", curVar, ",,)"))[[1]]
+    info = getExpInfo(varInfo, Exp_new)
     ExpInfo = info$ExpInfo
     size1 = ExpInfo$size2
     size2 = ExpInfo$size1
@@ -704,6 +705,7 @@ profile_transpose_nocpy <- function(varInfo, Exp) {
     ExpInfo$size2 = size2
     ExpInfo$transpose = !ExpInfo$transpose
     info$ExpInfo = ExpInfo
+    info$Exp=Exp
     
     return(info)
 }

@@ -43,14 +43,14 @@ C_assignment_dispatch <- function(varInfo, Exp) {
 
 # ==================element functions===========================
 
-
+#Exp=quote({a1 = A[ind2, ]})[[2]]
 C_element_OP <- function(varInfo, Exp) {
     leftExp = Exp[[2]]
     rightExp = Exp[[3]]
     
     leftInfo = getVarInfo(varInfo, leftExp)
     if (leftInfo$dataType == T_scale) {
-        sub = c("1", "1")
+        sub = c("0", "0")
         leftElement = C_element_getCExp(varInfo, leftExp, sub = sub, opt = NULL)
         rightElement = C_element_getCExp(varInfo, rightExp, sub = sub, extCode = leftElement$extCode, opt = NULL)
     } else {
@@ -71,11 +71,22 @@ C_element_OP <- function(varInfo, Exp) {
           code = c("{", extCode, assignmentCode, "}")
         }
     } else {
+      if(is.null(extCode$L0)){
       code = C_matrix_assignment(
         assignmentCode, 
         loopInd1 = "gpu_element_j", loopEnd1 = R_ncol(varInfo, leftExp), 
         loopInd2 = "gpu_element_i",  loopEnd2 = R_nrow(varInfo, leftExp), 
-        loopCode0 = extCode$L0, loopCode1 = extCode$L1, loopCode2 = extCode$L2)
+        loopCode0 = NULL, loopCode1 = extCode$L1, loopCode2 = extCode$L2)
+      }else{
+        code = c(
+          "{",
+          C_matrix_assignment(
+            assignmentCode, 
+            loopInd1 = "gpu_element_j", loopEnd1 = R_ncol(varInfo, leftExp), 
+            loopInd2 = "gpu_element_i",  loopEnd2 = R_nrow(varInfo, leftExp), 
+            loopCode0 = extCode$L0, loopCode1 = extCode$L1, loopCode2 = extCode$L2),
+          "}")
+      }
     }
     return(code)
 }
@@ -172,7 +183,7 @@ C_element_abs<-function(varInfo, Exp, sub, opt, extCode){
   return(res)
 }
 processSub<-function(varInfo, Exp, sub, opt, extCode){
-  if(deparse(Exp)==""){
+  if(Exp==""){
     res = list(value = sub, extCode = extCode)
     return(res)
   }
@@ -182,16 +193,32 @@ processSub<-function(varInfo, Exp, sub, opt, extCode){
 }
 
 C_element_sub<-function(varInfo, Exp, sub, opt, extCode){
+  args=matchBracketFunc(Exp)
   targetExp=Exp[[2]]
-  sub1=processSub(varInfo, Exp[[3]],sub[1],extCode = extCode, opt = opt)
- 
+  sub1=processSub(varInfo, args$i,sub[1],extCode = extCode, opt = opt)
   
-  if (length(sub) == 1) {
-    res = C_element_getCExp(varInfo, targetExp,sub=sub1$value, extCode = sub1$extCode, opt = opt)
-  } else {
-    sub2=processSub(varInfo, Exp[[4]],sub[2],extCode = sub1$extCode, opt = opt)
-    res = C_element_getCExp(varInfo, targetExp,sub=c(sub1$value,sub2$value), extCode = sub2$extCode, opt = opt)
+  if(length(sub) == 1){
+    #two index bracket -- one index sub
+    if(!is.null(args$j)){
+      rowNum = R_nrow(varInfo,Exp)
+      res_twoIndex=one_to_two_index(sub1$value,extCode = sub1$extCode,rowNum=rowNum)
+      sub_new=c(res$i,res$j)
+      res = C_element_getCExp(varInfo, Exp, sub=sub_new, extCode = res$extCode, opt = opt)
+    }else{
+      #one index bracket -- one index sub
+      res = C_element_getCExp(varInfo, targetExp,sub=sub1$value, extCode = sub1$extCode, opt = opt)
+    }
+  }else{
+    if(!is.null(args$j)){
+      sub2=processSub(varInfo, args$j,sub[2],extCode = sub1$extCode, opt = opt)
+      #two index bracket -- two index sub
+      res = C_element_getCExp(varInfo, targetExp,sub=c(sub1$value,sub2$value), extCode = sub2$extCode, opt = opt)
+    }else{
+      #one index bracket -- two index sub
+      res = C_element_getCExp(varInfo, targetExp,sub=sub1$value, extCode = sub1$extCode, opt = opt)
+    }
   }
+  
   return(res)
 }
 
@@ -535,6 +562,20 @@ C_rowSums_right<-function(varInfo, Exp){
   code
 }
 
+#Exp=quote(compiler.define(A,B))
+C_compiler_define<-function(varInfo, Exp){
+  vars=extractVars(Exp)
+  code=c()
+  for(var in vars){
+    curInfo=getVarInfo(varInfo,var)
+    ind=which(varInfo$var_def_code$var==var)
+    if(length(ind)==0)
+      stop("Unable to find the variable ",var," in the variable define table.\n Current expression: ",deparse(Exp))
+    varDef=varInfo$var_def_code$def[ind]
+    code=c(code,varDef)
+  }
+  code
+}
 
 
 ########################################## Super lengthy function##############################

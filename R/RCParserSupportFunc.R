@@ -51,6 +51,11 @@ addVariableDeclaration <- function(varInfo,curInfo, data, offset, offsetInd,pref
   location = paste0(prefix, " ")
   curInfo$address = curInfo$var
   
+  if(curInfo$redirect!="NA"){
+    redirectInfo=getVarInfo(varInfo,curInfo$redirect)
+    curCode = paste0("#define ",curInfo$var," ",redirectInfo$address)
+    return(list(code=curCode,Info=curInfo))
+  }
   
   # If the variable is a sequence
   if (curInfo$isSeq) {
@@ -59,7 +64,7 @@ addVariableDeclaration <- function(varInfo,curInfo, data, offset, offsetInd,pref
     } else {
       curCode = paste0(location, CXXtype, 3, "* ", curInfo$var, 
                        "=", "((", location, CXXtype, 3, "*)(", data, "+", offset, 
-                       "[", offsetInd, "]))+",worker_offset,";")
+                       "(", offsetInd, ")))+",worker_offset,";")
     }
     return(list(code=curCode,Info=curInfo))
   }
@@ -73,11 +78,30 @@ addVariableDeclaration <- function(varInfo,curInfo, data, offset, offsetInd,pref
     }
   }else{
       curCode = paste0(location, CXXtype, "* ", curInfo$var, "=", 
-                       "((", location, CXXtype, "*)(", data, "+", offset, "[", offsetInd, 
-                       "]))+",worker_offset,";")
+                       "((", location, CXXtype, "*)(", data, "+", offset, "(", offsetInd, 
+                       ")))+",worker_offset,";")
   }
   return(list(code=curCode,Info=curInfo))
 }
+
+addVariableDeclaration_NonPointer<-function(varInfo,curInfo){
+  curVar=curInfo$var
+  CXXtype = getTypeCXXStr(curInfo$precisionType)
+  curInfo$address=curVar
+  if(curInfo$redirect!="NA"){
+    redirectInfo=getVarInfo(varInfo,curInfo$redirect)
+    curCode = paste0("#define ",curVar," ",redirectInfo$address)
+    return(list(code=curCode,Info=curInfo))
+  }
+  
+  if (curInfo$isSeq){
+    curCode = paste0(CXXtype, 3, " ", curInfo$var, ";")
+  }else{
+    curCode = paste0(CXXtype, " ", curVar, ";")
+  }
+  return(list(code=curCode,Info=curInfo))
+}
+
 
 getSizeVar<-function(varName,i){
   paste0(GPUVar$matrix_size_prefix, varName,"_dim_",i)
@@ -208,7 +232,7 @@ getSeqAddress <- function(varInfo, var,C_symbol=FALSE) {
     from = paste0(ad, ".s0")
     to = paste0(ad, ".s1")
     by = paste0(ad, ".s2")
-    length = getSizeVar(deparse(var),ind)
+    length = getSizeVar(deparse(var),1)
     data.frame(from = from, to = to, by = by, length = length, stringsAsFactors = FALSE)
 }
 
@@ -241,8 +265,7 @@ C_general_scalar_assignment <- function(varInfo, Exp, funcName, func) {
             stop("Unexpected function:", deparse(Exp))
         }
     } else {
-        res = R_expression_sub(varInfo, leftExp, sub = 1, sub_C = TRUE, 
-            extCode = extCode)
+        res = C_element_getCExp(varInfo, leftExp, sub = 0, extCode = extCode)
         value_left = res$value
         extCode = res$extCode
     }
@@ -257,8 +280,7 @@ C_general_scalar_assignment <- function(varInfo, Exp, funcName, func) {
             stop("Unexpected function:", deparse(Exp))
         }
     } else {
-        res = R_expression_sub(varInfo, rightExp, sub = 1, sub_C = TRUE, 
-            extCode = extCode)
+        res = C_element_getCExp(varInfo, rightExp, sub = 0, extCode = extCode)
         value_right = res$value
         extCode = res$extCode
     }

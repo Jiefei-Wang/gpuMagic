@@ -289,7 +289,6 @@ def_var<-function(varInfo,curInfo){
       if(!is.null(rediectVar)){
         curInfo$redirect=rediectVar
         curInfo$designSize=0
-        curInfo$initial_ad=FALSE
         varInfo$memPool=markUsed(varInfo$memPool,rediectVar)
       }
     }
@@ -329,7 +328,7 @@ markUsed<-function(memPool,varName){
   memPool
 }
 addVar<-function(memPool,varName,precision,len,location,shared=FALSE,isPointer=NA,specialType="NA"){
-  if(hasVar(memPool,varName,precision,len,location,shared,isPointer)){
+  if(hasVar(memPool,varName,precision,len,location,shared,isPointer,specialType)){
     return(memPool)
   }
   curInfo=createMemPoolInfo(varName,precision,len,location,shared,isPointer,specialType)
