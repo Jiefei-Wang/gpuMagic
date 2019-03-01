@@ -245,7 +245,7 @@ extractVars.default <- function(x) {
 #' @rdname internalFunctions
 #' @export
 extractVars.expression <- function(x) {
-  if(!is.call(x)){
+  if(!is.call(x)&&(is.numeric(x)||is_valid_variable_name(x))){
     return(deparse(x))
   }
   if(isNumeric(x)||deparse(x)=="")
@@ -256,4 +256,41 @@ extractVars.expression <- function(x) {
     res=c(res,extractVars(x[[i]]))
   }
   return(res)
+}
+
+reconstructExp<-function(funcName,...,dotParms){
+  parms=list(...)
+  argNames=c(names(parms),names(dotParms))
+  code=c()
+  for(i in seq_along(parms)){
+    curExp=parms[[i]]
+    code=c(code,deparse(curExp))
+  }
+  for(i in seq_along(dotParms)){
+    curExp=dotParms[[i]]
+    code=c(code,deparse(curExp))
+  }
+  code=paste0(toCharacter(funcName),"(",paste0(argNames,"=",code,collapse = ","),")")
+  Exp=parse(text=code)[[1]]
+  return(Exp)
+}
+#Check if a variable has a valid name
+is_valid_variable_name <- function(x, allow_reserved = TRUE, unique = FALSE)
+{
+  ok=rep.int(TRUE, length(x))
+  #is name too long?
+  max_name_length <- if(getRversion() < "2.13.0") 256L else 10000L
+  
+  #is it a reserved variable, i.e.
+  #an ellipsis or two dots then a number?
+  if(!allow_reserved)
+  {
+    ok[x == "..."] <- FALSE
+    ok[grepl("^\\.{2}[[:digit:]]+$", x)] <- FALSE
+  }
+  
+  #are names valid (and maybe unique)
+  ok[x != make.names(x, unique = unique)] <- FALSE
+  
+  ok
 }

@@ -75,18 +75,6 @@ expect_equal(parms[which.min(res_gpu),],parms[which.min(res_cpu),])
 
 
 test_that("T-test",{
-t_stat=function(x,y){
-  x.size=dim(x)
-  y.size=dim(y)
-  x.m=colMeans(x)
-  y.m=colMeans(y)
-  df=x.size[1]+y.size[1]-2
-  s=(colSums(sweep(x, 2, x.m, `-`)^2)+colSums(sweep(y, 2, y.m, `-`)^2))/(df)
-  
-  t=abs((x.m-y.m)/sqrt(s*(1/x.size[1]+1/y.size[1])))
-  t
-}
-
 t_stat_gpu=function(ind,data,sampleX,sampleY){
   x=subRef(data,sampleX[,ind],)
   y=subRef(data,sampleY[,ind],)
@@ -109,9 +97,6 @@ t_stat_gpu=function(ind,data,sampleX,sampleY){
   t=abs((x_m-y_m)/(s*(1/x_row+1/y_row))^0.5)
   return(t)
 }
-t_stat_cpu<-function(ind,data,sampleX,sampleY){
-  t_stat(data[sampleX[,ind],],data[sampleY[,ind],])
-}
 
 x_sampleN=50
 y_sampleN=100
@@ -124,7 +109,7 @@ permute_ind=sapply(seq_len(permute_num),function(x)sample(1:total_sampleN))
 permute_ind_x=permute_ind[1:x_sampleN,]
 permute_ind_y=permute_ind[-(1:x_sampleN),]
 res_gpu=gpuSapply(1:permute_num,t_stat_gpu,data,permute_ind_x,permute_ind_y)
-res_cpu=sapply(1:permute_num,t_stat_cpu,data,permute_ind_x,permute_ind_y)
+res_cpu=sapply(1:permute_num,t_stat_gpu,data,permute_ind_x,permute_ind_y)
 expect_equal(res_gpu,res_cpu)
 
 })
@@ -132,6 +117,51 @@ expect_equal(res_gpu,res_cpu)
 
 
 
+test_that("T-test2",{
+  t_stat=function(x,y){
+    x.size=dim(x)
+    y.size=dim(y)
+    x.m=colMeans(x)
+    y.m=colMeans(y)
+    df=x.size[1]+y.size[1]-2
+    s=(colSums(sweep(x, 2, x.m, `-`)^2)+colSums(sweep(y, 2, y.m, `-`)^2))/(df)
+    
+    t=abs((x.m-y.m)/sqrt(s*(1/x.size[1]+1/y.size[1])))
+    t
+  }
+  
+  t_stat_gpu=function(ind,data,sampleX,sampleY){
+    x=subRef(data,sampleX[,ind],)
+    y=subRef(data,sampleY[,ind],)
+    x_m=colMeans(x)
+    y_m=colMeans(y)
+    x_rowNum=nrow(x)
+    y_rowNum=nrow(y)
+    df=x_rowNum+y_rowNum-2
+    s=(colSums(sweep(x, 2, t(x_m), `-`)^2)+colSums(sweep(y, 2,t(y_m), `-`)^2))/df
+    
+    t=abs((x_m-y_m)/(s*(1/x_rowNum+1/y_rowNum))^0.5)
+    return(t)
+  }
+  t_stat_cpu<-function(ind,data,sampleX,sampleY){
+    t_stat(data[sampleX[,ind],],data[sampleY[,ind],])
+  }
+  
+  x_sampleN=50
+  y_sampleN=100
+  permute_num=10
+  total_sampleN=x_sampleN+y_sampleN
+  nParms=20
+  data=matrix(rnorm(total_sampleN*nParms),total_sampleN,nParms)
+  
+  permute_ind=sapply(seq_len(permute_num),function(x)sample(1:total_sampleN))
+  permute_ind_x=permute_ind[1:x_sampleN,]
+  permute_ind_y=permute_ind[-(1:x_sampleN),]
+  res_gpu=gpuSapply(1:permute_num,t_stat_gpu,data,permute_ind_x,permute_ind_y)
+  res_cpu=sapply(1:permute_num,t_stat_cpu,data,permute_ind_x,permute_ind_y)
+  expect_equal(res_gpu,res_cpu)
+  
+})
 
 
 

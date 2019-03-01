@@ -2,6 +2,7 @@
 #Find which variables are in used
 #Can handle redirect and subref
 variableInUsed<-function(varInfo,vars){
+  vars=vars[vars!=""]
   res=lapply(vars,findRootVar,varInfo=varInfo)
   varind=which(vapply(vars, hasVar.varInfo,x=varInfo,FUN.VALUE=logical(1)))
   unique(c(unlist(res),vars[varind]))

@@ -3,10 +3,11 @@ profiler_assignment_dispatch <- function(level, varInfo, curExp) {
     leftVar = curExp[[2]]
     
     if (is.call(leftVar)||hasVar(varInfo, deparse(leftVar))) {
-        return(profiler_assignment_exitingVar(level, varInfo, curExp))
+      res=profiler_assignment_exitingVar(level, varInfo, curExp)
     } else {
-        return(profiler_assignment_newVar(level, varInfo, curExp))
+      res=profiler_assignment_newVar(level, varInfo, curExp)
     }
+    return(res)
 }
 
 # If the left variable exists
@@ -369,7 +370,13 @@ profile_elementOP<-function(varInfo, Exp,parmsIndex=seq_len(length(Exp)-1)+1){
   parmsInfo=lapply(parmsInfoPack,function(parm)parm$ExpInfo)
   
   
-  result=list(Exp=Exp)
+  previousCheck=lapply(parmsInfoPack,function(x)x$errorCheck)
+  errorCheck=c()
+  for(i in seq_along(previousCheck)){
+    errorCheck=rbind(errorCheck,previousCheck[[i]])
+  }
+  
+  result=list(Exp=Exp,errorCheck=errorCheck)
   isScalar=TRUE
   hasValue=TRUE
   value=c()
@@ -835,6 +842,63 @@ profile_colSums <- function(varInfo, Exp) {
   res$Exp=parse(text=paste0("colSums(",deparse(res$Exp),")"))[[1]]
   return(res)
 }
+
+profile_rowMeans <- function(varInfo, Exp) {
+  res = profile_rowSums(varInfo, Exp)
+  res$ExpInfo$precisionType=typeInherit(res$ExpInfo$precisionType,GPUVar$default_float)
+  res$Exp[[1]]=as.symbol("rowMeans")
+  return(res)
+}
+
+profile_colMeans <- function(varInfo, Exp) {
+  res = profile_colSums(varInfo, Exp)
+  res$ExpInfo$precisionType=typeInherit(res$ExpInfo$precisionType,GPUVar$default_float)
+  res$Exp[[1]]=as.symbol("colMeans")
+  return(res)
+}
+#Exp=quote(sweep(B+1,2,D,"-",test="a"))
+profile_sweep<-function(varInfo,Exp){
+  args=matchFunArg(sweep,Exp)
+  xInfoPack=getExpInfo(varInfo,args$x)
+  marginInfoPack=getExpInfo(varInfo,args$MARGIN)
+  statsInfoPack=getExpInfo(varInfo,args$STATS)
+  fun=args$FUN
+  
+  if(!toCharacter(fun)%in%.elementOp){
+    stop("Only element operation is allowed in the FUN argument")
+  }
+  if(!isNumeric(marginInfoPack$ExpInfo$value)){
+    stop("Unable to determine the MARGIN parameter: ",deparse(Exp))
+  }
+  argNames=formalArgs(sweep)
+  args[names(args)%in% argNames]=NULL
+  curExp=reconstructExp(funcName="sweep",x=xInfoPack$Exp,
+                        MARGIN=marginInfoPack$ExpInfo$value,
+                        STATS=statsInfoPack$Exp,
+                        FUN=toCharacter(fun),dotParms = args)
+  res=combineExpInfo(list(Exp=curExp),xInfoPack,marginInfoPack,statsInfoPack)
+  xInfo=xInfoPack$ExpInfo
+  statsInfo=statsInfoPack$ExpInfo
+  res$ExpInfo=xInfo
+  res$ExpInfo$precisionType = typeInherit(xInfo$precisionType,statsInfo$precisionType)
+  #Perform the error check
+  if(as.numeric(marginInfoPack$ExpInfo$value)==1){
+    check=errorCheck_matrix_matrix_oneside(xInfo$size1,statsInfo$size1)
+    check=paste0(check,"||",errorCheck_matrix_matrix_oneside(statsInfo$size2,1))
+  }else{
+    if(as.numeric(marginInfoPack$ExpInfo$value)==2){
+      check=errorCheck_matrix_matrix_oneside(xInfo$size2,statsInfo$size2)
+      check=paste0(check,"||",errorCheck_matrix_matrix_oneside(statsInfo$size1,1))
+    }else{
+      stop("Invalid MARGIN argument: ",deparse(Exp))
+    }
+  }
+  
+  res$errorCheck=rbind(res$errorCheck,
+                       setErrorCheck("error",deparse(Exp),check,"Uncomfortable matrix dimension"))
+  return(res)
+}
+
 
 #########################Special functions######################################
 

@@ -8,3 +8,5 @@ inst/record/
 inst/script/
 inst/include/lib32/
 inst/include/lib64/
+src-i386/
+src-x64/

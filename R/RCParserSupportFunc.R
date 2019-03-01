@@ -131,7 +131,7 @@ R_to_C <- function(code) {
     gsub("gpu_cast_(float|double|uint|int|long|ulong)", "\\(\\1\\)", code)
 }
 addParenthesis=function(x){
-  if(!isSymbol(x)&&!isNumeric(x)){
+  if(!isSingleValue(x)){
     x=paste0("(",x,")")
   }
   return(x)

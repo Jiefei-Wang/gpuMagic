@@ -14,7 +14,7 @@ extractVarIfFuncIsSame<-function(Exp,func){
 }
 
 
-
+#Exp=quote((ncol(parms[[2]]) != 1)||(ncol(parms[[2]]) != 1))
 #Exp=quote(max(nrow(parms[[3]]), nrow(parms[[2]])))
 #Exp=quote(max((max(max(nrow(parms[[3]]), nrow(parms[[2]])), nrow(parms[[3]]))),nrow(parms[[2]])))
 #Exp=quote(max(nrow(parms[[3]]), nrow(parms[[2]])))

@@ -18,7 +18,6 @@ Imports: Rcpp,
   Deriv, 
   DescTools, 
   digest, 
-  future, 
   pryr, 
   stringr, 
   BiocGenerics

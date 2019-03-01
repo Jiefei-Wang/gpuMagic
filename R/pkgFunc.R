@@ -127,11 +127,13 @@ GPUVar <- local({
 .elementFuncs = c("+", "-", "*", "/","^", 
                   ">", ">=", "<", "<=", "==",
                   "abs_int","abs_float","(","[",
-                  "nrow","ncol","length","floor", "ceiling")
+                  "nrow","ncol","length","floor", "ceiling","sweep")
 
 .elementOp = c(.elementFuncs)
 #These functions will be dispatched to the regular expression translation
-.noParentElementOP = c("t","sum","rowSums","colSums", "return","seq")
+.noParentElementOP = c("t",
+                       "sum","rowSums","colSums","rowMeans","colMeans" ,
+                       "return","seq")
 .noChildElementOP = c()
 
 #' @include RProfilerFunc.R
@@ -151,6 +153,9 @@ GPUVar <- local({
 .profileFuncs[["sum"]]=profile_sum
 .profileFuncs[["rowSums"]]=profile_rowSums
 .profileFuncs[["colSums"]]=profile_colSums
+.profileFuncs[["rowMeans"]]=profile_rowMeans
+.profileFuncs[["colMeans"]]=profile_colMeans
+.profileFuncs[["sweep"]]=profile_sweep
 .profileFuncs[["("]]=profile_parenthesis
 
 
@@ -204,8 +209,10 @@ GPUVar <- local({
 
 # No parent opration
 .cFuncs[["<-sum"]] = C_sum_right
-.cFuncs[["<-colSums"]] = C_colSums_right
 .cFuncs[["<-rowSums"]] = C_rowSums_right
+.cFuncs[["<-colSums"]] = C_colSums_right
+.cFuncs[["<-rowMeans"]] = C_rowMeans_right
+.cFuncs[["<-colMeans"]] = C_colMeans_right
 
 
 # Element op
@@ -229,6 +236,7 @@ GPUVar <- local({
 .cFuncs[["<-length"]] = C_element_length
 .cFuncs[["<-nrow"]] = C_element_nrow
 .cFuncs[["<-ncol"]] = C_element_ncol
+.cFuncs[["<-sweep"]] = C_element_sweep
 .cFuncs[["[<-"]] = C_assignment_symbols
 
 
@@ -244,7 +252,9 @@ GPUVar <- local({
 #' @include RCParserFunc_Rlevel.R
 .sizeFuncs=list()
 .sizeFuncs[["["]]=R_subset_size
-general_size_function_list=c("+","-","*","/",">","<",">=","<=","==","!=")
+.sizeFuncs[["sweep"]]=R_sweep_size
+
+general_size_function_list=c("+","-","*","/",">","<",">=","<=","==","!=","^")
 for(i in general_size_function_list){
   .sizeFuncs[[i]]=R_general_size
 }

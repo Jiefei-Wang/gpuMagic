@@ -299,6 +299,16 @@ errorCheck_matrix_matrix<-function(left_size1,left_size2,right_size1,right_size2
   check=Simplify2(check,parentheses=FALSE)
   check
 }
+errorCheck_matrix_matrix_oneside<-function(left_size,right_size){
+  if (!isNA(left_size)&&!isNA(right_size)){
+    check = paste0("(", left_size, ")!=(", right_size,")")
+  }else{
+    return("FALSE")
+  }
+  check=Simplify2(check,parentheses=TRUE)
+  return(check)
+}
+
 
 # Redirect the variable to an exist variable to save the memory space
 redirectVar <- function(varInfo, sourceVar, desVar) {

@@ -298,7 +298,11 @@ R_subset_size<-function(varInfo, Exp,C_symbol, ind){
 }
 
 
-
+R_sweep_size<-function(varInfo, Exp,C_symbol, ind){
+  args=matchFunArg(sweep,Exp)
+  target=args$x
+  return(R_getVarSize(varInfo,target,C_symbol=C_symbol,ind=ind))
+}
 
 
 

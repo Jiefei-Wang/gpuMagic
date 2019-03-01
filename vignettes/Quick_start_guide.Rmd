@@ -224,7 +224,7 @@ largestK<-function(ind,A,k){
       }
     }
   }
-  return.nocpy(largest_ind)
+  return_nocpy(largest_ind)
 }
 
 N=1000
@@ -248,7 +248,7 @@ computeLoss<-function(ind,x,y,parms){
   #Find the parameters for the thread
   parm=parms[ind,]
   #Compute y hat, use no-copy transpose
-  y_hat=x%*%t.nocpy(parm)
+  y_hat=x%*%t_nocpy(parm)
   #absolute loss value(L1 loss)
   loss=sum(abs(y-y_hat))
   return(loss)
@@ -332,7 +332,7 @@ that memory space, the size of the reference object can be undetermined in the c
 | Function     | Note                                                                                                          |
 |--------------|---------------------------------------------------------------------------------------------------------------|
 | subRef       | No-copy subsetting, the usage is same as   `[`                                                                |
-| t.nocpy      | No-copy transpose,      it return a reference of the transpose of a matrix                                    |
-| return.nocpy | No-copy return,     return the variable without an additional copy,      it does not support reference object |
+| t_nocpy      | No-copy transpose,      it return a reference of the transpose of a matrix                                    |
+| return_nocpy | No-copy return,     return the variable without an additional copy,      it does not support reference object |
 
 
