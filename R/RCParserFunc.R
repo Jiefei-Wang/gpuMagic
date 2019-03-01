@@ -41,187 +41,6 @@ C_assignment_dispatch <- function(varInfo, Exp) {
     return(code)
 }
 
-# ==================element functions===========================
-
-#Exp=quote({a1 = A[ind2, ]})[[2]]
-C_element_OP <- function(varInfo, Exp) {
-    leftExp = Exp[[2]]
-    rightExp = Exp[[3]]
-    
-    leftInfo = getVarInfo(varInfo, leftExp)
-    if (leftInfo$dataType == T_scale) {
-        sub = c("0", "0")
-        leftElement = C_element_getCExp(varInfo, leftExp, sub = sub, opt = NULL)
-        rightElement = C_element_getCExp(varInfo, rightExp, sub = sub, extCode = leftElement$extCode, opt = NULL)
-    } else {
-        sub = c("gpu_element_i", "gpu_element_j")
-        leftElement = C_element_getCExp(varInfo, leftExp, sub = sub, opt = list("gpu_element_j", "gpu_element_i"))
-        rightElement = C_element_getCExp(varInfo, rightExp, sub = sub, extCode = leftElement$extCode, opt = list("gpu_element_j", 
-            "gpu_element_i"))
-    }
-    
-    extCode = finalizeExtCode(rightElement$extCode)
-    
-    assignmentCode = paste0(leftElement$value, "=", rightElement$value, ";")
-    if (leftInfo$dataType == T_scale) {
-        extCode = unlist(extCode)
-        if (is.null(extCode)) {
-          code = assignmentCode 
-        }else {
-          code = c("{", extCode, assignmentCode, "}")
-        }
-    } else {
-      if(is.null(extCode$L0)){
-      code = C_matrix_assignment(
-        assignmentCode, 
-        loopInd1 = "gpu_element_j", loopEnd1 = R_ncol(varInfo, leftExp), 
-        loopInd2 = "gpu_element_i",  loopEnd2 = R_nrow(varInfo, leftExp), 
-        loopCode0 = NULL, loopCode1 = extCode$L1, loopCode2 = extCode$L2)
-      }else{
-        code = c(
-          "{",
-          C_matrix_assignment(
-            assignmentCode, 
-            loopInd1 = "gpu_element_j", loopEnd1 = R_ncol(varInfo, leftExp), 
-            loopInd2 = "gpu_element_i",  loopEnd2 = R_nrow(varInfo, leftExp), 
-            loopCode0 = extCode$L0, loopCode1 = extCode$L1, loopCode2 = extCode$L2),
-          "}")
-      }
-    }
-    return(code)
-}
-# 0-based index 
-# Return: 
-# list: value
-#       extCode
-C_element_getCExp <- function(varInfo, Exp, sub, extCode = NULL, opt = NULL) {
-    if (is.null(extCode)) 
-        extCode = createExtCode(opt)
-    Exp = Simplify(Exp)
-    
-    if (is.numeric(Exp)) {
-        res = list(value = toCharacter(Exp), extCode = extCode)
-        return(res)
-    }
-    
-    if (is.symbol(Exp)) {
-      res = R_expression_sub(varInfo, Exp, sub = sub, opt = opt, extCode = extCode)
-      return(res)
-    }
-    
-    
-    func = paste0("<-", deparse(Exp[[1]]))
-    C_func = .cFuncs[[func]]
-    if (!is.null(C_func)) {
-        res = C_func(varInfo, Exp, sub, opt = opt, extCode = extCode)
-        return(res)
-    }
-    stop("Unsupported function: ", deparse(Exp))
-    
-}
-C_element_parenthesis <- function(varInfo, Exp, sub, opt, extCode) {
-  element = Exp[[2]]
-  res = C_element_getCExp(varInfo, element, sub, extCode = extCode, opt = opt)
-  if(!isSingleValue(res$value)){
-    res$value = paste0("(", res$value, ")")
-  }else{
-    warning("unnecessary parenthesis has been found: ",deparse(Exp))
-  }
-  return(res)
-}
-
-C_element_arithmatic <- function(varInfo, Exp, sub, opt, extCode) {
-    op = deparse(Exp[[1]])
-    leftEle = Exp[[2]]
-    rightEle = Exp[[3]]
-    left_res = C_element_getCExp(varInfo, leftEle, sub, extCode = extCode, opt = opt)
-    right_res = C_element_getCExp(varInfo, rightEle, sub, extCode = left_res$extCode, opt = opt)
-    
-    extCode = right_res$extCode
-    value=NULL
-    if(op%in%c("+","-","*","/",">","<",">=","<=","==","!=")){
-      value = paste0(left_res$value, op, right_res$value)
-      if (op == "/") 
-        value = paste0("(", GPUVar$default_float, ")", value)
-    }
-    if(op=="^"){
-      value = paste0("pow(",left_res$value,",", right_res$value,")")
-    }
-    if(is.null(value))
-      stop("Unexpected error")
-    res = list(value = value, extCode = extCode)
-    return(res)
-}
-
-C_element_floor <- function(varInfo, Exp, sub, opt, extCode) {
-    element = Exp[[2]]
-    res = C_element_getCExp(varInfo, element, sub, extCode = extCode, opt = opt)
-    res$value = paste0("floor(", res$value, ")")
-    return(res)
-}
-C_element_ceil <- function(varInfo, Exp, sub, opt, extCode) {
-    element = Exp[[2]]
-    res = C_element_getCExp(varInfo, element, sub, extCode = extCode, opt = opt)
-    res$value = paste0("ceil(", res$value, ")")
-    return(res)
-}
-
-C_element_power<-function(varInfo, Exp, sub, opt, extCode){
-  leftEle = Exp[[2]]
-  rightEle = Exp[[3]]
-  left_res = C_element_getCExp(varInfo, leftEle, sub, extCode = extCode, opt = opt)
-  right_res = C_element_getCExp(varInfo, rightEle, sub, extCode = left_res$extCode, opt = opt)
-  
-}
-C_element_abs<-function(varInfo, Exp, sub, opt, extCode){
-  element = Exp[[2]]
-  res = C_element_getCExp(varInfo, element, sub, extCode = extCode, opt = opt)
-  if(Exp[[1]]=="abs_int")
-    res$value = paste0("abs(", res$value, ")")
-  else
-    res$value = paste0("fabs(", res$value, ")")
-  return(res)
-}
-processSub<-function(varInfo, Exp, sub, opt, extCode){
-  if(Exp==""){
-    res = list(value = sub, extCode = extCode)
-    return(res)
-  }
-  res=C_element_getCExp(varInfo, Exp,sub,extCode = extCode, opt = opt)
-  res$value=CSimplify(paste0(res$value,"-1"))
-  return(res)
-}
-
-C_element_sub<-function(varInfo, Exp, sub, opt, extCode){
-  args=matchBracketFunc(Exp)
-  targetExp=Exp[[2]]
-  sub1=processSub(varInfo, args$i,sub[1],extCode = extCode, opt = opt)
-  
-  if(length(sub) == 1){
-    #two index bracket -- one index sub
-    if(!is.null(args$j)){
-      rowNum = R_nrow(varInfo,Exp)
-      res_twoIndex=one_to_two_index(sub1$value,extCode = sub1$extCode,rowNum=rowNum)
-      sub_new=c(res$i,res$j)
-      res = C_element_getCExp(varInfo, Exp, sub=sub_new, extCode = res$extCode, opt = opt)
-    }else{
-      #one index bracket -- one index sub
-      res = C_element_getCExp(varInfo, targetExp,sub=sub1$value, extCode = sub1$extCode, opt = opt)
-    }
-  }else{
-    if(!is.null(args$j)){
-      sub2=processSub(varInfo, args$j,sub[2],extCode = sub1$extCode, opt = opt)
-      #two index bracket -- two index sub
-      res = C_element_getCExp(varInfo, targetExp,sub=c(sub1$value,sub2$value), extCode = sub2$extCode, opt = opt)
-    }else{
-      #one index bracket -- two index sub
-      res = C_element_getCExp(varInfo, targetExp,sub=sub1$value, extCode = sub1$extCode, opt = opt)
-    }
-  }
-  
-  return(res)
-}
-
 # ================Regular functions==================
 
 
@@ -231,42 +50,101 @@ C_assignment_symbols <- function(varInfo, Exp) {
     return(code)
 }
 
+
+
 # Exp=parse(text='A=matrix(B,10,1)')[[1]]
 C_matrix_right <- function(varInfo, Exp) {
     leftVar = Exp[[2]]
     rightExp = Exp[[3]]
     args = matchFunArg(matrix, rightExp)
-    rightVar = args$data
     
-    code = C_general_matrix_assignment(varInfo, leftVar, rightVar, rightBound = R_length(varInfo, rightVar))
+    code_left=C_element_getCExp(
+      varInfo,leftVar,
+      sub = c("gpu_matrix_assign_i", "gpu_matrix_assign_j"),
+      opt = list("gpu_matrix_assign_j", "gpu_matrix_assign_i"))
     
-    return(code)
-}
-# Exp=parse(text='gpu_temp_var1=length(A)')[[1]]
-C_length_left_right <- function(varInfo, Exp) {
-    length_func <- function(varInfo, Exp) {
-        return(R_length(varInfo, Exp[[2]]))
-    }
-    code = C_general_scalar_assignment(varInfo, Exp, "length", length_func)
+    
+    code_right = C_element_getCExp(
+      varInfo,args$data,
+      sub = c("gpu_matrix_assign_k"),
+      opt = list("gpu_matrix_assign_j", "gpu_matrix_assign_i"),
+      extCode = code_left$extCode
+    )
+    right_length=R_length(varInfo,args$data)
+    
+    rowNum=C_element_getCExp(
+      varInfo,args$nrow,
+      sub = c("gpu_matrix_assign_i", "gpu_matrix_assign_j"),
+      opt = list("gpu_matrix_assign_j", "gpu_matrix_assign_i"),
+      extCode = code_right$extCode
+    )
+    colNum=C_element_getCExp(
+      varInfo,args$ncol,
+      sub = c("gpu_matrix_assign_i", "gpu_matrix_assign_j"),
+      opt = list("gpu_matrix_assign_j", "gpu_matrix_assign_i"),
+      extCode = rowNum$extCode
+    )
+    extCode=finalizeExtCode(colNum$extCode)
+    
+    
+    loopBody = paste0(code_left$value,"=",code_right$value,";")
+    endCode2=c(
+      paste0("if(gpu_matrix_assign_k==",right_length,"){"),
+      "gpu_matrix_assign_k=0;",
+      "}"
+    )
+    loopCode0=c(paste0(GPUVar$default_index_type," gpu_matrix_assign_k=0;"),
+            extCode$L0)
+    code = c(
+      C_matrix_assignment(
+        loopBody,
+        loopInd1 = "gpu_matrix_assign_j",loopEnd1 = colNum$value,
+        loopInd2 = "gpu_matrix_assign_i",loopEnd2 = rowNum$value,
+        loopCode0 = loopCode0,loopCode1 = extCode$L1,loopCode2 = extCode$L2,
+        endCode2=endCode2)
+)
+    
     return(code)
 }
 
-# Exp=parse(text='A=nrow(A)')[[1]]
-C_nrow_left_right <- function(varInfo, Exp) {
-    nrow_func <- function(varInfo, Exp) {
-        return(R_nrow(varInfo, Exp[[2]],C_symbol=TRUE))
-    }
-    code = C_general_scalar_assignment(varInfo, Exp, "nrow", nrow_func)
-    return(code)
+
+# Exp=parse(text='length(A)=ind')[[1]]
+C_length_left <- function(varInfo, Exp) {
+  length_func <- function(varInfo, Exp) {
+    return(R_length(varInfo, Exp[[2]],C_symbol=TRUE))
+  }
+  target=length_func(varInfo, Exp[[2]])
+  
+  code = C_general_scalar_assignment(varInfo, Exp, "length", length_func)
+  promiseCode=compiler.promiseAssign(target,code)
+  return(promiseCode)
 }
-# Exp=parse(text='A=ncol(A)')[[1]]
-C_ncol_left_right <- function(varInfo, Exp) {
-    ncol_func <- function(varInfo, Exp) {
-        return(R_ncol(varInfo, Exp[[2]],C_symbol = TRUE))
-    }
-    code = C_general_scalar_assignment(varInfo, Exp, "ncol", ncol_func)
-    return(code)
+# Exp=parse(text='nrow(A)=ind')[[1]]
+C_nrow_left <- function(varInfo, Exp) {
+  length_func <- function(varInfo, Exp) {
+    return(R_nrow(varInfo, Exp[[2]],C_symbol=TRUE))
+  }
+  target=length_func(varInfo, Exp[[2]])
+  
+  code = C_general_scalar_assignment(varInfo, Exp, "nrow", length_func)
+  promiseCode=compiler.promiseAssign(target,code)
+  return(promiseCode)
 }
+
+# Exp=parse(text='ncol(A)=ind')[[1]]
+C_ncol_left <- function(varInfo, Exp) {
+  length_func <- function(varInfo, Exp) {
+    return(R_ncol(varInfo, Exp[[2]],C_symbol=TRUE))
+  }
+  target=length_func(varInfo, Exp[[2]])
+  
+  code = C_general_scalar_assignment(varInfo, Exp, "ncol", length_func)
+  promiseCode=compiler.promiseAssign(target,code)
+  return(promiseCode)
+}
+
+
+
 
 
 # varInfo=GPUExp2$varInfo Exp=parse(text='return(C)')[[1]]
@@ -287,7 +165,7 @@ C_return <- function(varInfo, Exp) {
     
     
     loopBody = paste0(GPUVar$return_variable,
-                      "[gpu_return_k]=",
+                      "[gpu_return_k*",GPUVar$element_dist,"]=",
                       code_right$value,
                       ";")
     extCode = finalizeExtCode(code_right$extCode)
@@ -297,17 +175,16 @@ C_return <- function(varInfo, Exp) {
       "break;",
       "}"
     )
+    loopCode0=c(paste0(GPUVar$default_index_type," gpu_return_k=0;"),
+                extCode$L0)
     code = c(
-      "{",
-      paste0(GPUVar$default_index_type, " gpu_return_k=0;"),
       C_matrix_assignment(
         loopBody,
         loopInd1 = "gpu_return_j",loopEnd1 = R_ncol(varInfo, returnVar),
         loopInd2 = "gpu_return_i",loopEnd2 = R_nrow(varInfo, returnVar),
-        loopCode0 = extCode$L0,loopCode1 = extCode$L1,loopCode2 = extCode$L2,
+        loopCode0 = loopCode0,loopCode1 = extCode$L1,loopCode2 = extCode$L2,
         endCode2 = endCode
       ),
-      "}",
       "return;"
     )
     
@@ -341,15 +218,18 @@ C_message <- function(varInfo, Exp) {
     endCode1 = "printf(\"\\n\");"
     extCode = finalizeExtCode(subsetCode$extCode)
     
-    code = C_matrix_assignment(loopBody, loopInd1 = "gpu_msg_i", loopEnd1 = size1, loopInd2 = "gpu_msg_j", loopEnd2 = size2, 
-        loopCode0 = extCode$L0, loopCode1 = extCode$L1, loopCode2 = extCode$L2, endCode1 = endCode1)
+    code = C_matrix_assignment(
+      loopBody, 
+      loopInd1 = "gpu_msg_i", loopEnd1 = size1, 
+      loopInd2 = "gpu_msg_j", loopEnd2 = size2, 
+      loopCode0 = extCode$L0, loopCode1 = extCode$L1, loopCode2 = extCode$L2, endCode1 = endCode1)
     code
 }
 
 C_setVersion <- function(varInfo, Exp) {
     varName = deparse(Exp[[2]])
     version = as.numeric(Exp[[3]])
-    varInfo$curVarVersion[[varName]] = version
+    varInfo$varVersion[[varName]] = version
     return("")
 }
 
@@ -367,8 +247,8 @@ C_seq_right <- function(varInfo, Exp) {
     to = args$to
     by = args$by
     length.out=args$length.out
-    from_C = C_element_getCExp(varInfo, from, sub = 1)
-    to_C = C_element_getCExp(varInfo, to, sub = 1, extCode = from_C$extCode)
+    from_C = C_element_getCExp(varInfo, from, sub = 0)
+    to_C = C_element_getCExp(varInfo, to, sub = 0, extCode = from_C$extCode)
     
     by_C=list()
     if(is.null(length.out)){
@@ -377,7 +257,7 @@ C_seq_right <- function(varInfo, Exp) {
                                     to_C$value,"-",from_C$value,"),0)*2-1"))
         by_C$extCode=to_C$extCode
       }else{
-        by_C = C_element_getCExp(varInfo, by, sub = 1, extCode = to_C$extCode)
+        by_C = C_element_getCExp(varInfo, by, sub = 0, extCode = to_C$extCode)
       }
       by_C$value=addParenthesis(by_C$value)
       seq_size=CSimplify(paste0(
@@ -387,7 +267,7 @@ C_seq_right <- function(varInfo, Exp) {
       extCode = by_C$extCode
       
     }else{
-      length_C=C_element_getCExp(varInfo, length.out, sub = 1, extCode = to_C$extCode)
+      length_C=C_element_getCExp(varInfo, length.out, sub = 0, extCode = to_C$extCode)
       seq_size=addParenthesis(length_C$value)
       extCode = length_C$extCode
       by_C$value=CSimplify(paste0("(",to_C$value,"-",from_C$value,")/(",seq_size,"-1)"))
@@ -421,9 +301,17 @@ C_seq_right <- function(varInfo, Exp) {
         endCode = c("gpu_seq_k=gpu_seq_k+1;", paste0("if(gpu_seq_k==", seq_size, "){"), "break;", "}")
         
         extCode = finalizeExtCode(subsetCode$extCode)
-        code = c("{", paste0(GPUVar$default_index_type, " gpu_seq_k=0;"), C_matrix_assignment(loopBody, loopInd1 = "gpu_seq_i", 
-            loopEnd1 = R_nrow(varInfo, leftVar), loopInd2 = "gpu_seq_j", loopEnd2 = R_ncol(varInfo, leftVar), loopCode0 = extCode$L0, 
-            loopCode1 = extCode$L1, loopCode2 = c(extCode$L2, extCode_seq$L0), endCode2 = endCode), "}")
+        code = c(
+          "{", 
+          paste0(GPUVar$default_index_type, " gpu_seq_k=0;"), 
+          C_matrix_assignment(
+            loopBody, 
+            loopInd1 = "gpu_seq_i", loopEnd1 = R_nrow(varInfo, leftVar),
+            loopInd2 = "gpu_seq_j", loopEnd2 = R_ncol(varInfo, leftVar), 
+            loopCode0 = extCode$L0, loopCode1 = extCode$L1, 
+            loopCode2 = c(extCode$L2, extCode_seq$L0), endCode2 = endCode),
+          "}"
+        )
         return(code)
     }
 }
@@ -453,125 +341,47 @@ C_transpose_right <- function(varInfo, Exp) {
     loopBody = paste0(leftEle$value, "=", rightEle$value, ";")
     extCode = finalizeExtCode(rightEle$extCode)
     
-    code = C_matrix_assignment(loopBody, loopInd1 = "gpu_tranpose_i", loopEnd1 = size1, loopInd2 = "gpu_tranpose_j", loopEnd2 = size2, 
-        loopCode0 = extCode$L0, loopCode1 = extCode$L1, loopCode2 = extCode$L2)
+    code = C_matrix_assignment(
+      loopBody, 
+      loopInd1 = "gpu_tranpose_i", loopEnd1 = size1, 
+      loopInd2 = "gpu_tranpose_j", loopEnd2 = size2, 
+      loopCode0 = extCode$L0, loopCode1 = extCode$L1, loopCode2 = extCode$L2)
     code
 }
 
-#Exp=quote({ind=sum(A)})[[2]]
-C_sum_right<-function(varInfo, Exp){
-  leftVar = Exp[[2]]
-  rightExp = Exp[[3]]
-  rightVar=rightExp[[2]]
-  
-  leftInfo=getVarInfo(varInfo,leftVar)
-  precision=getTypeCXXStr(leftInfo)
-  
-  leftEle = C_element_getCExp(varInfo, leftVar, 
-                              sub = c("0","0"), 
-                              opt = list("gpu_sum_j", "gpu_sum_i"))
-  rightEle = C_element_getCExp(varInfo, rightVar, 
-                               sub = c("gpu_sum_i", "gpu_sum_j"),
-                               opt = list("gpu_sum_j", "gpu_sum_i"), 
-                               extCode = leftEle$extCode)
-  size_right_1 = R_nrow(varInfo, rightVar)
-  size_right_2 = R_ncol(varInfo, rightVar)
-  tmpVar=GPUVar$getTmpVar()
-  tmpDef=paste0(precision," ",tmpVar,"=0;")
-  loopBody = paste0(tmpVar,"=",tmpVar,"+", rightEle$value, ";")
-  extCode = finalizeExtCode(rightEle$extCode)
-  
-  code1 = C_matrix_assignment(loopBody, 
-                              loopInd1 = "gpu_sum_j", loopEnd1 = size_right_2,
-                              loopInd2 = "gpu_sum_i", loopEnd2 = size_right_1, 
-                             loopCode0 = extCode$L0, loopCode1 = extCode$L1, loopCode2 = extCode$L2)
-  code=c(
-    "{",
-    tmpDef,
-    code1,
-    paste0(leftEle$value,"=",tmpVar,";"),
-    "}"
-  )
-  code
-}
-
-
-#Exp=quote({ind=colSums(A)})[[2]]
-C_colSums_right<-function(varInfo, Exp){
-  leftVar = Exp[[2]]
-  rightExp = Exp[[3]]
-  rightVar=rightExp[[2]]
-  
-  leftInfo=getVarInfo(varInfo,leftVar)
-  precision=getTypeCXXStr(leftInfo)
-  
-  leftEle = C_element_getCExp(varInfo, leftVar, 
-                              sub = c("gpu_sum_j","0"), 
-                              opt = list("gpu_sum_j", "gpu_sum_i"))
-  rightEle = C_element_getCExp(varInfo, rightVar, 
-                               sub = c("gpu_sum_i", "gpu_sum_j"),
-                               opt = list("gpu_sum_j", "gpu_sum_i"), 
-                               extCode = leftEle$extCode)
-  size_right_1 = R_nrow(varInfo, rightVar)
-  size_left_2 = R_nrow(varInfo, leftVar)
-  tmpVar=GPUVar$getTmpVar()
-  tmpDef=paste0(precision," ",tmpVar,"=0;")
-  loopBody = paste0(tmpVar,"=",tmpVar,"+", rightEle$value, ";")
-  assignment=paste0(leftEle$value,"=",tmpVar,";")
-  extCode = finalizeExtCode(rightEle$extCode)
-  
-  code = C_matrix_assignment(loopBody, 
-                              loopInd1 = "gpu_sum_j", loopEnd1 = size_left_2,
-                              loopInd2 = "gpu_sum_i", loopEnd2 = size_right_1, 
-                              loopCode0 = extCode$L0, loopCode1 = c(tmpDef,extCode$L1), loopCode2 = extCode$L2,
-                              endCode1 = assignment)
-  
-  code
-}
-
-
-#Exp=quote({ind=rowSums(A)})[[2]]
-C_rowSums_right<-function(varInfo, Exp){
-  leftVar = Exp[[2]]
-  rightExp = Exp[[3]]
-  rightVar=rightExp[[2]]
-  
-  leftInfo=getVarInfo(varInfo,leftVar)
-  precision=getTypeCXXStr(leftInfo)
-  
-  leftEle = C_element_getCExp(varInfo, leftVar, 
-                              sub = c("gpu_sum_i","0"), 
-                              opt = list("gpu_sum_i", "gpu_sum_j"))
-  rightEle = C_element_getCExp(varInfo, rightVar, 
-                               sub = c("gpu_sum_i", "gpu_sum_j"),
-                               opt = list("gpu_sum_i", "gpu_sum_j"), 
-                               extCode = leftEle$extCode)
-  size_left_1 = R_nrow(varInfo, leftVar)
-  size_right_2 = R_ncol(varInfo, rightVar)
-  tmpVar=GPUVar$getTmpVar()
-  tmpDef=paste0(precision," ",tmpVar,"=0;")
-  loopBody = paste0(tmpVar,"=",tmpVar,"+", rightEle$value, ";")
-  assignment=paste0(leftEle$value,"=",tmpVar,";")
-  extCode = finalizeExtCode(rightEle$extCode)
-  
-  code = C_matrix_assignment(loopBody, 
-                             loopInd1 = "gpu_sum_i", loopEnd1 = size_left_1,
-                             loopInd2 = "gpu_sum_j", loopEnd2 = size_right_2, 
-                             loopCode0 = extCode$L0, loopCode1 = c(tmpDef,extCode$L1), loopCode2 = extCode$L2,
-                             endCode1 = assignment)
-  code
-}
 
 #Exp=quote(compiler.define(A,B))
 C_compiler_define<-function(varInfo, Exp){
   vars=extractVars(Exp)
   code=c()
+  seqPostFix=c("_from","_to","_by")
   for(var in vars){
+    varDef=NULL
     curInfo=getVarInfo(varInfo,var)
+    
+    if(!curInfo$isPointer){
+      if(curInfo$isSeq){
+        varDef=paste0(GPUVar$promiseDef,curInfo$precisionType,"--",curInfo$address,seqPostFix)
+        code=c(code,varDef)
+        next
+      }
+      if(curInfo$dataType==T_scale){
+        varDef=paste0(GPUVar$promiseDef,curInfo$precisionType,"--",curInfo$address)
+        code=c(code,varDef)
+        next
+      }
+    }else{
     ind=which(varInfo$var_def_code$var==var)
-    if(length(ind)==0)
-      stop("Unable to find the variable ",var," in the variable define table.\n Current expression: ",deparse(Exp))
+    if(length(ind)==0){
+      if(!curInfo$initial_ad){
+        next
+      }else{
+        stop("Unable to find the variable ",var," in the variable define table.\n Current expression: ",deparse(Exp))
+      }
+    }
+      
     varDef=varInfo$var_def_code$def[ind]
+    }
     code=c(code,varDef)
   }
   code
@@ -662,18 +472,28 @@ C_matMul_right_A <- function(varInfo, Exp) {
     
     
     # private assignment
-    A_sub_private = R_expression_sub(varInfo, rightVar1, sub = c("gpu_i", paste0("gpu_start+gpu_k")), sub_C = TRUE, base = 0, 
-        opt = list("gpu_i", c("gpu_k")))
+    A_sub_private = C_element_getCExp(varInfo, rightVar1, sub = c("gpu_i", paste0("gpu_start+gpu_k")), 
+                                      opt = list("gpu_i", "gpu_k"))
     
     extCode_private_assign = finalizeExtCode(A_sub_private$extCode)
     
-    private_assign_vector = c("//Read a piece of row of A into the private memory", extCode_private_assign$L1, paste0("for(", 
-        defaultIndex, " gpu_k=0;gpu_k<gpu_private_length;gpu_k++){"), extCode_private_assign$L2, paste0("gpu_private_spcae[gpu_k]=", 
-        A_sub_private$value, ";"), "}")
+    private_assign_vector = c(
+      "//Read a piece of row of A into the private memory",
+      extCode_private_assign$L1, 
+      paste0("for(", defaultIndex, " gpu_k=0;gpu_k<gpu_private_length;gpu_k++){"), 
+      extCode_private_assign$L2, 
+      paste0("gpu_private_spcae[gpu_k]=", A_sub_private$value, ";"),
+      "}"
+    )
     
-    private_assign_scalar = c("//Read a piece of row of A into the private memory", extCode_private_assign$L1, paste0("for(", 
-        defaultIndex, " gpu_k=0;gpu_k<gpu_cur_length;gpu_k++){"), extCode_private_assign$L2, paste0("gpu_private_spcae[gpu_k]=", 
-        A_sub_private$value, ";"), "}")
+    private_assign_scalar = c(
+      "//Read a piece of row of A into the private memory", 
+      extCode_private_assign$L1, 
+      paste0("for(", defaultIndex, " gpu_k=0;gpu_k<gpu_cur_length;gpu_k++){"),
+      extCode_private_assign$L2,
+      paste0("gpu_private_spcae[gpu_k]=",A_sub_private$value, ";"),
+      "}"
+    )
     
     
     
@@ -683,9 +503,10 @@ C_matMul_right_A <- function(varInfo, Exp) {
     B_multi_sub_vector$extCode = NULL
     # tmp_var=GPUVar$getTmpVar()
     for (i in seq_len(vectorize_size)) {
-        B_multi_sub_vector = R_expression_sub(varInfo, rightVar2, sub = c(paste0("gpu_k*gpu_vectorize_size+gpu_start+", 
-            i - 1), "gpu_j"), sub_C = c(TRUE, TRUE), base = 0, opt = list("gpu_j", c("gpu_k")), extCode = B_multi_sub_vector$extCode)
-        B_vec = c(B_vec, B_multi_sub_vector$value)
+      B_multi_sub_vector = C_element_getCExp(
+        varInfo, rightVar2, sub = c(paste0("gpu_k*gpu_vectorize_size+gpu_start+", i - 1), "gpu_j"), 
+        opt = list("gpu_j", c("gpu_k")), extCode = B_multi_sub_vector$extCode)
+      B_vec = c(B_vec, B_multi_sub_vector$value)
     }
     
     # matrix multiplication in vector format Perform multiplication
@@ -693,9 +514,15 @@ C_matMul_right_A <- function(varInfo, Exp) {
     extCode_B_vec = finalizeExtCode(B_multi_sub_vector$extCode)
     
     # matrix multiplication in vector format
-    matrixMultiVector = c(paste0(defaultFloatV, " gpu_tmp=0;"), "//Matrix multiplication in vector form", extCode_B_vec$L1, 
-        paste0("for(", defaultIndex, " gpu_k=0;gpu_k<gpu_private_vectorize_length;gpu_k++){"), extCode_B_vec$L2, B_vector_code, 
-        paste0("gpu_tmp=fma(gpu_private_vectorized_spcae[gpu_k],gpu_B_vector,gpu_tmp);"), "}")
+    matrixMultiVector = c(
+      paste0(defaultFloatV, " gpu_tmp=0;"),
+      "//Matrix multiplication in vector form", 
+      extCode_B_vec$L1, 
+      paste0("for(", defaultIndex, " gpu_k=0;gpu_k<gpu_private_vectorize_length;gpu_k++){"),
+      extCode_B_vec$L2, 
+      B_vector_code, 
+      paste0("gpu_tmp=fma(gpu_private_vectorized_spcae[gpu_k],gpu_B_vector,gpu_tmp);"),
+      "}")
     
     
     # result writing back in vector format temp vector Sum
@@ -705,40 +532,78 @@ C_matMul_right_A <- function(varInfo, Exp) {
         temp_vector_sum = paste0(paste0("gpu_tmp.s", 0:(vectorize_size - 1)), collapse = "+")
     }
     
-    res_leftSub = R_expression_sub(varInfo, leftVar, sub = c("gpu_i", "gpu_j"), sub_C = TRUE, base = 0, opt = c("gpu_i", 
-        "gpu_j"))
+    res_leftSub = C_element_getCExp(varInfo, leftVar, sub = c("gpu_i", "gpu_j"), opt = c("gpu_i", "gpu_j"))
     extCode_res = finalizeExtCode(res_leftSub$extCode)
     
-    writeBackRes_vector = c("//Write the result back to the matrix", extCode_res$L2, "if(gpu_t==0){", paste0(res_leftSub$value, 
-        "=", temp_vector_sum, ";"), "}else{", paste0(res_leftSub$value, "=", res_leftSub$value, "+", temp_vector_sum, ";"), 
-        "}")
+    writeBackRes_vector = c(
+      "//Write the result back to the matrix", 
+      extCode_res$L2, 
+      "if(gpu_t==0){", 
+      paste0(res_leftSub$value, "=", temp_vector_sum, ";"), 
+      "}else{", 
+      paste0(res_leftSub$value, "=", res_leftSub$value, "+", temp_vector_sum, ";"), 
+      "}"
+      )
     
     
     # matrix multiplication in scalar format Data preparation
-    B_multi_sub_scalar = R_expression_sub(varInfo, rightVar2, sub = c(paste0("gpu_start+gpu_k"), "gpu_j"), sub_C = TRUE, 
-        base = 0, opt = list("gpu_j", "gpu_k"))
+    B_multi_sub_scalar = C_element_getCExp(
+      varInfo, rightVar2, sub = c(paste0("gpu_start+gpu_k"), "gpu_j"),opt = list("gpu_j", "gpu_k"))
     
     
     extCode_B_scalar = finalizeExtCode(B_multi_sub_scalar$extCode)
     
-    matrixMultiScalar = c("//In case that the rest values cannot form a vector", "//Element operation is used to compute the matrix multiplication", 
-        paste0(defaultFloat, " gpu_tmp=0;"), extCode_B_scalar$L1, paste0("for(", defaultIndex, " gpu_k=0;gpu_k<gpu_cur_length;gpu_k++){"), 
-        extCode_B_scalar$L2, paste0("gpu_tmp=fma((", defaultFloat, ")", B_multi_sub_scalar$value, ",gpu_private_spcae[gpu_k],gpu_tmp);"), 
-        "}")
-    writeBackRes_scalar = c("//Write the result back to the matrix", extCode_res$L2, "if(gpu_t==0){", paste0(res_leftSub$value, 
-        "=gpu_tmp;"), "}else{", paste0(res_leftSub$value, "=", res_leftSub$value, "+gpu_tmp;"), "}")
+    matrixMultiScalar = c(
+      "//In case that the rest values cannot form a vector",
+      "//Element operation is used to compute the matrix multiplication", 
+      paste0(defaultFloat, " gpu_tmp=0;"), 
+      extCode_B_scalar$L1, 
+      paste0("for(", defaultIndex, " gpu_k=0;gpu_k<gpu_cur_length;gpu_k++){"), 
+      extCode_B_scalar$L2, 
+      paste0("gpu_tmp=fma((", defaultFloat, ")", B_multi_sub_scalar$value,
+             ",gpu_private_spcae[gpu_k],gpu_tmp);"), 
+      "}")
+    writeBackRes_scalar = c(
+      "//Write the result back to the matrix", 
+      extCode_res$L2, 
+      "if(gpu_t==0){", paste0(res_leftSub$value,"=gpu_tmp;"), 
+      "}else{", 
+      paste0(res_leftSub$value, "=", res_leftSub$value, "+gpu_tmp;"), 
+      "}")
     
     
     
     
     
-    code = c(paste0("for(", defaultIndex, " gpu_t=0;gpu_t<gpu_loopNum;gpu_t++){"), "gpu_start=gpu_end;", paste0("gpu_end=gpu_end+gpu_private_length;"), 
-        paste0("if(gpu_end>gpu_A_col) gpu_end=gpu_A_col;"), "gpu_cur_length=gpu_end-gpu_start;", extCode_private_assign$L0, 
-        extCode_res$L0, "if(gpu_cur_length==gpu_private_length){", paste0("for(", defaultIndex, " gpu_i=0;gpu_i<gpu_A_row;gpu_i++){"), 
-        private_assign_vector, extCode_B_vec$L0, extCode_res$L1, paste0("for(", defaultIndex, " gpu_j=0;gpu_j<gpu_B_col;gpu_j++){"), 
-        matrixMultiVector, writeBackRes_vector, "}", "}", "}else{", paste0("for(", defaultIndex, " gpu_i=0;gpu_i<gpu_A_row;gpu_i++){"), 
-        private_assign_scalar, extCode_B_scalar$L0, extCode_res$L1, paste0("for(", defaultIndex, " gpu_j=0;gpu_j<gpu_B_col;gpu_j++){"), 
-        matrixMultiScalar, writeBackRes_scalar, "}", "}", "}", "}")
+    code = c(
+      paste0("for(", defaultIndex, " gpu_t=0;gpu_t<gpu_loopNum;gpu_t++){"),
+      "gpu_start=gpu_end;",
+      paste0("gpu_end=gpu_end+gpu_private_length;"), 
+      paste0("if(gpu_end>gpu_A_col) gpu_end=gpu_A_col;"),
+      "gpu_cur_length=gpu_end-gpu_start;", 
+      extCode_private_assign$L0, 
+      extCode_res$L0, 
+      "if(gpu_cur_length==gpu_private_length){",
+      paste0("for(", defaultIndex, " gpu_i=0;gpu_i<gpu_A_row;gpu_i++){"), 
+      private_assign_vector, 
+      extCode_B_vec$L0, 
+      extCode_res$L1, 
+      paste0("for(", defaultIndex, " gpu_j=0;gpu_j<gpu_B_col;gpu_j++){"), 
+      matrixMultiVector, writeBackRes_vector, 
+      "}",
+      "}", 
+      "}else{", 
+      paste0("for(", defaultIndex, " gpu_i=0;gpu_i<gpu_A_row;gpu_i++){"), 
+      private_assign_scalar, 
+      extCode_B_scalar$L0,
+      extCode_res$L1, 
+      paste0("for(", defaultIndex, " gpu_j=0;gpu_j<gpu_B_col;gpu_j++){"), 
+      matrixMultiScalar, 
+      writeBackRes_scalar, 
+      "}", 
+      "}",
+      "}", 
+      "}")
     code
 }
 
@@ -762,18 +627,28 @@ C_matMul_right_B <- function(varInfo, Exp) {
     
     
     # private assignment
-    B_sub_private = R_expression_sub(varInfo, rightVar2, sub = c("gpu_start+gpu_k", paste0("gpu_j")), sub_C = TRUE, base = 0, 
-        opt = list("gpu_j", c("gpu_k")))
+    B_sub_private = C_element_getCExp(varInfo, rightVar2, sub = c("gpu_start+gpu_k", paste0("gpu_j")),
+                                      opt = list("gpu_j", "gpu_k"))
     
     extCode_private_assign = finalizeExtCode(B_sub_private$extCode)
     
-    private_assign_vector = c("//Read a column of B into the private memory", extCode_private_assign$L1, paste0("for(", 
-        defaultIndex, " gpu_k=0;gpu_k<gpu_private_length;gpu_k++){"), extCode_private_assign$L2, paste0("gpu_private_spcae[gpu_k]=", 
-        B_sub_private$value, ";"), "}")
+    private_assign_vector = c(
+      "//Read a column of B into the private memory", 
+      extCode_private_assign$L1,
+      paste0("for(", defaultIndex, " gpu_k=0;gpu_k<gpu_private_length;gpu_k++){"),
+      extCode_private_assign$L2, 
+      paste0("gpu_private_spcae[gpu_k]=", B_sub_private$value, ";"),
+      "}"
+    )
     
-    private_assign_scalar = c("//Read a column of B into the private memory", extCode_private_assign$L1, paste0("for(", 
-        defaultIndex, " gpu_k=0;gpu_k<gpu_cur_length;gpu_k++){"), extCode_private_assign$L2, paste0("gpu_private_spcae[gpu_k]=", 
-        B_sub_private$value, ";"), "}")
+    private_assign_scalar = c(
+      "//Read a column of B into the private memory", 
+      extCode_private_assign$L1, 
+      paste0("for(", defaultIndex, " gpu_k=0;gpu_k<gpu_cur_length;gpu_k++){"),
+      extCode_private_assign$L2, 
+      paste0("gpu_private_spcae[gpu_k]=", B_sub_private$value, ";"),
+      "}"
+    )
     
     
     
@@ -782,9 +657,10 @@ C_matMul_right_B <- function(varInfo, Exp) {
     A_multi_sub_vector = list()
     A_multi_sub_vector$extCode = NULL
     for (i in seq_len(vectorize_size)) {
-        A_multi_sub_vector = R_expression_sub(varInfo, rightVar1, sub = c("gpu_i", paste0("gpu_k*gpu_vectorize_size+gpu_start+", 
-            i - 1)), sub_C = c(TRUE, TRUE), base = 0, opt = list("gpu_i", "gpu_k"), extCode = A_multi_sub_vector$extCode)
-        A_vec = c(A_vec, A_multi_sub_vector$value)
+      A_multi_sub_vector = C_element_getCExp(
+        varInfo, rightVar1, sub = c("gpu_i", paste0("gpu_k*gpu_vectorize_size+gpu_start+",  i - 1)),
+        opt = list("gpu_i", "gpu_k"), extCode = A_multi_sub_vector$extCode)
+      A_vec = c(A_vec, A_multi_sub_vector$value)
     }
     
     # matrix multiplication in vector format Perform multiplication
@@ -792,9 +668,16 @@ C_matMul_right_B <- function(varInfo, Exp) {
     extCode_A_vec = finalizeExtCode(A_multi_sub_vector$extCode)
     
     # matrix multiplication in vector format
-    matrixMultiVector = c(paste0(defaultFloatV, " gpu_tmp=0;"), "//Matrix multiplication in vector form", extCode_A_vec$L1, 
-        paste0("for(", defaultIndex, " gpu_k=0;gpu_k<gpu_private_vectorize_length;gpu_k++){"), extCode_A_vec$L2, A_vector_code, 
-        paste0("gpu_tmp=fma(gpu_private_vectorized_spcae[gpu_k],gpu_A_vector,gpu_tmp);"), "}")
+    matrixMultiVector = c(
+      paste0(defaultFloatV, " gpu_tmp=0;"), 
+      "//Matrix multiplication in vector form",
+      extCode_A_vec$L1, 
+      paste0("for(", defaultIndex, " gpu_k=0;gpu_k<gpu_private_vectorize_length;gpu_k++){"),
+      extCode_A_vec$L2, 
+      A_vector_code, 
+      paste0("gpu_tmp=fma(gpu_private_vectorized_spcae[gpu_k],gpu_A_vector,gpu_tmp);"), 
+      "}"
+    )
     
     
     # result writing back in vector format temp vector Sum
@@ -804,40 +687,75 @@ C_matMul_right_B <- function(varInfo, Exp) {
         temp_vector_sum = paste0(paste0("gpu_tmp.s", 0:(vectorize_size - 1)), collapse = "+")
     }
     
-    res_leftSub = R_expression_sub(varInfo, leftVar, sub = c("gpu_i", "gpu_j"), sub_C = TRUE, base = 0, opt = c("gpu_j", 
-        "gpu_i"))
+    res_leftSub = C_element_getCExp(varInfo, leftVar, sub = c("gpu_i", "gpu_j"), opt = c("gpu_j","gpu_i"))
     extCode_res = finalizeExtCode(res_leftSub$extCode)
     
-    writeBackRes_vector = c("//Write the result back to the matrix", extCode_res$L2, "if(gpu_t==0){", paste0(res_leftSub$value, 
-        "=", temp_vector_sum, ";"), "}else{", paste0(res_leftSub$value, "=", res_leftSub$value, "+", temp_vector_sum, ";"), 
-        "}")
+    writeBackRes_vector = c(
+      "//Write the result back to the matrix", 
+      extCode_res$L2, 
+      "if(gpu_t==0){", paste0(res_leftSub$value, "=", temp_vector_sum, ";"),
+      "}else{",
+      paste0(res_leftSub$value, "=", res_leftSub$value, "+", temp_vector_sum, ";"), 
+      "}"
+    )
     
     
     # matrix multiplication in scalar format Data preparation
-    A_multi_sub_scalar = R_expression_sub(varInfo, rightVar1, sub = c("gpu_i", paste0("gpu_start+gpu_k")), sub_C = TRUE, 
-        base = 0, opt = list("gpu_i", "gpu_k"))
+    A_multi_sub_scalar = C_element_getCExp(varInfo, rightVar1, sub = c("gpu_i", paste0("gpu_start+gpu_k")), opt = list("gpu_i", "gpu_k"))
     
     
     extCode_A_scalar = finalizeExtCode(A_multi_sub_scalar$extCode)
     
-    matrixMultiScalar = c("//In case that the rest values cannot form a vector", "//Element operation is used to compute the matrix multiplication", 
-        paste0(defaultFloat, " gpu_tmp=0;"), extCode_A_scalar$L1, paste0("for(", defaultIndex, " gpu_k=0;gpu_k<gpu_cur_length;gpu_k++){"), 
-        extCode_A_scalar$L2, paste0("gpu_tmp=fma((", defaultFloat, ")", A_multi_sub_scalar$value, ",gpu_private_spcae[gpu_k],gpu_tmp);"), 
-        "}")
-    writeBackRes_scalar = c("//Write the result back to the matrix", extCode_res$L2, "if(gpu_t==0){", paste0(res_leftSub$value, 
-        "=gpu_tmp;"), "}else{", paste0(res_leftSub$value, "=", res_leftSub$value, "+gpu_tmp;"), "}")
+    matrixMultiScalar = c(
+      "//In case that the rest values cannot form a vector", 
+      "//Element operation is used to compute the matrix multiplication", 
+      paste0(defaultFloat, " gpu_tmp=0;"), 
+      extCode_A_scalar$L1, 
+      paste0("for(", defaultIndex, " gpu_k=0;gpu_k<gpu_cur_length;gpu_k++){"), 
+      extCode_A_scalar$L2,
+      paste0("gpu_tmp=fma((", defaultFloat, ")", A_multi_sub_scalar$value, ",gpu_private_spcae[gpu_k],gpu_tmp);"), 
+      "}"
+    )
+    writeBackRes_scalar = c(
+      "//Write the result back to the matrix",
+      extCode_res$L2, 
+      "if(gpu_t==0){", 
+      paste0(res_leftSub$value, "=gpu_tmp;"), 
+      "}else{", 
+      paste0(res_leftSub$value, "=", res_leftSub$value, "+gpu_tmp;"),
+      "}"
+      )
     
     
-    
-    
-    
-    code = c(paste0("for(", defaultIndex, " gpu_t=0;gpu_t<gpu_loopNum;gpu_t++){"), "gpu_start=gpu_end;", paste0("gpu_end=gpu_end+gpu_private_length;"), 
-        paste0("if(gpu_end>gpu_A_col) gpu_end=gpu_A_col;"), "gpu_cur_length=gpu_end-gpu_start;", extCode_private_assign$L0, 
-        extCode_res$L0, "if(gpu_cur_length==gpu_private_length){", paste0("for(", defaultIndex, " gpu_j=0;gpu_j<gpu_B_col;gpu_j++){"), 
-        private_assign_vector, extCode_A_vec$L0, extCode_res$L1, paste0("for(", defaultIndex, " gpu_i=0;gpu_i<gpu_A_row;gpu_i++){"), 
-        matrixMultiVector, writeBackRes_vector, "}", "}", "}else{", paste0("for(", defaultIndex, " gpu_j=0;gpu_j<gpu_B_col;gpu_j++){"), 
-        private_assign_scalar, extCode_A_scalar$L0, extCode_res$L1, paste0("for(", defaultIndex, " gpu_i=0;gpu_i<gpu_A_row;gpu_i++){"), 
-        matrixMultiScalar, writeBackRes_scalar, "}", "}", "}", "}")
+    code = c(
+      paste0("for(", defaultIndex, " gpu_t=0;gpu_t<gpu_loopNum;gpu_t++){"), 
+      "gpu_start=gpu_end;",
+      paste0("gpu_end=gpu_end+gpu_private_length;"), 
+      paste0("if(gpu_end>gpu_A_col) gpu_end=gpu_A_col;"),
+      "gpu_cur_length=gpu_end-gpu_start;", 
+      extCode_private_assign$L0, 
+      extCode_res$L0, 
+      "if(gpu_cur_length==gpu_private_length){",
+      paste0("for(", defaultIndex, " gpu_j=0;gpu_j<gpu_B_col;gpu_j++){"), 
+      private_assign_vector, 
+      extCode_A_vec$L0,
+      extCode_res$L1, 
+      paste0("for(", defaultIndex, " gpu_i=0;gpu_i<gpu_A_row;gpu_i++){"), 
+      matrixMultiVector, writeBackRes_vector, 
+      "}",
+      "}",
+      "}else{", 
+      paste0("for(", defaultIndex, " gpu_j=0;gpu_j<gpu_B_col;gpu_j++){"), 
+      private_assign_scalar,
+      extCode_A_scalar$L0, 
+      extCode_res$L1, 
+      paste0("for(", defaultIndex, " gpu_i=0;gpu_i<gpu_A_row;gpu_i++){"), 
+      matrixMultiScalar, 
+      writeBackRes_scalar, 
+      "}",
+      "}", 
+      "}", 
+      "}")
     code
 }
 

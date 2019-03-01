@@ -25,21 +25,21 @@ R_expression_sub <- function(varInfo, Exp, sub, opt = NULL, extCode = NULL) {
         res = R_getVarSub(varInfo, Exp, sub[1], sub[2], opt, extCode)
     }
     
-    #code hoisting optimization
-    extCode = res$extCode
-    extCode = addValueRecord(extCode, res$value)
-    curVarNum = length(extractVars(extCode)) + 1
-    while (curVarNum != length(extractVars(extCode))) {
+      #code hoisting optimization
+      extCode = res$extCode
+      extCode = addValueRecord(extCode, res$value)
+      curVarNum = length(extractVars(extCode)) + 1
+      while (curVarNum != length(extractVars(extCode))) {
         curVarNum = length(extractVars(extCode))
         vars = getAllVarsInRecord(extCode)
         tmpVars = extractVars(extCode)
         for (i in seq_along(tmpVars)) {
-            if (!tmpVars[i] %in% vars) {
-                extCode = removeRedundantVar(extCode, tmpVars[i])
-            }
+          if (!tmpVars[i] %in% vars) {
+            extCode = removeRedundantVar(extCode, tmpVars[i])
+          }
         }
-    }
-    res$extCode = extCode
+      }
+      res$extCode = extCode
     
     return(res)
 }
@@ -52,14 +52,20 @@ R_oneIndex_exp_sub <- function(varInfo, Exp, k, opt = NULL, extCode = NULL) {
     # If the expression is a variable
     curInfo = getVarInfo(varInfo, Exp)
     rowNum = R_nrow(varInfo,Exp)
-    res_index=one_to_two_index(k,extCode = extCode,rowNum=rowNum)
+    colNum=R_ncol(varInfo,Exp)
+    res_index=one_to_two_index(k,extCode = extCode,rowNum=rowNum,colNum=colNum)
     res = R_getVarSub(varInfo, Exp, i = res_index$i, j = res_index$j, opt = opt, extCode = res_index$extCode)
     return(res)
 }
 
 #Return: i, j, extCode
-one_to_two_index<-function(k,extCode,rowNum){
-  
+one_to_two_index<-function(k,extCode,rowNum,colNum){
+  if(rowNum=="1"){
+    return(list(i=0,j=k,extCode=extCode))
+  }
+  if(colNum=="1"){
+    return(list(i=k,j="0",extCode=extCode))
+  }
   index_type=GPUVar$default_index_type
   col_ind_var = GPUVar$getTmpVar()
   col_ind_value = CSimplify(paste0("(", index_type, ")((", 
@@ -135,7 +141,7 @@ R_getVarSub <- function(varInfo, var, i, j = 1, opt = NULL, extCode = NULL) {
       seqInfo = getSeqAddress(varInfo, var)
       res = list(extCode=extCode)
       res$value = CSimplify(paste0(seqInfo$from, "+", "(", rowOffset, 
-                                   "-1)*", seqInfo$by))
+                                   ")*", seqInfo$by))
       return(res)
     }
     
@@ -143,7 +149,8 @@ R_getVarSub <- function(varInfo, var, i, j = 1, opt = NULL, extCode = NULL) {
     element_dist=switch(storageMode,"single"=1,"mixed"=GPUVar$element_dist)
     
     offset = CSimplify(paste0("(",rowOffset, "+", colOffset,")*",element_dist))
-    if (!is.null(opt)) {
+    if (!is.null(opt)&&
+        as.logical(gpuMagic.getOptions("hoist.optimization"))) {
         res = hoistOpt(extCode, offset)
         offset = res$value
         extCode = res$extCode
@@ -204,7 +211,10 @@ R_getVarSize <- function(varInfo, var,C_symbol, ind,processTranspose=TRUE) {
       if(!C_symbol){
         size=switch(ind,curInfo$size1,curInfo$size2)
         if(isNumeric(size))
-          return(size)
+          return(as.numeric(size))
+        size_var=getSizeVar(var_char,ind)
+        if(!is.null(varInfo$dimMap[[size_var]]))
+          return(varInfo$dimMap[[size_var]])
       }
       return(getSizeVar(var_char,ind))
     }

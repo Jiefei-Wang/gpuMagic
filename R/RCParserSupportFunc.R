@@ -29,10 +29,12 @@ getPointerType<-function(varInfo,curVar){
   }
 }
 
-addvariableSizeInfo <- function(sizeInfo, curInfo) {
+addvariableSizeInfo <- function(sizeInfo, curInfo,sizeHeader,matrixInd) {
   curSizeinfo = data.frame(
     var = curInfo$var, precisionType = curInfo$precisionType, 
     size1 = curInfo$size1, size2 = curInfo$size2,
+    size1_char=paste0(sizeHeader,"1(",matrixInd,")"),
+    size2_char=paste0(sizeHeader,"2(",matrixInd,")"),
     length = curInfo$designSize,
     sizeInByte = Simplify(paste0("(", curInfo$designSize, ")*", getTypeSize(curInfo$precisionType))), 
     stringsAsFactors = FALSE)
@@ -44,6 +46,19 @@ addvariableSizeInfo <- function(sizeInfo, curInfo) {
     sizeInfo = rbind(sizeInfo, curSizeinfo)
     return(sizeInfo)
 }
+#find the root source variable for the redirected variable
+findRedirectRoot<-function(varInfo,var){
+  if(var==GPUVar$return_variable){
+    return(var)
+  }
+  curInfo=getVarInfo(varInfo,var)
+  
+  if(curInfo$redirect!="NA"){
+    return(findRedirectRoot(varInfo,curInfo$redirect))
+  }else{
+    return(curInfo$address)
+  }
+}
 
 addVariableDeclaration <- function(varInfo,curInfo, data, offset, offsetInd,prefix) {
   CXXtype = getTypeCXXStr(curInfo$precisionType)
@@ -52,15 +67,15 @@ addVariableDeclaration <- function(varInfo,curInfo, data, offset, offsetInd,pref
   curInfo$address = curInfo$var
   
   if(curInfo$redirect!="NA"){
-    redirectInfo=getVarInfo(varInfo,curInfo$redirect)
-    curCode = paste0("#define ",curInfo$var," ",redirectInfo$address)
+    curCode = paste0("#define ",curInfo$var," ",findRedirectRoot(varInfo,curInfo$redirect))
     return(list(code=curCode,Info=curInfo))
   }
   
   # If the variable is a sequence
   if (curInfo$isSeq) {
     if (!curInfo$isPointer) {
-      curCode = paste0(CXXtype, 3, " ", curInfo$var, ";")
+      curInfo$address= paste0("gpu_seq_",curInfo$var)
+      curCode = NULL
     } else {
       curCode = paste0(location, CXXtype, 3, "* ", curInfo$var, 
                        "=", "((", location, CXXtype, 3, "*)(", data, "+", offset, 
@@ -226,12 +241,16 @@ isSingleValue<-function(x){
 getSeqAddress <- function(varInfo, var,C_symbol=FALSE) {
     curInfo = getVarInfo(varInfo, var)
     ad = curInfo$address
-    if (curInfo$isPointer) {
-        ad = paste0("(*", ad, ")")
+    if(curInfo$isPointer){
+      ad = paste0("(*", ad, ")")
+      from = paste0(ad, ".s0")
+      to = paste0(ad, ".s1")
+      by = paste0(ad, ".s2")
+    }else{
+      from = paste0(ad, "_from")
+      to = paste0(ad, "_to")
+      by = paste0(ad, "_by")
     }
-    from = paste0(ad, ".s0")
-    to = paste0(ad, ".s1")
-    by = paste0(ad, ".s2")
     length = getSizeVar(deparse(var),1)
     data.frame(from = from, to = to, by = by, length = length, stringsAsFactors = FALSE)
 }
@@ -290,74 +309,10 @@ C_general_scalar_assignment <- function(varInfo, Exp, funcName, func) {
     
     return(c(unlist(extCode), code))
 }
-# This function is for the general matrix assignment
-# The left and right variable should be able to be directly processed 
-# by the oneIndex_sub function at the final stage, a func will be called with two
-# parameters: value_left and value_right to do some special treatment
-# for each element
-C_general_matrix_assignment <- function(varInfo, leftVar, rightVar, func = matrix_assignment_func_doNothing, 
-    rightBound = NULL) {
-    leftDataType = getVarProperty(varInfo, leftVar, "dataType")
-    if (leftDataType == T_scale) {
-        sub = c(0, 0)
-        code_left = C_element_getCExp(varInfo, leftVar, sub = sub)
-        code_right = C_element_getCExp(varInfo, rightVar, sub = sub, extCode = code_left$extCode)
-        extCode = finalizeExtCode(code_right$extCode)
-        code = c(unlist(extCode), paste0(func(code_left$value, code_right$value), 
-            ";"))
-        
-    } else {
-        # dispatch accoding to if the right matrix has boundary if the right
-        # matrix is a number, boundary will be ignored
-        if (is.null(rightBound)) {
-            
-            i = "gpu_general_index_i"
-            j = "gpu_general_index_j"
-            sub = c(i, j)
-            code_left = C_element_getCExp(varInfo, leftVar, sub = sub, 
-                opt = list(j, i))
-            code_right = C_element_getCExp(varInfo, rightVar, sub = sub, 
-                opt = list(j, i), extCode = code_left$extCode)
-            bodyCode = paste0(func(code_left$value, code_right$value), 
-                ";")
-            extCode = finalizeExtCode(code_right$extCode)
-            
-            code = C_matrix_assignment(bodyCode, loopInd1 = j, loopEnd1 = R_ncol(varInfo, 
-                leftVar), loopInd2 = i, loopEnd2 = R_nrow(varInfo, leftVar), 
-                loopCode0 = extCode$L0, loopCode1 = extCode$L1, loopCode2 = extCode$L2)
-            
-        } else {
-            code_left = C_element_getCExp(varInfo, leftVar, sub = "gpu_general_index_i", 
-                opt = list(c("gpu_general_index_i", "gpu_general_index_k")))
-            code_right = C_element_getCExp(varInfo, rightVar, sub = "gpu_general_index_k", 
-                extCode = code_left$extCode, opt = list(c("gpu_general_index_i", 
-                  "gpu_general_index_k")))
-            
-            bodyCode = paste0(func(code_left$value, code_right$value), 
-                ";")
-            extCode = finalizeExtCode(code_right$extCode)
-            if (!isNumeric(rightVar)) {
-                defineCode = c("{", paste0(GPUVar$default_index_type, " gpu_general_index_k=0;"), 
-                  paste0(GPUVar$default_index_type, " gpu_right_matrix_length=", 
-                    rightBound, ";"))
-                endCode = c("gpu_general_index_k=gpu_general_index_k+1;", 
-                  paste0("if(gpu_general_index_k==gpu_right_matrix_length){"), 
-                  "gpu_general_index_k=0;", "}")
-            } else {
-                defineCode = NULL
-                endCode = NULL
-            }
-            code = c(defineCode, C_matrix_assignment(bodyCode, loopInd1 = "gpu_general_index_i", 
-                loopEnd1 = R_length(varInfo, leftVar), loopCode0 = extCode$L0, 
-                loopCode1 = extCode$L1, endCode1 = endCode))
-        }
-    }
-    
-    code
-}
 
 # This function will not check the variable in the varInfo 
 #it just create a for loop in C code format 
+# loopCode0
 # for(loopStart1:loopEnd1-1){
 # loopCode1 
 # for(loopStart2:loopEnd2-1){ 
@@ -367,55 +322,107 @@ C_general_matrix_assignment <- function(varInfo, leftVar, rightVar, func = matri
 # }
 # endCode1 
 # }
-C_matrix_assignment <- function(bodyCode, loopInd1, loopStart1 = "0", loopEnd1, 
-    loopInd2 = NULL, loopStart2 = "0", loopEnd2 = NULL, loopCode0 = NULL, 
-    loopCode1 = NULL, loopCode2 = NULL, endCode1 = NULL, endCode2 = NULL) {
+#C_matrix_assignment("body",loopInd1="i",loopEnd1="10")
+#C_matrix_assignment("body",loopInd1="i",loopEnd1="10",loopCode1="loop1")
+#C_matrix_assignment("body;\nbreak;",loopInd1="i",loopEnd1="1",loopCode1="loop1")
+#C_matrix_assignment("body;\nbreak;",loopInd1="i",loopEnd1="1",loopInd2="j",loopEnd2="1",loopCode1="loop1",loopCode0="loop0")
+C_matrix_assignment <- function(bodyCode, 
+                                loopInd1, loopStart1 = "0", loopEnd1, 
+                                loopInd2 = NULL, loopStart2 = "0", loopEnd2 = NULL, 
+                                loopCode0 = NULL, loopCode1 = NULL, loopCode2 = NULL, 
+                                endCode0=NULL, endCode1 = NULL, endCode2 = NULL,
+                                autoBracket=TRUE) {
   loopLen1=CSimplify(paste0(loopEnd1,"-",loopStart1))
-  loopLen2=paste0(loopEnd2,"-",loopStart2)
-  
   if(loopLen1=="0")
     return(NULL)
-  if(!is.null(loopEnd2)){
+  
+  loopInfo1=simplifyLoop(loopInd1,loopStart1,loopEnd1,loopLen1,loopCode1,endCode1)
+  
+  if(is.null(loopEnd2)){
+    bracketNeeded=detectBracketRequirement(loopCode0,loopInfo1$loopCode,NULL)
+    bracketNeeded=bracketNeeded|c(FALSE,TRUE,FALSE)
+    bracket_start=sapply(bracketNeeded,function(x)ifelse(x,"{",""))
+    bracket_end=sapply(bracketNeeded,function(x)ifelse(x,"}",""))
+    if(!loopInfo1$needBracket){
+      bodyCode=gsub("break;","//break;",bodyCode,fixed=TRUE)
+    }
+    
+    code = c(bracket_start[1],loopCode0, 
+             loopInfo1$loopDef,bracket_start[2],loopInfo1$loopCode,
+             bodyCode,
+             loopInfo1$endCode,bracket_end[2],
+             endCode0, bracket_end[1])
+    
+    
+  }else{
+    loopLen2=paste0(loopEnd2,"-",loopStart2)
     loopLen2=CSimplify(loopLen2)
     if(loopLen2=="0")
       return(NULL)
-  }
-  if(loopLen1=="1"){
-    if(isSymbol(loopStart1)||isNumeric(loopStart1)){
-    loop1Def=paste0("#define ",loopInd1," ",loopStart1)
-    }else{
-      loop1Def=paste0("#define ",loopInd1," (",loopStart1,")")
+    
+    loopInfo2=simplifyLoop(loopInd2,loopStart2,loopEnd2,loopLen2,loopCode2,endCode2)
+    if(!loopInfo2$needBracket){
+      bodyCode=gsub("break;","//break;",bodyCode,fixed=TRUE)
     }
-    loop1Def=c("{",loop1Def)
-    loopCode1=gsub("break;","//break;",loopCode1,fixed=TRUE)
-    endCode1=gsub("break;","//break;",endCode1,fixed=TRUE)
-    endCode1=c(endCode1,paste0("#undef ",loopInd1))
-  }else{
-    loop1Def=paste0(
-      "for(", GPUVar$default_index_type, " ", loopInd1, 
-      "=", loopStart1, ";", loopInd1, "<", loopEnd1, ";", loopInd1, "++){")
+    
+    bracketNeeded=detectBracketRequirement(loopCode0,loopInfo1$loopCode,loopInfo2$loopCode)
+    bracketNeeded=bracketNeeded|c(FALSE,loopInfo1$needBracket,TRUE)
+    bracket_start=sapply(bracketNeeded,function(x)ifelse(x,"{",""))
+    bracket_end=sapply(bracketNeeded,function(x)ifelse(x,"}",""))
+    
+    code = c(bracket_start[1],loopCode0, 
+             loopInfo1$loopDef,bracket_start[2],loopInfo1$loopCode,
+             loopInfo2$loopDef,bracket_start[3],loopInfo2$loopCode,
+             bodyCode,
+             loopInfo2$endCode,bracket_end[3],
+             loopInfo1$endCode,bracket_end[2],
+             endCode0,bracket_end[1])
+    
   }
-  if(loopLen2=="1"){
-    if(isSymbol(loopStart2)||isNumeric(loopStart2)){
-      loop2Def=paste0("#define ",loopInd2," ",loopStart2)
+  empCode=which(code=="")
+  if(length(empCode)!=0)
+   code=code[-empCode]
+  return(code)
+}
+
+simplifyLoop<-function(loopInd,loopStart,loopEnd,loopLen,loopCode,endCode){
+  if(loopLen=="1"){
+    if(isSymbol(loopStart)||isNumeric(loopStart)){
+      loopDef=paste0("#define ",loopInd," ",loopStart)
     }else{
-      loop2Def=paste0("#define ",loopInd2," (",loopStart2,")")
+      loopDef=paste0("#define ",loopInd," (",loopStart,")")
     }
-    loop2Def=c("{",loop2Def)
-    loopCode2=gsub("break;","//break;",loopCode2,fixed=TRUE)
-    endCode2=gsub("break;","//break;",endCode2,fixed=TRUE)
-    endCode2=c(endCode2,paste0("#undef ",loopInd2))
+    loopCode=gsub("break;","//break;",loopCode,fixed=TRUE)
+    endCode=gsub("break;","//break;",endCode,fixed=TRUE)
+    endCode=c(endCode,paste0("#undef ",loopInd))
+    needBracket=FALSE
   }else{
-  loop2Def=paste0(
-    "for(", GPUVar$default_index_type, " ", loopInd2, "=", 
-                  loopStart2, ";", loopInd2, "<", loopEnd2, ";", loopInd2,  "++){")
+    loopDef=paste0(
+      "for(", GPUVar$default_index_type, " ", loopInd, 
+      "=", loopStart, ";", loopInd, "<", loopEnd, ";", loopInd, "++)")
+    needBracket=TRUE
   }
-  if (!is.null(loopInd2)) {
-    loopCode2 = c(loop2Def, loopCode2)
-    endCode2 = c(endCode2, "}")
+  res=list(loopDef=loopDef,loopCode=loopCode,endCode=endCode,needBracket=needBracket)
+  return(res)
+}
+
+detectBracketRequirement<-function(loopCode0,loopCode1,loopCode2){
+  brackNeeded=!vapply(list(loopCode0,loopCode1,loopCode2),isEmptyCode,logical(1))
+  
+}
+#Check if the code is empty(Comments are considered as empty)
+isEmptyCode<-function(code){
+  if(is.null(code)) return(TRUE)
+  code1=sapply(code,function(x)gsub("//.*\n","",x))
+  code1=sapply(code1,function(x)gsub("//.*","",x))
+  code1=paste0(code1,collapse = "")
+  code1=gsub(" ", "", code1, fixed = TRUE)
+  if(code1=="")
+    return(TRUE)
+  else{
+    return(FALSE)
   }
-  code = c(loopCode0, loop1Def,loopCode1,loopCode2, bodyCode, endCode2, endCode1, "}")
-  code
+  
 }
 
 matrix_assignment_func_doNothing <- function(value_left, value_right) {

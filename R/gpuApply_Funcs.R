@@ -21,27 +21,25 @@ createSapplySignature <- function(parms, FUN, .macroParms, .device, .options) {
     sig = c()
     parmsName = names(parms)
     
+    res=processDimTbl(parms,.macroParms)
+    matchRule=res$rule
     # skip the first parameter(the parameter that will be looped on)
     for (i in seq_len(length(parms) - 1) + 1) {
         # Type of the parameters
         varSig = ""
-        if (sum(dim(parms[[i]])) == 2) 
-            varSig = paste0(varSig, T_scale) else varSig = paste0(varSig, T_matrix)
         # Precision type of the parameter when it is a gpuMatrix class
         if (is(parms[[i]],"gpuMatrix")) {
             varSig = paste0(varSig, parms[[i]]$type)
         }
         # When it is a macro, add the dim and data
-        if (parmsName[i] %in% .macroParms) 
-            varSig = paste(varSig, paste0(dim(parms[[i]]), collapse = ","), 
-                digest(parms[[i]][]), sep = ",")
         sig = c(sig, varSig)
     }
+    sig=c(sig,matchRule)
     # Default variable type
     sig = c(sig, paste(GPUVar$default_float, GPUVar$default_int, GPUVar$default_index_type, 
         sep = ","))
     # gpuSapply options
-    sig = c(sig, digest(FUN), digest(.macroParms), digest(.options$sapplyOptimization))
+    sig = c(sig,digest(FUN), digest(.options$sapplyOptimization))
     sig
 }
 
@@ -56,13 +54,11 @@ getVarSizeInfo_C_level <- function(sizeMatrix) {
     for (i in seq_len(nrow(sizeMatrix))) {
         curInfo = sizeMatrix[i, ]
         matrixOffset[i] = curoffSet
-        curoffSet = curoffSet + curInfo$totalSize
+        curoffSet = curoffSet + curInfo$sizeInByte
     }
     
     matrixNum = nrow(sizeMatrix)
     dim = c(size1, size2)
-    if (is.null(matrixOffset)) 
-        matrixOffset = 0
     if (curoffSet == 0) 
         curoffSet = 1
     # if(is.null(size1)) size1=0 if(is.null(size2)) size2=0
@@ -101,7 +97,6 @@ fillGPUdata <- function(GPUcode1, .options, .device) {
     
     # return size, gp,gs,lp offset, gp,gs,lp,ls number, gp,gs,lp,ls dim(row,col) 
     kernel_args$sizeInfo = NULL
-    gp_totalsize=0
     returnSize=1
     
     
@@ -127,25 +122,27 @@ fillGPUdata <- function(GPUcode1, .options, .device) {
     
     if (!is.null(varInfo$returnInfo)) {
         returnInfo = varInfo$returnInfo
-        returnSizeVector = returnInfo$size1 * returnInfo$size2
-        if(sum(is.na(returnSizeVector))>0) {
+        if(sum(is.na(returnInfo$designSize))>0) {
           warning("Undetermined return size has been found!")
-          returnSizeVector=returnSizeVector[!is.na(returnSizeVector)]
+          returnInfo=returnInfo[!is.na(returnInfo$designSize)]
         }
-        if (length(returnSizeVector) != 0) {
-            if (sum(returnSizeVector[1] != returnSizeVector) > 0) 
+        if (length(returnInfo$designSize) != 0) {
+            if (sum(returnInfo$designSize[1] != returnInfo$designSize) > 0) 
                 warning("Multiple return size has been found!")
             
-          returnSize = max(max(returnSizeVector),1)
+          returnSize = max(max(returnInfo$designSize),1)
         }
     }
     
-    matrix_offset=c(sizeInfo_gp$matrixOffset,sizeInfo_gs$matrixOffset,sizeInfo_ls$matrixOffset)
-    kernel_args$sizeInfo = c(returnSize,matrix_offset,matrix_size_info)
     
-    if(length(matrix_size_info)==0) matrix_size_info=0
-    # Allocate the gpu memory
     totalWorkerNum = length(parms[[1]])
+    
+    global_gp_offset=sizeInfo_gp$matrixOffset*totalWorkerNum
+    matrix_offset=c(global_gp_offset,sizeInfo_gs$matrixOffset,sizeInfo_ls$matrixOffset)
+    kernel_args$sizeInfo = c(returnSize,totalWorkerNum,matrix_offset,matrix_size_info)
+    
+    if(length(kernel_args$sizeInfo)==0) kernel_args$sizeInfo=0
+    # Allocate the gpu memory
     IntType = GPUVar$default_index_type
     
     device_argument = list()
@@ -155,13 +152,9 @@ fillGPUdata <- function(GPUcode1, .options, .device) {
                                             type = "int", device = .device)
     device_argument$ls_data = kernel.getSharedMem(sizeInfo_ls$totalSize, 
                                                   type = "char")
-    
-    
     # The return size for each thread
     device_argument$return_var = gpuEmptMatrix(returnSize, totalWorkerNum, type = GPUVar$default_float, device = .device)
     device_argument$sizeInfo = gpuMatrix(kernel_args$sizeInfo, type = IntType, device = .device)
-    
-    
     
     
     device_argument = c(parms, device_argument)
@@ -190,18 +183,14 @@ completeGPUcode <- function(GPUcode) {
     # The working memory space
     arg_prefix_list = c(
       "global", "global", "local",
-      "global", "global", "global",
-      "global", "global", "global")
+      "global", "global")
     arg_list = c(
-      GPUVar$global_private_data, GPUVar$global_shared_data,GPUVar$local_shared_data,
-      GPUVar$global_private_offset,GPUVar$global_shared_offset, GPUVar$local_shared_offset, 
-      GPUVar$matrix_size_info, GPUVar$return_variable, GPUVar$size_info)
+      GPUVar$global_private_data,GPUVar$global_shared_data,
+      GPUVar$local_shared_data,GPUVar$return_variable, GPUVar$size_info)
     
     indType=GPUVar$default_index_type
     floatType=GPUVar$default_float
-    arg_type_list = c("char", "char","char", 
-                      indType,indType,indType,
-                      indType,floatType,indType)
+    arg_type_list = c("char", "char","char", floatType,indType)
     for (i in seq_along(arg_list)) {
         curCode = paste0(arg_prefix_list[i], " ", arg_type_list[i], "* ", 
             arg_list[i])
@@ -218,7 +207,7 @@ completeGPUcode <- function(GPUcode) {
     
     # add the kernel function definition
     code = paste0(code, "){\n", paste0(GPUcode$gpu_code, collapse = "\n"), 
-        "}")
+        "\n}")
     
     # Add the double vector support if appliable
     if (GPUVar$default_float == "double") 
@@ -232,33 +221,42 @@ completeGPUcode <- function(GPUcode) {
 }
 
 evaluateProfileTbl <- function(parms, table) {
-    if (is.null(table) || nrow(table) == 0) 
-        return(table)
-    table$totalSize = vapply(as.list(parse(text = table$totalSize)), eval, 
-        numeric(1), envir = environment())
-    table$size1 = vapply(as.list(parse(text = table$size1)), eval, numeric(1), 
-        envir = environment())
-    table$size2 = vapply(as.list(parse(text = table$size2)), eval, numeric(1), 
-        envir = environment())
+  if (is.null(table) || nrow(table) == 0) 
     return(table)
+  table$size1 = vapply(as.list(parse(text = table$size1)), eval, numeric(1), 
+                       envir = environment())
+  table$size2 = vapply(as.list(parse(text = table$size2)), eval, numeric(1), 
+                       envir = environment())
+  if(!is.null(table$sizeInByte))
+    table$sizeInByte = vapply(as.list(parse(text = table$sizeInByte)), eval, 
+                              numeric(1), envir = environment())
+    table$designSize = table$size1*table$size2
+  return(table)
 }
 
 
-completeProfileTbl <- function(GPUExp2) {
-    parms = GPUExp2$parms
-    varInfo = GPUExp2$varInfo
+completeProfileTbl <- function(GPUExp3) {
+    parms = GPUExp3$parms
+    parms=lapply(parms,as.matrix)
+    varInfo = GPUExp3$varInfo
     varInfo$matrix_gs = evaluateProfileTbl(parms, varInfo$matrix_gs)
     varInfo$matrix_gp = evaluateProfileTbl(parms, varInfo$matrix_gp)
     varInfo$matrix_ls = evaluateProfileTbl(parms, varInfo$matrix_ls)
     varInfo$matrix_lp = evaluateProfileTbl(parms, varInfo$matrix_lp)
+    
+    
+    
     varInfo$returnInfo = evaluateProfileTbl(parms, varInfo$returnInfo)
     
-    GPUExp2$varInfo = varInfo
-    GPUExp2
+    
+    GPUExp3$varInfo = varInfo
+    GPUExp3
     
 }
-CheckCodeError <- function(GPUcode, parms) {
+CheckCodeError <- function(GPUcode) {
+  parms=GPUcode$parms
     errorCheckInfo = GPUcode$errorCheck
+    if(is.null(errorCheckInfo)) return()
     for (i in seq_len(nrow(errorCheckInfo))) {
         info = errorCheckInfo[i, ]
         if (info$check == "") 
@@ -318,10 +316,10 @@ opt_workerNumber <- function(varInfo, code, .options) {
         stop("Unable to find the location of the thread number optimization code\n", 
             "This error should never be happened\n", "Please contact the author")
     }
+    loopedVar_length=GPUVar$gpu_global_size
     
     if (.options$sapplyOptimization$thread.number) {
-        insertedCode = paste0("if(", GPUVar$gpu_global_id, "<", R_length(varInfo, 
-            GPUVar$gpu_loop_data), "){\n")
+        insertedCode = paste0("if(", GPUVar$gpu_global_id, "<", loopedVar_length, "){\n")
         insertedCode = paste0(targetCode, insertedCode)
         endCode = "\n}"
     } else {
@@ -332,55 +330,3 @@ opt_workerNumber <- function(varInfo, code, .options) {
     code = paste0(code, endCode)
     code
 }
-
-opt_matrixDim <- function(varInfo, code, .options) {
-    targetCode = paste0("//Matrix dimension optimization\n")
-    
-    if (!grepl(targetCode, code, fixed = TRUE)) {
-        stop("Unable to find the location of the thread number optimization code\n", 
-            "This error should never be happened\n", "Please contact the author")
-    }
-    if (!.options$sapplyOptimization$matrix.dim) {
-        code = sub(targetCode, "", code, fixed = TRUE)
-        return(code)
-    }
-    
-    match.info = regexpr(targetCode, code, fixed = TRUE)
-    opt_code = substring(code, match.info + attr(match.info, "match.length"))
-    
-    opt_target_space = c("gp", "gs", "lp", "ls")
-    opt_target = c(paste0("gpu_", opt_target_space, "_size1"), paste0("gpu_", 
-        opt_target_space, "_size2"))
-    variable_definition = c()
-    for (i in seq_along(opt_target)) {
-        res = opt_matrixDim_hidden(opt_code, opt_target[i])
-        variable_definition = c(variable_definition, res$variable_definition)
-        opt_code = res$code_optimization
-    }
-    variable_definition = paste0(variable_definition, collapse = "")
-    code = paste0(substr(code, 1, match.info), targetCode, variable_definition, 
-        opt_code)
-    
-    code
-}
-# opt.target=opt_target[i]
-
-opt_matrixDim_hidden <- function(code, opt.target) {
-    target.reg = paste0(opt.target, "\\[([0-9]+)\\]")
-    target.replace = paste0(opt.target, "_\\1")
-    
-    variable = str_match_all(code, target.reg)[[1]][, 1]
-    if (length(variable) == 0) 
-        return(list(code_optimization = code))
-    
-    variable = unique(variable)
-    variable_opt = gsub(target.reg, target.replace, variable)
-    
-    variable_definition = paste0(GPUVar$default_index_type, " ", variable_opt, 
-        "=", variable, ";\n")
-    variable_definition = paste0(variable_definition, collapse = "")
-    code_optimization = gsub(target.reg, target.replace, code)
-    
-    return(list(variable_definition = variable_definition, code_optimization = code_optimization))
-}
-

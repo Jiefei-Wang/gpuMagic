@@ -11,10 +11,12 @@ GPUVar <- local({
     
     
     #gpu size prefix
-    GPUVar_env$matrix_size_prefix="gpu_"
-    GPUVar_env$matrix_temporary_size="gpu_matrix_temporary_size"
-    GPUVar_env$promiseAssgin="//compiler promise assign:"
+    GPUVar_env$matrix_size_prefix="gpu_s_"
     
+    #Promise series
+    GPUVar_env$matrix_temporary_space="gpu_matrix_temporary_space"
+    GPUVar_env$promiseAssgin="//compiler promise assign--"
+    GPUVar_env$promiseDef="//compiler promise define--"
     
     #Matrix number
     GPUVar_env$gp_number="gpu_gp_number"
@@ -45,7 +47,6 @@ GPUVar <- local({
     
     # worker private data, loacted in global memory
     GPUVar_env$global_private_data = "gpu_gp_data"
-    GPUVar_env$global_private_totalSize = "gpu_gp_totalSize"
     
     # Per worker offset
     GPUVar_env$global_private_offset = "gpu_gp_offset"
@@ -106,10 +107,16 @@ GPUVar <- local({
     GPUVar_env$openclCode = ".opencl_"
     GPUVar_env$openclFuncCall = ".opencl("
     
+    
+    GPUVar_env$parmsTblName="parms"
+    
     # The shared size in byte For doing the matrix multiplication
     GPUVar_env$vectorSize = 4
     # in byte
     GPUVar_env$private_vector_size = 24 * 1024
+    
+    
+    
     
     return(GPUVar_env)
 })
@@ -117,14 +124,15 @@ GPUVar <- local({
 
 
 
-.elementFuncs = c("+", "-", "*", "/", ">", ">=", "<", "<=", "==","^",
-                  "abs_int","abs_float","(","[")
-.elementTransformation = c("floor", "ceiling")
+.elementFuncs = c("+", "-", "*", "/","^", 
+                  ">", ">=", "<", "<=", "==",
+                  "abs_int","abs_float","(","[",
+                  "nrow","ncol","length","floor", "ceiling")
 
-.elementOp = c(.elementFuncs, .elementTransformation)
-.noParentElementOP = c("t","sum", "return")
-.noChildElementOP = c("nrow","ncol")
-
+.elementOp = c(.elementFuncs)
+#These functions will be dispatched to the regular expression translation
+.noParentElementOP = c("t","sum","rowSums","colSums", "return","seq")
+.noChildElementOP = c()
 
 #' @include RProfilerFunc.R
 
@@ -143,6 +151,7 @@ GPUVar <- local({
 .profileFuncs[["sum"]]=profile_sum
 .profileFuncs[["rowSums"]]=profile_rowSums
 .profileFuncs[["colSums"]]=profile_colSums
+.profileFuncs[["("]]=profile_parenthesis
 
 
 #element op
@@ -158,6 +167,8 @@ GPUVar <- local({
 .profileFuncs[["=="]] = profile_logical
 .profileFuncs[["!="]] = profile_logical
 .profileFuncs[["abs"]] = profile_abs
+.profileFuncs[["abs_int"]] = profile_abs
+.profileFuncs[["abs_float"]] = profile_abs
 
 
 
@@ -166,17 +177,21 @@ GPUVar <- local({
 .profileFuncs[["seq"]] = profile_seq
 .profileFuncs[[":"]] = profile_oneStepSeq
 
-
+.profileCheckFuncs=list()
+.profileCheckFuncs[["["]]=profileCheck_subset
+.profileCheckFuncs[["nrow"]]=profileCheck_size
+.profileCheckFuncs[["ncol"]]=profileCheck_size
 
 
 # .recompileFuncs[['%*%']]=recompile_matrixMult
 
 #' @include RCParserFunc.R
+#' @include RCParser_elementOP.R
 .cFuncs = list()
 .cFuncs[["<-matrix"]] = C_matrix_right
-.cFuncs[["<-length"]] = C_length_left_right
-.cFuncs[["<-nrow"]] = C_nrow_left_right
-.cFuncs[["<-ncol"]] = C_ncol_left_right
+.cFuncs[["length<-"]] = C_length_left
+.cFuncs[["nrow<-"]] = C_nrow_left
+.cFuncs[["ncol<-"]] = C_ncol_left
 .cFuncs[["<-Matrix"]] = C_NULL
 .cFuncs[["<-Scalar"]] = C_NULL
 .cFuncs[["<-resize"]] = C_NULL
@@ -194,7 +209,7 @@ GPUVar <- local({
 
 
 # Element op
-.cFuncs[["("]]=C_element_parenthesis
+.cFuncs[["<-("]]=C_element_parenthesis
 .cFuncs[["<-+"]] = C_element_arithmatic
 .cFuncs[["<--"]] = C_element_arithmatic
 .cFuncs[["<-*"]] = C_element_arithmatic
@@ -211,17 +226,14 @@ GPUVar <- local({
 .cFuncs[["<-abs_int"]] = C_element_abs
 .cFuncs[["<-abs_float"]] = C_element_abs
 .cFuncs[["<-["]] = C_element_sub
-
-
-
-.cFuncs[["length<-"]] = C_length_left_right
-.cFuncs[["nrow<-"]] = C_nrow_left_right
-.cFuncs[["ncol<-"]] = C_ncol_left_right
-###############################THIS NEEDS TO BE IMPLEMENTED################################
-.cFuncs[["[<-"]] = C_ncol_left_right
+.cFuncs[["<-length"]] = C_element_length
+.cFuncs[["<-nrow"]] = C_element_nrow
+.cFuncs[["<-ncol"]] = C_element_ncol
+.cFuncs[["[<-"]] = C_assignment_symbols
 
 
 .cFuncs[["return"]] = C_return
+.cFuncs[["return_nocpy"]] = C_NULL
 .cFuncs[["break"]] = C_break
 .cFuncs[["next"]] = C_next
 .cFuncs[["message"]] = C_message
@@ -271,6 +283,7 @@ Scalar <- function(precision = GPUVar$default_float, constDef = FALSE) {
 #' (By default, the package will convert the variable to the default float type before doing the division).
 #' @param shared If the matrix is shared by all the workers in a work group. Do not use it if you don't know its meaning.
 #' @param location The physical memory location of the matrix, it can be either 'global' or 'local'. Do not use it if you don't know its meaning.
+#' @aliases Matrix
 #' @examples 
 #' #Create a 10-by-10 matrix
 #' A=Matrix(10,10)
@@ -397,8 +410,8 @@ compiler.promiseDefine<-function(precision,varName){
   #paste0(precision," ",varName;")
 }
 #If the variable is in used, then do the assignment
-compiler.promiseAssign<-function(varName,value){
-  #paste0(varName,"=",value,";")
+compiler.promiseAssign<-function(target,code){
+  paste0(GPUVar$promiseAssgin,target,"--",code)
 }
 
 compiler.release<-function(varName){

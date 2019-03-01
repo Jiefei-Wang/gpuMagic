@@ -35,6 +35,7 @@ Suggests: testthat,
 Collate:
     'ParserFramework.R'
     'RCParserFunc_Rlevel.R'
+    'RCParser_elementOP.R'
     'RCParserFunc.R'
     'RProfilerFunc.R'
     'pkgFunc.R'

@@ -1,25 +1,108 @@
 
 # ===========================profiler 1========================
-
+getDim<-function(x){
+  if(is.vector(x)){
+    return(c(length(x),1))
+  }else{
+    return(dim(x))
+  }
+}
+#Generate match rule for determining if the code needs to be recompile
+#The function also generate the parameter size table
+processDimTbl<-function(parms, parmsWithValue){
+  parmsTblName=GPUVar$parmsTblName
+  #Find the rule for the parameters with values
+  rule=data.frame(var=character(0),matchFunc=character(0),value=character(0),stringsAsFactors = FALSE)
+  for(var in parmsWithValue){
+    curDim=getDim(parms[[var]])
+    curRule=c(curDim[1],curDim[2],
+              paste0("matrix(c(",paste0(as.vector(parms[[var]]),collapse = ","),"),nrow=",curDim[1],"))"))
+    matchFunc=c("row","col","value")
+    
+    rule=rbind(rule,cbind(var,matchFunc,curRule),stringsAsFactors =FALSE)
+  }
+  #Find the variable size for the rest variables
+  allVars_ind=which(!names(parms)%in%parmsWithValue)
+  nvar=length(allVars_ind)
+  varDims=data.frame(var=rep(NA,nvar),
+                     ind=0,size1=0,size2=0,
+                     size1_char="",size2_char="",stringsAsFactors = FALSE)
+  for(i in seq_along(allVars_ind)){
+    curVar_ind=allVars_ind[i]
+    curDim=getDim(parms[[curVar_ind]])
+    varDims[i,]$var=names(parms)[curVar_ind]
+    varDims[i,]$ind=curVar_ind
+    varDims[i,]$size1=curDim[1]
+    varDims[i,]$size2=curDim[2]
+  }
+  #Find the unique size
+  size_list=c(varDims$size1,varDims$size2)
+  size_unique_ind=which(!duplicated(size_list))
+  size_unique=size_list[size_unique_ind]
+  size_unique_var_ind=(size_unique_ind-1)%%nvar+1
+  size_unique_var_size_ind=floor((size_unique_ind-1)/nvar+1)
+  size_unique_list=data.frame(size=size_unique,var_ind=size_unique_var_ind,size_ind=size_unique_var_size_ind)
+  #fill the dimension table and generate the match rule
+  for(i in seq_along(allVars_ind)){
+    curVar_info=varDims[i,]
+    curVar_ind=curVar_info$ind
+    curVar_name=curVar_info$var
+    for(j in seq_len(2)){
+      curRule=NULL
+      curSize=as.numeric(curVar_info[2+j])
+      prefix=ifelse(j==1,"nrow","ncol")
+      if(curSize==1){
+        curVar_info[4+j]=1
+        curRule=c(curVar_name,prefix,"1")
+      }else{
+        ind=which(size_unique_list$size==curSize)
+        matched_var=size_unique_list$var_ind[ind]
+        matched_var_ind=varDims[matched_var,]$ind
+        matched_var_name=varDims[matched_var,]$var
+        matched_size_ind=size_unique_list$size_ind[ind]
+        prefix_matched=ifelse(matched_size_ind==1,"nrow","ncol")
+        if(matched_var==i&&matched_size_ind==j){
+          #If the matched data is itself, put the size info in the table
+          curVar_info[4+j]=paste0(prefix,"(parms[[",curVar_ind,"]])")
+        }else{
+          #If not, put the matched size into the table and add the rule to check it
+          curVar_info[4+j]=paste0(prefix_matched,"(parms[[",matched_var_ind,"]])")
+          curRule=c(curVar_name,paste0(prefix,"-",prefix_matched),matched_var_name)
+        }
+      }
+      if(!is.null(curRule)){
+        rule=rbind(rule,curRule,stringsAsFactors=FALSE)
+      }
+    }
+    varDims[i,]=curVar_info
+  }
+  colnames(rule)=c("var","matchFunc","value")
+  
+  return(list(dimTbl=varDims,rule=rule))
+}
 # Profile a parameter and give the profile table back
 profileVar <- function(parms, parmsWithValue,parmsConst) {
     varInfo = getEmpVarInfoTbl()
-    varInfo$parmsTblName = "parms"
-    varInfo$requiredVar = c()
+    parmsTblName=GPUVar$parmsTblName
+    dimRes=processDimTbl(parms,parmsWithValue)
+    dimTbl=dimRes$dimTbl
+    matchRule=dimRes$rule
+    
+    varInfo$requiredVar = names(parms)
     
     varName = names(parms)
     for (i in seq_len(length(parms))) {
-        if (is(parms[[i]],"gpuMatrix")) {
-            curPrecision = .type(parms[[i]])
-            curDim = dim(parms[[i]])
-        } else {
-            curPrecision = GPUVar$default_float
-            curDim = dim(as.matrix(parms[[i]]))
-        }
         info = getEmpyTable()
         info$var = varName[i]
         
+        if (is(parms[[i]],"gpuMatrix")) {
+          curPrecision = .type(parms[[i]])
+        } else {
+          curPrecision = GPUVar$default_float
+        }
         
+        
+        info$dataType = T_matrix
         info$precisionType = curPrecision
         info$shared = TRUE
         info$constVal = varName[i] %in% parmsConst
@@ -27,36 +110,30 @@ profileVar <- function(parms, parmsWithValue,parmsConst) {
         info$initial_ad = FALSE
         
         
-        if (varName[i] %in% parmsWithValue) {
-            info$value = paste0("(", varInfo$parmsTblName, "[[", i, "]])")
-        }
-        info$dataType = T_matrix
-        if (curDim[1] == 1 && curDim[2] == 1 && varName[i] != GPUVar$gpu_loop_data) {
-            info$size1 = 1
-            info$size2 = 1
-        } else {
-            if (varName[i] == GPUVar$gpu_loop_data) {
-                info$size1 = paste0("length(", varInfo$parmsTblName, "[[", 
-                  i, "]])")
-                info$size2 = 1
-            } else {
-                info$size1 = paste0("nrow(", varInfo$parmsTblName, "[[", 
-                  i, "]])")
-                info$size2 = paste0("ncol(", varInfo$parmsTblName, "[[", 
-                  i, "]])")
-            }
+        curDimInd=which(dimTbl$var==info$var)
+        if(length(curDimInd)==0){
+          curDim=getDim(parms[[info$var]])
+          info$size1=curDim[1]
+          info$size2=curDim[2]
+        }else{
+          info$size1=dimTbl$size1_char[curDimInd]
+          info$size2=dimTbl$size2_char[curDimInd]
         }
         
+        
+        
+        if (varName[i] %in% parmsWithValue) {
+            info$value = paste0("(", parmsTblName, "[[", i, "]])")
+        }
         
         varInfo = addVarInfo(varInfo, info)
-        varInfo$requiredVar = c(varInfo$requiredVar, info$var)
     }
-    varInfo
+    list(varInfo=varInfo,matchRule=matchRule)
 }
 
 # ==================================Profiler
 # 2==========================
-
+# Exp=quote(Matrix(1,1))
 # Find the function parameters If the functions' argument does not show
 # in the expression, the default value will be used
 matchFunArg <- function(fun, Exp) {
@@ -72,7 +149,8 @@ matchFunArg <- function(fun, Exp) {
     for (i in seq_along(funArg)) {
         if (deparse(funArg[[i]]) == "") 
             funArg[[i]] = NA
-        if (is.call(funArg[[i]])) 
+        #obtain the default setting
+        if (is.call(funArg[[i]])&&!names(funArg)[i]%in%names(ExpArg)) 
             funArg[[i]] = eval(funArg[[i]])
     }
     return(funArg)

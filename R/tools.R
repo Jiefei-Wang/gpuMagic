@@ -93,18 +93,18 @@ typeInherit <- function(type1, type2) {
   
   target_size = max(getTypeSize(type1), getTypeSize(type2))
   if (type1 %in% group_float || type2 %in% group_float) {
-    for (i in seq_along(group_float)) {
+    for (i in rev(seq_along(group_float))) {
       if (target_size == getTypeSize(group_float[i])) 
         return(group_float[i])
     }
   }
   if (type1 %in% group_int || type2 %in% group_int) {
-    for (i in seq_along(group_int)) {
+    for (i in rev(seq_along(group_int))) {
       if (target_size == getTypeSize(group_int[i])) 
         return(group_int[i])
     }
   }
-  for (i in seq_along(group_float)) {
+  for (i in rev(seq_along(group_float))) {
     if (target_size == getTypeSize(group_float[i])) 
       return(group_int[i])
   }
@@ -136,6 +136,7 @@ isNA <- function(x,C=TRUE) {
 # Test if an input is a number 
 # x can be a character or an expression
 isNumeric <- function(x) {
+  if(is.numeric(x)) return(TRUE)
   if (!is.call(x) && length(x) > 1) 
     return(FALSE)
   

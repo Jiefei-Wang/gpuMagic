@@ -1,3 +1,4 @@
+#add variable declare and release code in the expression
 ROptimizer1 <- function(profileMeta2) {
   previousExp=profileMeta2$Exp
   varInfo=profileMeta2$varInfo
@@ -7,7 +8,7 @@ ROptimizer1 <- function(profileMeta2) {
   for(i in seq_along(previousExp)){
     curExp=previousExp[[i]]
     vars=unique(extractVars(curExp))
-    varsInUsed=unique(variableInUsed(varInfo,vars))
+    varsInUsed=variableInUsed(varInfo,vars)
     for(curVar in varsInUsed){
       if(is.null(varUsedInfo[[curVar]])){
         varUsedInfo[[curVar]]=c(i,i)
@@ -53,22 +54,58 @@ ROptimizer1 <- function(profileMeta2) {
   optMeta1_2
 }
 
+#Redirect the dim variable if the other variable has the same value
+ROptimizer2<-function(optMeta1){
+  varInfo=optMeta1$varInfo
+  dimRecord=data.frame(dimVar=character(0),value=character(0),stringsAsFactors = FALSE)
+  for(curVar in extractVars(varInfo)){
+    curInfo=getVarInfo(varInfo,curVar)
+    if(!curInfo$dynSize1&&!is.na(curInfo$size1)&&!isNumeric(curInfo$size1)){
+      dimVar=getSizeVar(curVar,1)
+      dimRecord=rbind(dimRecord,c(dimVar,curInfo$size1),stringsAsFactors = FALSE)
+    }
+    if(!curInfo$dynSize2&&!is.na(curInfo$size2)&&!isNumeric(curInfo$size2)){
+      dimVar=getSizeVar(curVar,2)
+      dimRecord=rbind(dimRecord,c(dimVar,curInfo$size2),stringsAsFactors = FALSE)
+    }
+  }
+  colnames(dimRecord)=c("dimVar","value")
+  dimRecord$value=vapply(dimRecord$value,Simplify,FUN.VALUE = character(1))
+  dimRecord_noDuplicate=dimRecord[!duplicated(dimRecord[,c('value')]),]
+  dimMap=list()
+  for(i in seq_len(nrow(dimRecord))){
+    curRecord=dimRecord[i,]
+    matched_ind=which(dimRecord_noDuplicate$value==curRecord$value)
+    if(length(matched_ind)!=0){
+      dimMap[[curRecord$dimVar]]=dimRecord_noDuplicate$dimVar[matched_ind]
+    }
+  }
+  optMeta1$varInfo$dimMap=dimMap
+  optMeta1
+}
 
-ROptimizer2 <- function(GPUExp2) {
+
+
+
+#Process promise define and promise assign
+ROptimizer3 <- function(GPUExp2) {
   previousCode=GPUExp2$gpu_code
   #Find the start and end line number of the var dimension
-  varRecord=getVarDimRecord(previousCode)
+  varRecord=getVarRecord(previousCode)
+  varRecord=computeVarRecordRange(varRecord)
   
-  insertCode=getDimCode(GPUExp2$varInfo,varRecord)
+  insertCode=getInsertedCode(GPUExp2$varInfo,varRecord$var)
+  insertCode=realizePromiseAssign(insertCode,varRecord$promiseVarTbl)
   code=previousCode
-  for(i in rev(as.numeric(names(insertCode)))){
-    pre_len=i-1
-    post_len=length(code)-i
-    code=c(code[seq_len(pre_len)],insertCode[[as.character(i)]],code[seq_len(post_len)+i])
+  if(!is.null(insertCode)){
+    for(i in rev(as.numeric(names(insertCode)))){
+      pre_len=i-1
+      post_len=length(code)-i
+      code=c(code[seq_len(pre_len)],insertCode[[as.character(i)]],code[seq_len(post_len)+i])
+    }
   }
   code=code[-which(code=="//Main function delimiter")]
-  #realize the promise assign
-  code=realizePromiseAssign(code,varRecord)
+  
   
   GPUExp3=GPUExp2
   GPUExp3$gpu_code=code
@@ -76,121 +113,3 @@ ROptimizer2 <- function(GPUExp2) {
 }
 
 
-getVarDimRecord<-function(previousCode){
-  varRecord=c()
-  mainLineNum=0
-  pattern=paste0(GPUVar$matrix_size_prefix,"(.+?)_dim_([12])")
-  for(i in seq_along(previousCode)){
-    curCode=previousCode[[i]]
-    if(curCode=="//Main function delimiter"){
-      mainLineNum=i
-      next
-    }
-    #If it is a promise assign, skip it
-    if(length(grep(GPUVar$promiseAssgin,curCode,fixed = TRUE))!=0)
-      next
-    #find the first main function delimiter
-    if(mainLineNum==0)
-      next
-    #extract the variable dimension variables
-    dim_vars=unique(str_extract_all(curCode,pattern)[[1]])
-    #Find the target variable
-    vars=gsub(pattern,"\\1",dim_vars)
-    vars_dim_ind=gsub(pattern,"\\2",dim_vars)
-    for(j in seq_along(vars)){
-      var=vars[j]
-      var_dim_ind=vars_dim_ind[j]
-      record_Ind=which(varRecord[,1]==var&varRecord[,2]==var_dim_ind)
-      if(length(record_Ind)==1){
-        varRecord[record_Ind,4]=i
-      }else{
-        varRecord=rbind(varRecord,c(var,var_dim_ind,i,i,mainLineNum))
-      }
-    }
-  }
-  varRecord=as.data.frame(varRecord,stringsAsFactors=FALSE)
-  colnames(varRecord)=c("var","dim","start","end","mainLineNum")
-  varRecord
-}
-
-getDimCode<-function(varInfo,varRecord){
-  insertCode=list()
-  #tmpname,varName
-  temp_dim_record=c()
-  ind=unique(sort(c(varRecord$start)))
-  matrix_temporary_size=GPUVar$matrix_temporary_size
-  for(i in seq_len(nrow(varRecord))){
-    start_line=varRecord$start[i]
-    #Remove the unused dim
-    unused_ind=which(varRecord$end<start_line)
-    unused_var=varRecord$var[unused_ind]
-    unused_var_dim=varRecord$dim[unused_ind]
-    var_dim=getSizeVar(unused_var,unused_var_dim)
-    temp_dim_record[temp_dim_record%in%var_dim]=NA
-    
-    #Assign the size variable a temporary dim variable
-    mainLineInd=varRecord$mainLineNum[i]
-    curVar=varRecord$var[i]
-    curVar_dim=varRecord$dim[i]
-    curVar_dim_char=getSizeVar(curVar,curVar_dim)
-    #Check if there is enough temprary variables
-    #If not, add more temporary variables
-    #If it is enough, assign the temporary variables to the dim variables
-    temp_Var_def=NULL
-    tmpVar_available_size=sum(is.na(temp_dim_record))
-    if(tmpVar_available_size==0){
-      temp_dim_record=c(temp_dim_record,NA)
-      temp_Var_def=paste0(GPUVar$default_index_type," ",matrix_temporary_size,length(temp_dim_record),";")
-    }
-    tmpVar_available_ind=which(is.na(temp_dim_record))
-    tmp_ind=tmpVar_available_ind[1]
-    temp_dim_record[tmp_ind]=curVar_dim_char
-    #Define the size macro
-    dim_macro=paste0("#define ",curVar_dim_char," ",matrix_temporary_size,tmp_ind)
-    #Find the size data
-    dim_data=NULL
-    if(has.key(curVar,varInfo$matrixInd)){
-      curInfo=getVarInfo(varInfo,curVar)
-      if(curInfo$location=="global"&&curInfo$shared){
-        size_ad=paste0(GPUVar$gs_size,curVar_dim)
-      }
-      if(curInfo$location=="global"&&!curInfo$shared){
-        size_ad=paste0(GPUVar$gp_size,curVar_dim)
-      }
-      if(curInfo$location=="local"&&curInfo$shared){
-        size_ad=paste0(GPUVar$ls_size,curVar_dim)
-      }
-      if(curInfo$location=="local"&&!curInfo$shared){
-        size_ad=paste0(GPUVar$lp_size,curVar_dim)
-      }
-      dim_data=paste0(curVar_dim_char,"=",size_ad,"(",varInfo$matrixInd[[curVar]],");")
-    }
-    
-    insertCode[[mainLineInd]]=c(insertCode[[mainLineInd]],
-                                temp_Var_def,
-                                dim_macro,
-                                dim_data
-    )
-  }
-  insertCode
-}
-realizePromiseAssign<-function(code,varRecord){
-  vars_dim=getSizeVar(varRecord$var,varRecord$dim)
-  vars_dim_group=paste0(vars_dim,collapse = "|")
-  vars_dim_header=GPUVar$promiseAssgin
-  vars_dim_pattern=paste0(vars_dim_header,"(",vars_dim_group,")")
-  remove_ind=NULL
-  for(i in seq_along(code)){
-    curCode=code[i]
-    if(length(grep(vars_dim_header,curCode))>0){
-      if(length(grep(vars_dim_pattern,curCode))>0){
-        code[i]=substr(curCode,nchar(vars_dim_header)+1,nchar(curCode))
-      }else{
-        remove_ind=c(remove_ind,i)
-      }
-    }
-  }
-  if(!is.null(remove_ind))
-    code=code[-remove_ind]
-  return(code)
-}

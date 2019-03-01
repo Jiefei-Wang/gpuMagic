@@ -74,9 +74,11 @@ parserFrame_hidden<-function(parserFunc, checkFunc, updateFunc, codeMetaInfo,
     # it works
     if (is.call(curExp) && curExp[[1]] == "{") {
       message("Unnecessary { has been found: ", deparse(curExp))
-      curLevel = c(level, "{")
+      
+      curLevel = level
       codePack=processCodePack(parserFunc, checkFunc, updateFunc,
                                curLevel,codePack,2)
+      codePack$curExp=curExp[[-1]]
       codePack=finializeCodePack(codePack,isTop)
       next
     }

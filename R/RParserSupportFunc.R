@@ -143,14 +143,14 @@ extract_for_if_Var <- function(parsedExp) {
           # Force substitution of the index variable
           index_var = curExp[[2]]
           loop_range= curExp[[3]]
-          
+          loopBody = curExp[[4]]
+          loopBody_new = extract_for_if_Var(loopBody)
           #If the loop range is not simply a : function, replace it
           if(!(is.call(loop_range)&&loop_range[[1]]==":")){
             index_newVar = GPUVar$getTmpVar()
             index_def_code = paste0(index_newVar, "=Scalar(precision=\"", 
                                     GPUVar$default_index_type, "\",constDef=TRUE)")
             
-            index_release_code=parse(text=paste0("compiler.release(",index_newVar,")"))[[1]]
             if (is.symbol(loop_range)) {
               loop_rangeVar = deparse(loop_range)
               loop_range_def_Code = NULL
@@ -181,19 +181,15 @@ extract_for_if_Var <- function(parsedExp) {
             curExp[[2]] = as.symbol(index_newVar)
             curExp[[3]] = loop_rangeNew
             
-            loopBody = curExp[[4]]
-            loopBody_new = extract_for_if_Var(loopBody)
+           
             
             loopBody_new = c(loopBody_new[1], index_var_code, loopBody_new[-1])
-            curExp[[4]] = as.call(loopBody_new)
           }else{
             index_def_code = parse(text=paste0(index_var, "=Scalar(precision=\"", 
                                     GPUVar$default_index_type, "\",constDef=TRUE)"))[[1]]
-            #index_release_code=parse(text=paste0("compiler.release(",index_var,")"))[[1]]
-            #index_var_release_code=NULL
-            index_release_code=NULL
           }
-          code = c(code, index_def_code,curExp,index_release_code)
+          curExp[[4]] = as.call(loopBody_new)
+          code = c(code, index_def_code,curExp)
           next
         }
         

@@ -73,6 +73,7 @@ test_that("Sequence add, negative step",{
   expect_equal(sum(abs(error)),0)
 })
 
+
 test_that("Sequence add, positve step, fix length",{
   testFunc<-function(ind,n,m){
     tmp=seq(1,n,length.out = m)+seq(1,n,length.out = m)
@@ -151,8 +152,8 @@ test_that("Matrix add, transpose and no copy tranpose",{
   testFunc<-function(ind,A,B){
     tmp=t(A[ind,])
     tmp1=B[ind,]
-    C=tmp+t.nocpy(tmp1)
-    return.nocpy(C)
+    C=tmp+t_nocpy(tmp1)
+    return_nocpy(C)
   }
   
   A=matrix(runif(n*m),m,n)
@@ -164,8 +165,8 @@ test_that("Matrix add, transpose and no copy tranpose",{
 test_that("Matrix add, one argument is a scalar",{
   testFunc<-function(ind,A,B){
     tmp1=B[ind,]
-    C=A+t.nocpy(tmp1)
-    return.nocpy(C)
+    C=A+t_nocpy(tmp1)
+    return_nocpy(C)
   }
   
   A=10
@@ -177,7 +178,7 @@ test_that("Matrix add, one argument is a scalar",{
 test_that("power function, one argument is a scalar",{
   testFunc<-function(ind,A,B){
     C=B[,ind]^A
-    return.nocpy(C)
+    return_nocpy(C)
   }
   
   A=3
@@ -189,7 +190,7 @@ test_that("power function, one argument is a scalar",{
 test_that("abs function",{
   testFunc<-function(ind,A,B){
     C=abs(B[,ind])+A[,ind]
-    return.nocpy(C)
+    return_nocpy(C)
   }
   
   A=matrix(runif(n*m),m,n)

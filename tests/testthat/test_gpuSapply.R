@@ -5,7 +5,7 @@ m=200
 
 test_that("macro1",{
   testFunc<-function(ind,A,n){
-    B=matrix(0,n)
+    B=matrix(ind,n)
     C=A+B
     return(C)
   }
@@ -81,7 +81,7 @@ test_that("Self assignment, Unnecessary bracket",{
   
   
   A=matrix(runif(n*m),n,m)
-  expect_warning(res_gpu<-gpuSapply(1:m,testFunc,A))
+  expect_message(res_gpu<-gpuSapply(1:m,testFunc,A))
   res_cpu=sapply(1:m,testFunc,A)
   error=range(res_gpu-res_cpu)
   expect_equal(sum(abs(error)),0)

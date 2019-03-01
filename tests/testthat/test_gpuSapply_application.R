@@ -25,7 +25,7 @@ largestK<-function(ind,A,k){
       }
     }
   }
-  return.nocpy(largest_ind)
+  return_nocpy(largest_ind)
 }
 
 k=10
@@ -42,7 +42,7 @@ computeLoss<-function(ind,x,y,parms){
   #Find the parameters for the thread
   parm=parms[ind,]
   #Compute y hat, use no-copy transpose
-  y_hat=x%*%t.nocpy(parm)
+  y_hat=x%*%t_nocpy(parm)
   #absolute loss value(L1 loss)
   loss=sum(abs(y-y_hat))
   return(loss)
@@ -92,9 +92,9 @@ t_stat_gpu=function(ind,data,sampleX,sampleY){
   y=subRef(data,sampleY[,ind],)
   x_row=nrow(x)
   y_row=nrow(y)
-  x_m=t.nocpy(colSums(x))
+  x_m=t_nocpy(colSums(x))
   x_m=x_m/x_row
-  y_m=t.nocpy(colSums(y))
+  y_m=t_nocpy(colSums(y))
   y_m=y_m/y_row
   df=x_row+y_row-2
   s=matrix(0,1,ncol(x))

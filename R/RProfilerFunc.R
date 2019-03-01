@@ -2,7 +2,7 @@
 profiler_assignment_dispatch <- function(level, varInfo, curExp) {
     leftVar = curExp[[2]]
     
-    if (hasVar(varInfo, deparse(leftVar))) {
+    if (is.call(leftVar)||hasVar(varInfo, deparse(leftVar))) {
         return(profiler_assignment_exitingVar(level, varInfo, curExp))
     } else {
         return(profiler_assignment_newVar(level, varInfo, curExp))
@@ -25,7 +25,6 @@ profiler_assignment_exitingVar <- function(level, varInfo, curExp) {
     curExp=result$Exp
     leftVar = curExp[[2]]
     rightExp = curExp[[3]]
-    # TODO: perform the error check here
     check=errorCheck_matrix_matrix(
       leftInfo$size1,leftInfo$size2,
       rightInfo$size1,rightInfo$size2)
@@ -48,11 +47,13 @@ profiler_assignment_exitingVar <- function(level, varInfo, curExp) {
     #If the left expression is a function, then check the matrix dimension
     if(is.call(leftVar)){
       left_func=deparse(leftVar[[1]])
-      if(!paste0(left_func,"<-")%in%names(.cFuncs)){
+      result$errorCheck=rbind(result$errorCheck,errorCheck)
+      
+      if(!is.null(.profileCheckFuncs[[left_func]])){
+        result=.profileCheckFuncs[[left_func]](result,varInfo,curExp,leftInfo,rightInfo)
+      }else{
         stop("The left function is not supported: ",deparse(curExp))
       }
-      
-      result$errorCheck=rbind(result$errorCheck,errorCheck)
       return(result)
     }
     
@@ -161,7 +162,7 @@ profiler_assignment_exitingVar <- function(level, varInfo, curExp) {
         newVar = GPUVar$getTmpVar()
         curExp[[2]] = as.symbol(newVar)
         
-        res = profiler_assignment_newVar(level, varInfo, Exp_record)
+        res = profiler_assignment_newVar(level, varInfo, curExp)
         res$renameList = matrix(c(deparse(leftVar), newVar), 1)
         return(res)
     }
@@ -271,10 +272,11 @@ profile_matrix <- function(varInfo, Exp) {
     dataInfoPack = getExpInfo(varInfo, data)
     rowInfoPack = getExpInfo(varInfo, args$nrow)
     colInfoPack = getExpInfo(varInfo, args$ncol)
-    byrowInfoPack = getExpInfo(varInfo, args$byrow)
+    #byrowInfoPack = getExpInfo(varInfo, args$byrow)
     
     result=list(Exp=Exp)
-    result=combineExpInfo(result,dataInfoPack,rowInfoPack,colInfoPack,byrowInfoPack)
+    #result=combineExpInfo(result,dataInfoPack,rowInfoPack,colInfoPack,byrowInfoPack)
+    result=combineExpInfo(result,dataInfoPack,rowInfoPack,colInfoPack)
     
     
     dataInfo = getExpInfo(varInfo, data)$ExpInfo
@@ -292,6 +294,8 @@ profile_matrix <- function(varInfo, Exp) {
     }
     
     ExpInfo = getEmpyTable()
+    #You should not deduct the precision type
+    #Because people will use 0 to initialize the matrix
     ExpInfo$precisionType=dataInfo$precisionType
     ExpInfo$dataType = "matrix"
     ExpInfo$size1 = rowInfo$value
@@ -353,12 +357,6 @@ profile_elementOP<-function(varInfo, Exp){
   res$ExpInfo = ExpInfo
   res$errorCheck = rbind(res$errorCheck, errorCheck)
   return(res)
-}
-test=function(...){
-  parms=list(...)
-  for(i in seq_along(parms)){
-    message(parms[[i]])
-  }
 }
 
 #support the element operation function with arbitrary parameters
@@ -493,6 +491,13 @@ profile_matrixMult <- function(varInfo, Exp) {
     res$errorCheck = rbind(res$errorCheck, errorCheck)
     res
 }
+
+profile_parenthesis<-function(varInfo, Exp){
+  info=getExpInfo(varInfo, Exp[[2]])
+  info$Exp=parse(text=paste0("(",deparse(info$Exp),")"))[[1]]
+  return(info)
+}
+
 
 # i: indicate the subset index number 
 # NA: one value subset 
@@ -727,18 +732,18 @@ profile_seq <- function(varInfo, Exp) {
     res=list(Exp=Exp)
     if(is.null(args$length.out)){
       if(is.null(args$by)){
-        byInfoPack=getExpInfo(varInfo, 1)
+        byInfo = getEmpyTable(T_scale)
+        byInfo$precisionType=GPUVar$default_int
+        if (!isNA(fromInfo$value) && !isNA(toInfo$value))
+          byInfo$value=paste0("sign(",toInfo$value,"-",fromInfo$value,")")
       }else{
         byInfoPack=getExpInfo(varInfo, args$by)
-      }
-      byInfo = byInfoPack$ExpInfo
-      res=combineExpInfo(res,fromInfoPack,toInfoPack,byInfoPack)
-      if(!is.null(args$by)){
-        res=combineExpInfo(res,byInfoPack,offset=4,autoOffset = FALSE)
+        byInfo = byInfoPack$ExpInfo
+        res=combineExpInfo(res,fromInfoPack,toInfoPack,byInfoPack)
       }
       
-      if (fromInfo$dataType != "scale" || toInfo$dataType != "scale" || byInfo$dataType != 
-          "scale") {
+      if (fromInfo$dataType != T_scale || toInfo$dataType != T_scale || byInfo$dataType != 
+          T_scale) {
         stop("The function argument is not a scalar: ", deparse(Exp))
       }
       precision = typeInherit(fromInfo$precisionType, toInfo$precisionType)
@@ -753,8 +758,8 @@ profile_seq <- function(varInfo, Exp) {
       lengthInfoPack=getExpInfo(varInfo, args$length.out)
       lengthInfo=lengthInfoPack$ExpInfo
       res=combineExpInfo(res,fromInfoPack,toInfoPack,lengthInfoPack)
-      if (fromInfo$dataType != "scale" || toInfo$dataType != "scale" || lengthInfo$dataType != 
-          "scale") {
+      if (fromInfo$dataType != T_scale || toInfo$dataType != T_scale || lengthInfo$dataType != 
+          T_scale) {
         stop("The function argument is not a scalar: ", deparse(Exp))
       }
       lengthType=GPUVar$default_float
@@ -856,3 +861,63 @@ profile_selfTranspose<-function(varInfo,curExp){
   return(result)
 }
 
+
+
+
+
+
+#=====================profile check left expression========================
+findSubsetRoot<-function(Exp){
+  if(is.call(Exp)&&Exp[[1]]=="[")
+    return(Exp[[2]])
+  return(Exp)
+}
+
+profileCheck_subset<-function(result,varInfo,Exp,leftInfo,rightInfo){
+  leftVar=findSubsetRoot(Exp[[2]])
+  if(!is.symbol(leftVar)){
+    stop("The left expression is not valid: ",deparse(Exp))
+  }
+  leftInfo=getVarInfo(varInfo,leftVar)
+  if(leftInfo$constDef) return(result)
+  targetPrecision=typeInherit(leftInfo$precisionType,rightInfo$precisionType)
+  if(leftInfo$precisionType!=targetPrecision){
+    leftInfo$precisionType=targetPrecision
+    varInfo = setVarInfo(varInfo, leftInfo)
+    #leftInfo$version=leftInfo$version+1
+    #varInfo = addVarInfo(varInfo, leftInfo)
+    #versionBump = getVersionBumpCode(leftVar, leftInfo$version)
+    
+  }
+  result$varInfo = varInfo
+  #result$insertBefore = c(result$insertBefore,versionBump)
+  return(result)
+}
+
+profileCheck_size<-function(result,varInfo,Exp,leftInfo,rightInfo){
+  leftExp=Exp[[2]]
+  sizeFunc=leftExp[[1]]
+  if(sizeFunc=="nrow"){
+    sizeName="size1"
+    dynSizeName="dynSize1"
+  }else{
+    sizeName="size2"
+    dynSizeName="dynSize2"
+  }
+  if(!is.symbol(leftVar)){
+    stop("The left expression is not valid: ",deparse(Exp))
+  }
+  leftInfo=getVarInfo(varInfo,leftVar)
+  if(leftInfo$constDef){
+    stop("The left variable is a constant: ",deparse(Exp))
+  }
+  if(leftInfo[[sizeName]]!=rightInfo[[sizeName]]){
+    leftInfo[[sizeName]]=rightInfo[[sizeName]]
+    leftInfo[[dynSizeName]]=TRUE
+    leftInfo$version=leftInfo$version+1
+    varInfo = addVarInfo(varInfo, leftInfo)
+    versionBump = getVersionBumpCode(leftVar, leftInfo$version)
+  }
+  result$varInfo = varInfo
+  result$insertBefore = c(result$insertBefore,versionBump)
+}

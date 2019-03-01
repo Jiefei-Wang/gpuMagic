@@ -174,6 +174,7 @@ getJobStatus = function(i) {
 
 gpuMagic.options = new.env()
 gpuMagic.options$default.thread.num = 64
+gpuMagic.options$hoist.optimization=FALSE
 gpuMagic.options$supportedType <- c("bool", "char", "half", "float", "double", 
     "int", "long", "uint", "ulong")
 
@@ -201,13 +202,19 @@ gpuMagic.options$supportedType <- c("bool", "char", "half", "float", "double",
 #' @return A list of the options
 #' @export
 gpuMagic.getOptions = function(opt = "all") {
-    allOpt = data.frame(default.float = GPUVar$default_float, default.int = GPUVar$default_int, 
-        default.index.type = GPUVar$default_index_type, default.thread.num = gpuMagic.options$default.thread.num, 
-        stringsAsFactors = FALSE)
-    if (opt == "all") 
-        curOpt = allOpt else curOpt = allOpt[, opt, drop = FALSE]
-    curOpt = structure(curOpt, class = "options")
-    curOpt
+  allOpt = data.frame(
+    default.float = GPUVar$default_float, 
+    default.int = GPUVar$default_int, 
+    default.index.type = GPUVar$default_index_type, 
+    default.thread.num = gpuMagic.options$default.thread.num,
+    hoist.optimization=gpuMagic.options$hoist.optimization,
+    stringsAsFactors = FALSE)
+  if (opt == "all") 
+    curOpt = allOpt 
+  else 
+    curOpt = allOpt[, opt, drop = FALSE]
+  curOpt = structure(curOpt, class = "options")
+  curOpt
 }
 
 
@@ -246,18 +253,29 @@ gpuMagic.setOptions = function(...) {
     optNames = names(parms)
     for (i in optNames) {
         value = parms[[i]]
-        switch(i, default.float = {
-            checkTypeSupport(value)
-            GPUVar$default_float = value
-        }, default.int = {
-            checkTypeSupport(value)
-            GPUVar$default_int = value
-        }, default.index.type = {
-            checkTypeSupport(value)
-            GPUVar$default_index_type = value
-        }, default.thread.num = {
-            if (is.numeric(value)) gpuMagic.options$default.thread.num = value else stop("The function argument should be a numeric value")
-        }, stop("Unknown options: ", names(parms[i])))
+        switch(i, 
+               default.float = {
+                 checkTypeSupport(value)
+                 GPUVar$default_float = value
+               }, 
+               default.int = {
+                 checkTypeSupport(value)
+                 GPUVar$default_int = value
+               }, 
+               default.index.type = {
+                 checkTypeSupport(value)
+                 GPUVar$default_index_type = value
+               }
+        )
+        if(i %in % names(gpuMagic.options)){
+          curValue=gpuMagic.options[[i]]
+          if(xor(is.numeric(value),is.numeric(curValue))||
+             typeof(value)!=typeof(curValue)){
+            stop("Invalid option value: ",i)
+          }
+          gpuMagic.options[[i]]=value
+        }
+        
     }
 }
 #' Get all the available openCL variable type

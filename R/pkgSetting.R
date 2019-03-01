@@ -5,7 +5,7 @@
 #' @importFrom DescTools StrAlign
 #' @importFrom utils ls.str
 #' @importFrom utils capture.output
-#' @importFrom stringr str_extract
+#' @importFrom stringr str_match str_extract_all
 #' @import methods
 #' @import BiocGenerics
 #' @useDynLib gpuMagic, .registration = TRUE,  .fixes = 'C_'

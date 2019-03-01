@@ -43,7 +43,9 @@ getEmpyTable<-function(type=""){
   #variable documentation
   tbl=data.frame(
     var="NA",dataType=T_matrix,precisionType=GPUVar$default_float,
-    size1="NA",size2="NA",value="NA",transpose=FALSE,
+    size1="NA",size2="NA",
+    dynSize1=FALSE,dynSize2=FALSE,
+    value="NA",transpose=FALSE,
     version=1,
     #Physical storage information
     address="NA",designSize="NA",
@@ -73,6 +75,7 @@ getEmpyTable<-function(type=""){
 
 allProp=names(getEmpyTable())
 primaryProp=c("dataType","precisionType","address","designSize",
+              "dynSize1","dynSize2",
               "storageMode","shared","location",
               "require","constVal","constDef","initial_ad","redirect","isPointer")
 
@@ -231,8 +234,12 @@ getVarProperty<-function(varInfo,varName,property,version="auto"){
   return(value)
 }
 
-
-
+#' @method extractVars varInfo
+#' @rdname internalFunctions
+#' @export
+extractVars.varInfo<-function(x){
+  return(keys(x$varVersion))
+}
 #' @rdname printFunctions
 #' @method print varInfo
 #' @param simplify Specify whether only the important properties should be printed
@@ -256,10 +263,11 @@ print.varInfo<-function(x,simplify=TRUE,printDef=FALSE,...){
   print(info)
 }
 
-
+#==============================memory pool=============================
 
 release_var<-function(varInfo,varName){
   varName=toCharacter(varName)
+  if(!hasVar(varInfo,varName)) return(varInfo)
   curInfo=getVarInfo(varInfo,varName)
   hasData=(!curInfo$isSpecial)||(curInfo$isSpecial&&curInfo$specialType%in%c("seq"))
   if(hasData){
@@ -279,7 +287,7 @@ release_var<-function(varInfo,varName){
 
 def_var<-function(varInfo,curInfo){
   varName=curInfo$var
-  hasData=(!curInfo$isSpecial)||(curInfo$isSpecial&&curInfo$specialType%in%c("seq"))
+  hasData=(!curInfo$isSpecial)&&!(curInfo$location=="local"&&curInfo$shared==FALSE)
   if(hasData){
     if(curInfo$redirect=="NA"){
       rediectVar=findFreeVar(

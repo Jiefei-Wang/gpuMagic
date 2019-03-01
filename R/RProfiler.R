@@ -12,13 +12,15 @@ RProfile1 <- function(codeMetaInfo2) {
     func_args = profileMeta1$parms
     
     # profile the function arguments and the preserved variable
-    varInfo = profileVar(func_args, profileMeta1$parmsWithValue, profileMeta1$parmsConst)
+    res = profileVar(func_args, profileMeta1$parmsWithValue, profileMeta1$parmsConst)
+    varInfo=res$varInfo
     gpuIndex = getEmpyTable(type = T_scale)
     gpuIndex$var = GPUVar$gpu_global_id
     gpuIndex$precisionType = GPUVar$default_index_type
     gpuIndex$initial_ad = FALSE
     varInfo = addVarInfo(varInfo, gpuIndex)
     
+    profileMeta1$matchRule=res$matchRule
     profileMeta1$varInfo = varInfo
     
     profileMeta1
@@ -70,15 +72,13 @@ RProfile2_parserFunc <- function(level, codeMetaInfo, curExp) {
     
     
     if (curExp[[1]] == "=") {
-        leftExp = curExp[[2]]
-        if (is.symbol(leftExp)) {
-            # profile the left symbol
-            res = profiler_assignment_dispatch(level, varInfo, curExp)
-            for (i in names(res)) {
-                result[[i]] = res[[i]]
-            }
-            return(result)
-        }
+      leftExp = curExp[[2]]
+      # profile the left symbol
+      res = profiler_assignment_dispatch(level, varInfo, curExp)
+      for (i in names(res)) {
+        result[[i]] = res[[i]]
+      }
+      return(result)
     }
     
     
@@ -92,7 +92,7 @@ RProfile2_parserFunc <- function(level, codeMetaInfo, curExp) {
         if (returnInfo$redirect == GPUVar$return_variable) {
             setVarInfo(varInfo, returnInfo)
             varInfo$returnInfo = rbind(varInfo$returnInfo, returnInfo)
-            curExp = quote(return())
+            result$insertAfter=c(result$insertAfter,quote(return()))
         } else {
             curExp[[1]] = as.symbol("return")
         }

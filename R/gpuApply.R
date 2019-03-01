@@ -113,7 +113,7 @@ gpuSapply_singleDev <- function(X, FUN, ..., .macroParms = NULL, .device,
     
     # Complete the profile table and fill the GPU data
     GPUcode1 = completeProfileTbl(GPUcode1)
-    CheckCodeError(GPUcode1, parms)
+    CheckCodeError(GPUcode1)
     GPUcode2 = fillGPUdata(GPUcode1, .options = .options, .device = .device)
     
     .options$kernelOption$localThreadNumMacro=TRUE
@@ -138,8 +138,11 @@ gpuSapply_singleDev <- function(X, FUN, ..., .macroParms = NULL, .device,
     
     
     if (.block) {
+        rowNum=nrow(res)
+        colNum=ncol(res)
         res = download(res)
-        res = as.matrix(res)
+        res = as.vector(res)
+        res=matrix(res,nrow=rowNum,ncol=colNum,byrow = TRUE)
         if(length(X)==length(res))
           res=as.vector(res)
     }
@@ -270,28 +273,28 @@ compileGPUCode <- function(X, FUN, ..., .macroParms = NULL, .options = gpuSapply
     codeMetaInfo = list()
     codeMetaInfo$Exp = funcToExp(FUN)$code
     codeMetaInfo$parms = parms
-    codeMetaInfo$macroParms = .macroParms
     
+    codeMetaInfo$parmsWithValue=.macroParms
+    codeMetaInfo$parmsConst=.macroParms
     
     codeMetaInfo0 = codePreprocessing(codeMetaInfo)
-    codeMetaInfo1 = RParser1(codeMetaInfo0)
-    codeMetaInfo2 = RParser2(codeMetaInfo1)
-    profileMeta1 = RProfile1(codeMetaInfo2)
-    profileMeta2 = RProfile2(profileMeta1)
-    # profileMeta3=RRecompiler(profileMeta2)
-    GPUExp1 = RCcompilerLevel1(profileMeta2)
-    GPUExp2 = RCcompilerLevel2(GPUExp1)
+    codeMetaInfo1=RParser1(codeMetaInfo0)
+    codeMetaInfo2=RParser2(codeMetaInfo1)
+    profileMeta1=RProfile1(codeMetaInfo2)
+    profileMeta2=RProfile2(profileMeta1)
+    optMeta1=ROptimizer1(profileMeta2)
+    optMeta2=ROptimizer2(optMeta1)
+    GPUExp1=RCcompilerLevel1(optMeta2)
+    GPUExp2=RCcompilerLevel2(GPUExp1)
+    GPUExp3=ROptimizer3(GPUExp2)
     
     
-    GPUcode1 = completeGPUcode(GPUExp2)
+    GPUcode1 = completeGPUcode(GPUExp3)
     
     # optimization
     GPUcode1$gpu_code = opt_workerNumber(GPUcode1$varInfo, GPUcode1$gpu_code, 
-        .options)
-    GPUcode1$gpu_code = opt_matrixDim(GPUcode1$varInfo, GPUcode1$gpu_code, 
         .options)
     GPUcode1$gpu_code=structure(GPUcode1$gpu_code,class="plainText")
     
     GPUcode1
 }
-
