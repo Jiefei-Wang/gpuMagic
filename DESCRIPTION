@@ -23,8 +23,9 @@ Imports:
   BiocGenerics
 biocViews: Infrastructure
 BugReports: https://github.com/Jiefei-Wang/gpuMagic/issues
-SystemRequirements: C++11, OpenCL driver.
-  For windows user, an ICD loader is required for the 32-bit system.
+SystemRequirements: C++11, graphic driver or CPU SDK.
+  For windows user, an ICD loader is required at C:/windows/system32/OpenCL.dll (installed by the graphic driver).
+  For linux user (Except mac): ocl-icd-opencl-dev package is required.
 RoxygenNote: 6.1.1
 Roxygen: list(markdown = TRUE)
 Suggests: testthat,
