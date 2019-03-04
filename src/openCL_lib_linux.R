@@ -14,12 +14,9 @@ get_os <- function(){
   tolower(os)
 }
 
-if(get_os()=="linux"){
-  cat("-lOpenCL")
-}else{
-if(get_os()=="osx"){
-  cat("-framework OpenCL")
-}else{
-  stop("Unable to determine the OS!")
-}
-}
+switch(get_os(),
+       linux=cat("-lOpenCL"),
+       osx=cat("-framework OpenCL"),
+       windows=cat(paste0(Sys.getenv("SystemRoot")[1],"/System32/OpenCL.dll")),
+       stop("Unable to determine the OS!")
+       )
