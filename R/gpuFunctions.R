@@ -267,7 +267,7 @@ gpuMagic.setOptions = function(...) {
                  GPUVar$default_index_type = value
                }
         )
-        if(i %in % names(gpuMagic.options)){
+        if(i %in% names(gpuMagic.options)){
           curValue=gpuMagic.options[[i]]
           if(xor(is.numeric(value),is.numeric(curValue))||
              typeof(value)!=typeof(curValue)){

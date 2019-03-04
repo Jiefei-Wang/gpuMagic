@@ -1,11 +1,9 @@
 #' @importFrom pryr standardise_call
 #' @importFrom Deriv Simplify
 #' @importFrom digest digest
-#' @importFrom stringr str_match_all
 #' @importFrom DescTools StrAlign
-#' @importFrom utils ls.str
-#' @importFrom utils capture.output
-#' @importFrom stringr str_match str_extract_all
+#' @importFrom utils capture.output ls.str
+#' @importFrom stringr str_match str_match_all str_extract_all
 #' @import methods
 #' @import BiocGenerics
 #' @useDynLib gpuMagic, .registration = TRUE,  .fixes = 'C_'

@@ -14,7 +14,7 @@ findRootVar<-function(varInfo,Exp){
   root=c()
   for(i in vars){
     if(is.call(i)){
-      rootc(root,findRootVar(varInfo,i))
+      root=c(root,findRootVar(varInfo,i))
       next
     }
     curvar=toCharacter(i)

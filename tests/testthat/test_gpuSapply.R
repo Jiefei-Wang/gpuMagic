@@ -29,7 +29,7 @@ test_that("empty function",{
     
   }
   
-  expect_equal(gpuSapply(1:m,testFunc),rep(0,m))
+  expect_silent(gpuSapply(1:m,testFunc))
 })
 
 

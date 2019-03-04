@@ -14,7 +14,7 @@ Depends:
   R (>= 3.5.0),
   methods,
   utils
-Imports: Rcpp, 
+Imports: 
   Deriv, 
   DescTools, 
   digest, 

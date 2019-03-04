@@ -125,8 +125,8 @@ GPUVar <- local({
 
 
 .elementFuncs = c("+", "-", "*", "/","^", 
-                  ">", ">=", "<", "<=", "==",
-                  "abs_int","abs_float","(","[",
+                  ">", ">=", "<", "<=", "==","!=",
+                  "abs","abs_int","abs_float","(","[",
                   "nrow","ncol","length","floor", "ceiling","sweep")
 
 .elementOp = c(.elementFuncs)
@@ -254,11 +254,26 @@ GPUVar <- local({
 .sizeFuncs[["["]]=R_subset_size
 .sizeFuncs[["sweep"]]=R_sweep_size
 
-general_size_function_list=c("+","-","*","/",">","<",">=","<=","==","!=","^")
+
+ 
+
+
+general_size_function_list=c("+","-","*","/",">","<",">=","<=","==","!=","^",
+                             "abs","abs_int","abs_float",
+                             "floor", "ceiling","("
+                             )
 for(i in general_size_function_list){
   .sizeFuncs[[i]]=R_general_size
 }
+size_one_function_list=c("nrow","ncol","length")
+for(i in size_one_function_list){
+  .sizeFuncs[[i]]=R_size_returnOne
+}
 
+if(sum(!.elementFuncs%in%names(.sizeFuncs))!=0){
+  funcName=.elementFuncs[!.elementFuncs%in%names(.sizeFuncs)]
+  warning("The following element oprations does not have proper size function:\n",paste0(funcName,collapse = ", "))
+}
 #' Create a scalar variable
 #' 
 #' The function will create a scalar variable, it is only useful in the openCL functions. 

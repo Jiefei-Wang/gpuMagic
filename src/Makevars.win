@@ -2,33 +2,23 @@
 
 CXX_STD=CXX11
 CL_DIR=../inst/include
-
 CL_INC=$(CL_DIR)/inc
-PKG_DIR=$(CL_DIR)/lib$(WIN)
 
-PKG_LIBS = -L$(PKG_DIR) -lOpenCL
+
+#This script finds the root directory of the windows system and looking for the
+#dll file in the root/system32/ folder.
+#eg. C:/windows/system32/OpenCL.dll
+PKG_LIBS=`${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe "openCL_lib_win.R"` 
+
 PKG_CPPFLAGS = -I${R_HOME}/include -I${CL_INC} -DCL_TARGET_OPENCL_VERSION=220 -DCL_USE_DEPRECATED_OPENCL_1_2_APIS
-
-openCL_OBJ=OpenCL.lib
-openCL_OBJ_FULL_PATH=$(PKG_DIR)/$(openCL_OBJ)
-
-$(SHLIB): $(openCL_OBJ_FULL_PATH)
-
-
-
-$(openCL_OBJ_FULL_PATH):
-	cd $(CL_DIR) && $(MAKE) ICD ICD_OS=icd_windows \
-	CC="$(CC)" CFLAGS="$(ALL_CFLAGS)" AR="$(AR)" WIN=$(WIN) openCL_OBJ=$(openCL_OBJ) MAKE=$(MAKE)
+all: $(SHLIB)
 	
+
 clean:
 	$(RM) *.lib
 	$(RM) *.so
 	$(RM) *.o
-	$(RM) $(PKG_DIR)/*
 	
 	
-### Define objects
-
-#$(warning $(CXX))
 
 

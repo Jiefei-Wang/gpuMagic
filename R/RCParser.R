@@ -118,12 +118,13 @@ RCcompilerLevel1 <- function(optMeta2) {
             }
             # This is wrong..
             if (curInfo$location == "local" && !curInfo$shared) {
+              stop("The local matrix is still underdevelopment: ",curVar)
                 gpu_lp_num = gpu_lp_num + 1
                 varInfo$matrixInd[[curVar]] = c(gpu_lp_num,"matrix_lp")
                 varInfo$matrix_lp = addvariableSizeInfo(varInfo$matrix_lp, 
                   curInfo,GPUVar$lp_size,gpu_lp_num)
-                curCode = addVariableDeclaration(varInfo,curInfo, gpu_lp_data, 
-                  gpu_lp_offset, gpu_lp_num,"private")
+                # curCode = addVariableDeclaration(varInfo,curInfo, gpu_lp_data, 
+                #   gpu_lp_offset, gpu_lp_num,"private")
             }
             var_def_code = rbind(var_def_code,c(curVar, curCode$code))
             varInfo=setVarInfo(varInfo,curCode$Info)

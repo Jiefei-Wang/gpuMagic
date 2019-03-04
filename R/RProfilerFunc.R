@@ -385,7 +385,7 @@ profile_elementOP<-function(varInfo, Exp,parmsIndex=seq_len(length(Exp)-1)+1){
   size2=1
   check="FALSE"
   for(i in seq_along(parmsIndex)){
-    result=combineExpInfo(result,parmsInfo[[i]],offset=parmsIndex[i],autoOffset = FALSE)
+    result=combineExpInfo(result,parmsInfoPack[[i]],offset=parmsIndex[i],autoOffset = FALSE)
     precision=typeInherit(precision, parmsInfo[[i]]$precisionType)
     if(isNA(parmsInfo[[i]]$value,C=FALSE)) {
       hasValue=FALSE
@@ -668,9 +668,9 @@ profile_Scalar <- function(varInfo, Exp) {
 profile_subRef <- function(varInfo, Exp) {
     args = matchFunArg(subRef, Exp)
     curInfo = getExpInfo(varInfo, args$variable)$ExpInfo
-    if (curInfo$dataType != T_matrix) {
-        stop("Only matrix is allow to create a reference: ", deparse(Exp))
-    }
+    # if (curInfo$dataType != T_matrix) {
+    #     stop("Only matrix is allow to create a reference: ", deparse(Exp))
+    # }
     
     if (length(Exp) == 3) {
         code_char = paste0(args$variable, "[", args$i, "]")
@@ -960,6 +960,7 @@ profileCheck_subset<-function(result,varInfo,Exp,leftInfo,rightInfo){
 
 profileCheck_size<-function(result,varInfo,Exp,leftInfo,rightInfo){
   leftExp=Exp[[2]]
+  leftVar=leftExp[[2]]
   sizeFunc=leftExp[[1]]
   if(sizeFunc=="nrow"){
     sizeName="size1"

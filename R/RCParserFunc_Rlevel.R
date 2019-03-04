@@ -265,6 +265,9 @@ R_general_size<-function(varInfo, Exp,C_symbol, ind){
   res
 }
 
+R_size_returnOne<-function(varInfo, Exp,C_symbol, ind){
+  return(1)
+}
 
 R_subset_size<-function(varInfo, Exp,C_symbol, ind){
   args = matchBracketFunc(Exp)
