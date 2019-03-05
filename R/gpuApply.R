@@ -229,12 +229,20 @@ gpuSapply_multiDev <- function(X, FUN, ..., .macroParms = NULL, .device,
 gpuSapply.getOption <- function() {
     curOp = kernel.getOption()
     curOp$kernelOption$autoType = FALSE
-    curOp$sapplyMsg = data.frame(R.code.compiler.msg = FALSE, timing.R.code.compilation = FALSE)
+    curOp$sapplyMsg = data.frame(
+      R.code.compiler.msg = FALSE, 
+      timing.R.code.compilation = FALSE
+      )
     
-    curOp$sapplyOptimization = data.frame(thread.number = TRUE, matrix.dim = TRUE)
+    curOp$sapplyOptimization = data.frame(
+      thread.number = TRUE
+      )
     
-    curOp$sapplyOption = data.frame(debugCode = "", compileEveryTime = FALSE, 
-        stringsAsFactors = FALSE)
+    curOp$sapplyOption = data.frame(
+      debugCode = "",
+      compileEveryTime = FALSE,
+      stringsAsFactors = FALSE
+      )
     
     curOp = structure(curOp, class = "options")
     return(curOp)

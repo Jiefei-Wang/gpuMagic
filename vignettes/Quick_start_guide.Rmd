@@ -108,10 +108,10 @@ In R language, it is fairly easy to create a matrix without know its size in adv
 n=sample(1:10,1)
 A=matrix(0,n,n)
 ```
-will create an n-by-n matrix A. The size of A is undetermined until the first line of the code is evaluated. The ability to create a matrix without knowing its size before running the code is called dynamic allocation. Unfortunately, due to the language limitation, openCL does not support this feature, which means the size of every matrix in the openCL code should be known before you run the code. Therefore, it is impossible to create a matrix dynamically. To solve this problem, the package provides two alternative ways to make a dynamic-like matrix.
+will create an n-by-n matrix A. The size of A is undetermined until the first line of the code is evaluated. The ability to create a matrix without knowing its size before running the code is called dynamic allocation. Unfortunately, due to the language limitation, openCL does not support this feature, which means the size of every matrix in the openCL code should be known before its excution. Therefore, it is impossible to create a matrix dynamically. To solve this problem, the package provides two alternative ways to make a dynamic-like matrix.
 
 ### Use macro
-The `gpuSapply` function has an option to specify the macro variable. Therefore, value of the macro will be plugged in into the function and is known for the compiler. for example
+The `gpuSapply` function has an argument `.macroParms` to specify the macro variable. Therefore, value of the macro will be plugged in into the function and is known for the compiler. for example
 ```{r,eval=FALSE}
 dynamic_example1<-function(ind,A,n){
   B=matrix(0,n)
@@ -121,15 +121,15 @@ dynamic_example1<-function(ind,A,n){
 n=10
 A=matrix(runif(n),n)
 #Wouldn't work, the value of n is unknown in the compilation stage
-res_gpu=gpuSapply(1,dynamic_example1,A,n)
+res_device=gpuSapply(1,dynamic_example1,A,n)
 
 #works, the value of n is knwown as a macro in the compilation stage
-res_gpu=gpuSapply(1,dynamic_example1,A,n,.macroParms = c("n"))
+res_device=gpuSapply(1,dynamic_example1,A,n,.macroParms = c("n"))
 ```
 Please note that when you specify a variable as a macro, you could not change the value of it inside the function since it is fixed
 
 ### Use reference functions
-If you do need a true dynamic feature in you code, you can use the reference function to create it. For example
+If you do need a dynamic feature in you code, you can use the reference function to create it. The reference function works like a macro. For example
 
 ```{r,eval=FALSE}
 #Perform the column sum of the first n elements in each column of A
@@ -144,15 +144,15 @@ dynamic_example2<-function(ind,A,n){
 n=10
 M=100
 A=matrix(runif(M),M,M)
-res_gpu=gpuSapply(1:M,dynamic_example2,A,n)
+res_device=gpuSapply(1:M,dynamic_example2,A,n)
 res_cpu=sapply(1:M,dynamic_example2,A,n)
 #check error
-range(res_gpu-res_cpu)
+range(res_device-res_cpu)
 ```
 With the reference function, you can allocate a large matrix and then dynamically subsetting it to create the matrix with the size you need. However, you need to be careful when you do the operations on the reference object. In the example above, any changes to the reference object `A_dyn` will cause the change in its target object `A`. Please refer to the function list to see the available reference functions
 
-##Dynamic return? Possible!
-Since the dynamic allocation is not possible, you may wonder if return an object with dynamic size is possible. The answer is yes but it is depreciated. If you write multiple `return` functions in your code, The package will first compute the maximum length of your return variables, and then allocate the memory according to the maximum length. If the length of one return variable cannot be correctly infered, you will get a warning message, and the length of that variable will be ignored. Therefore, in order to correctly return a variable with undetermined length, you should create a matrix witch size is always larger than the return variable. then you return that matrix in the end. Therefore the compiler will always have enough space for you return variable( but with redundant space). For example:
+##Dynamic return
+Since the dynamic allocation is not possible, you may wonder if return an object with dynamic size is possible. The answer is yes but it is depreciated. If you write multiple `return` functions in your code, The package will first compute the maximum length of your return variables, and then allocate the memory according to the maximum length. If the length of one return variable cannot be correctly infered, you will get a warning message, and the length of that variable will be ignored. Therefore, in order to correctly return a variable with undetermined length, you should create a matrix which size is always larger than the return variable. then you return that matrix in the end. Therefore the compiler will always have enough space for you return variable( but with redundant space). For example:
 
 ```{r,eval=FALSE}
 dynamic_return<-function(ind,A,n){
@@ -171,31 +171,31 @@ dynamic_return<-function(ind,A,n){
 n=10
 M=20
 A=matrix(runif(M*M),M,M)
-res_gpu=gpuSapply(1:M,dynamic_return,A,n)
+res_device=gpuSapply(1:M,dynamic_return,A,n)
 #retrieve the result (The first n rows)
-res_gpu=res_gpu[1:n,]
+res_device=res_device[1:n,]
 
 #check error
-range(res_gpu-A[1:n,])
+range(res_device-A[1:n,])
 ```
 In future, the package will provide a more concise way to specify the return size.
 
-##Opration between two matrice with different size? Not implemented!
+##Opration between two matrice with different size? Not implemented.
 The language used in the package is only a subset of the R language, it fully supports scalar to scalar, matrix to matrix, scalar to matrix, matrix to scalar opration. However, for the matrix to matrix operation, you need to make sure they have the same size, otherwise an error will be given(eg. matrix + vector is not allowed).
 
-##Error check? Partially!
+##Error check
 For the performance reason, the package only performs the error check in the compilation stage. Therefore, when an error occures on GPU, the code will continue to run silently, and crash R at some point without any hint. It is always a good idea to run a sample code with `sapply` function to check the possible error before you start your car without the safety belt.
 
-##Sequence variable? Yep! Just one exception
-For the sequence variable, you can create it without the limitation. As you see in the `dynamic_example2` function, we have implicitly created a sequence variable `1:n`, whose size is unknown. You can use `seq` or `:` to create the sequence. the only exception is that you cannot change the value of the sequence variable, because the variable is in a compact format and does not own a memory. If you do want to create a sequence variable in the memory, an alternative way is to create the sequence first and assign it to a new variable, then the compiler will allocate the memory for the new variable
+##Sequence variable
+For the sequence variable, you can create it without the limitation. As you see in the `dynamic_example2` function, we have implicitly created a sequence variable `1:n`, whose size is unknown. You can use the function `seq` or `:` to create the sequence. the only exception is that you cannot change the value of the sequence variable, because the variable is in a compact format and does not own a memory. If you do want to create a sequence variable in the memory, an alternative way is to create the sequence first and assign it to a new variable, then the compiler will allocate the memory for the new variable
 
-##Calling another user-defined R function inside the R function? Already in my agenda!
+##Calling another user-defined R function inside the R function
 The current version does not support to call the other user-defined R function inside your main function, this feature is under development and will come in the near future.
 
 
 #More examples
 
-Here we provide more examples to show how to use the package
+Here we provide more examples to show the usage of the package. Please note that not all the functions will be efficient when running on the GPU, it is possible that the CPU code can be faster than the GPU. Depending on the job type, you should decide which device you want to run on by calling `setDevice()` .
 
 ##Finding the indices of largest k values in each column of A
 
@@ -213,10 +213,9 @@ largestK<-function(ind,A,k){
         if(j!=k){
           #Backward assignment to avoid self assignment problem
           #(see section: Important note)
-          ind_src=seq(k-1,j,-1)
-          ind_target=seq(k,j+1,-1)
-          largest_value[ind_target]=largest_value[ind_src]
-          largest_ind[ind_target]=largest_ind[ind_src]
+          ind_src=(k-1):j
+          largest_value[ind_src+1]=largest_value[ind_src]
+          largest_ind[ind_src+1]=largest_ind[ind_src]
         }
         largest_value[j]=A_col[i]
         largest_ind[j]=i
@@ -235,10 +234,10 @@ A=matrix(runif(N*M),N,M)
 warm_res=gpuSapply(1:M,largestK,A=A,k=k,.macroParms = "k")
 warm_res=sapply(1:M,largestK,A=A,k=k)
 #count the time
-system.time({res_gpu=gpuSapply(1:M,largestK,A=A,k=k,.macroParms = "k")})
+system.time({res_device=gpuSapply(1:M,largestK,A=A,k=k,.macroParms = "k")})
 system.time({res_cpu=sapply(1:M,largestK,A=A,k=k)})
 #Check the error
-range(res_gpu-res_cpu)
+range(res_device-res_cpu)
 ```
 
 ##Brute-force method to find the solution of the linear regression with L1 loss function
@@ -273,11 +272,11 @@ warm_res=gpuSapply(seq_len(nrow(parms)),computeLoss,x=x,y=y,parms=parms)
 warm_res=sapply(seq_len(nrow(parms)),computeLoss,x=x,y=y,parms=parms)
 
 #count the time
-system.time({res_gpu=gpuSapply(seq_len(nrow(parms)),computeLoss,x=x,y=y,parms=parms)})
+system.time({res_device=gpuSapply(seq_len(nrow(parms)),computeLoss,x=x,y=y,parms=parms)})
 system.time({res_cpu=sapply(seq_len(nrow(parms)),computeLoss,x=x,y=y,parms=parms)})
 
 #print out the parameters which minimize the loss function
-parms[which.min(res_gpu),]
+parms[which.min(res_device),]
 parms[which.min(res_cpu),]
 ```
 

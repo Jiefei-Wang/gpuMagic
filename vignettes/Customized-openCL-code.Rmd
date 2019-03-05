@@ -1,0 +1,110 @@
+---
+title: "Customized opencl code"
+author: 
+- name: Jiefei Wang
+  affiliation: Roswell Park Comprehensive Cancer Center, Buffalo, NY
+date: "`r Sys.Date()`"
+output:
+    BiocStyle::html_document:
+        toc: true
+        toc_float: true
+vignette: >
+  %\VignetteIndexEntry{Customized_opencl_code}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+package: gpuMagic
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+library("gpuMagic")
+```
+
+#Introduction
+There are several reasons that may convince you that writing your own openCL code could be more appealing than purely relying on the package compiler:
+1. The functions you need are not available in the package
+2. The performance of the compiled code does not meet the requirement
+3. You are familar with C code and want to learn a new language
+
+Rather than the traditional boring and painful programming procedure for the openCL language, writing your own code in R is fairly simple: just provide the package your code and the package will set up everything for you. The package also provide a template-like feature to relief you from the annoying argument type consistency problem. If you are not familar with the openCL language, there are tons of great introduction on the internet, please read them first and make sure you have the basic concept of the openCL before you read the next section.
+
+#Example
+It is alway good to start the tutorial with the simplest example, let's suppose we want to compute `A+B` where `A` and `B` are both vector. If we use the native openCL code to write it, it would be.
+```{r}
+#The kernel code
+src="
+kernel void vecAdd(global double* A, global double* B, global double* res){
+uint id=get_global_id(0);
+res[id]=A[id]+B[id];
+}
+"
+#check and set the device
+getDeviceList()
+setDevice(1)
+#Data preparation
+n=1000
+A=runif(n)
+B=runif(n)
+#Send the data to the device
+#The argument type and device are optional
+A_dev=gpuMatrix(A,type="double",device = 1)
+B_dev=gpuMatrix(B,type="double",device = 1)
+#Create an empty vector to store the result
+res_dev=gpuEmptMatrix(row=n,col=1,type="double",device = 1)
+
+#Call the kernel function to excute the code
+#No return value
+.kernel(src = src,kernel="vecAdd",parms=list(A_dev,B_dev,res_dev),.device = 1,.globalThreadNum = n)
+
+#retrieve the data and convert it into a vector
+res_dev=download(res_dev)
+res=as.vector(res_dev)
+
+#Check the error
+range(res-A-B)
+```
+As you see here, working with the openCL code in gpuMagic is very similar to working with the C++ code in Rcpp. The major difference is that you need to send and retrieve the data before and after the code excution. The `.kernel` function does not have any return value since the S4 class `gpuMatrix` contains a pointer, it is able to retrieve the final result after the code has been excuted. Please note that the `.kernel` function would not block your console, so you can continue to excute the code in the next line immediately as long as you don't call the `download` function.
+
+#Using template
+You may notice that you can specify the variable type when converting an R object into `gpuMatrix` class. The available types will be list in the end of this documentation. However, when you change the variable type, you need to make sure that the function argument in your openCL code also match it, which is clumsy. Therefore, the `.kernel` function provice a set of macro to the user to handle the variable type. These macro will automatically find the correct variable type and provide a template-like feature, they are: `auto`, `gAuto`, `lAuto`. The `auto` macro will find the variable type; `gAuto` and `lAuto` are short for `global auto` and `local auto` respectively. If you have no idea of `global` and `local`, please refer to the opencl Address space qualifier. Here we use the same example to illustrate the use of the macro.
+
+```{r}
+src="
+kernel void vecAdd(gAuto1* A, gAuto2* B, gAuto3* res){
+uint id=get_global_id(0);
+res[id]=A[id]+B[id];
+}
+"
+#Send the data to the device
+#Note that the variable A is float type
+A_dev=gpuMatrix(A,type="float",device = 1)
+B_dev=gpuMatrix(B,type="double",device = 1)
+#Create an empty vector to store the result
+res_dev=gpuEmptMatrix(row=n,col=1,type="double",device = 1)
+
+#Call the kernel function to excute the code
+#No return value
+.kernel(src = src,kernel="vecAdd",parms=list(A_dev,B_dev,res_dev),.device = 1,.globalThreadNum = n)
+
+#retrieve the data and convert it into a vector
+res_dev=download(res_dev)
+res=as.vector(res_dev)
+
+#Check the error
+range(res-A-B)
+```
+
+
+
+
+
+
+
+
+
+
+
+
