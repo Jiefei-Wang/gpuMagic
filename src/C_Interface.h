@@ -50,3 +50,6 @@ SEXP getTrueAd(SEXP ad);
 //SEXP test();
 
 SEXP asMatrix(SEXP data, SEXP dim);
+
+
+SEXP getDeviceFullInfo(SEXP platform, SEXP device);

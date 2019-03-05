@@ -140,3 +140,5 @@ const char * getErrorString(cl_int error)
 	default: return "Unknown OpenCL error";
 	}
 }
+
+

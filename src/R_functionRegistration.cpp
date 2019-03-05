@@ -23,8 +23,10 @@ static const R_CallMethodDef callMethods[] = {
 	{ "getDeviceStatus", (DL_FUNC)& getDeviceStatus, 2 },
 	{ "getTrueAd", (DL_FUNC)& getTrueAd, 1 },
 	{ "asMatrix", (DL_FUNC)& asMatrix, 2 },
+	{ "getDeviceFullInfo", (DL_FUNC)& getDeviceFullInfo, 2 },
 	{ NULL, NULL, 0 }
 };
+
 
 extern "C"
 void R_init_gpuMagic(DllInfo * info)

@@ -24,7 +24,6 @@ size_t getTypeSize(dtype type);
 
 
 
-
 template<class T>
 void print_partial_matrix(std::string title, T *M, int nrows, int ncols, int max_row=-1,int max_col=-1)
 {

@@ -168,7 +168,7 @@ SEXP createKernel(SEXP platform, SEXP device, SEXP signature, SEXP flag, SEXP co
 	//message(std::string(*code));
 	//message(sig.compiler_flag);
 	kernelManager::createKernel(id, sig);
-	return(NILSXP);
+	return(R_NilValue);
 }
 
 
@@ -182,7 +182,7 @@ SEXP setParameter(SEXP platform, SEXP device, SEXP signature, SEXP kernel, SEXP 
 	cl_int error = clSetKernelArg(dev_kernel, asInteger(parm_index), sizeof(cl_mem), matrix->getDeviceData());
 	if (error != CL_SUCCESS)
 		errorHandle(string("kernel parameter uploading failure, error info:") + string(getErrorString(error)));
-	return(NILSXP);
+	return(R_NilValue);
 }
 
 
@@ -194,7 +194,7 @@ SEXP setSharedParameter(SEXP platform, SEXP device, SEXP signature, SEXP kernel,
 	//message(to_string(*size));
 	if (error != CL_SUCCESS)
 		errorHandle(string("kernel shared memory creating failure, error info:") + string(getErrorString(error)));
-	return(NILSXP);
+	return(R_NilValue);
 }
 
 
@@ -220,7 +220,7 @@ SEXP launchKernel(SEXP platform, SEXP device, SEXP signature, SEXP kernel, SEXP 
 	error=clFlush(dc.command_queue);
 	if (error != CL_SUCCESS)
 		errorHandle(string("kernel parameter uploading failure, error info:") + string(getErrorString(error)));
-	return(NILSXP);
+	return(R_NilValue);
 
 }
 
@@ -284,9 +284,15 @@ SEXP getTrueAd(SEXP ad)
 SEXP asMatrix(SEXP data, SEXP dim)
 {
 	setAttrib(data, R_DimSymbol, dim);
-	return(NILSXP);
+	return(R_NilValue);
 }
 
+SEXP getDeviceFullInfo(SEXP platform, SEXP device)
+{
+  deviceIdentifier id = { asInteger(platform) ,asInteger(device) };
+  kernelManager::getDeviceFullInfo(id);
+  return(R_NilValue);
+}
 
 
 

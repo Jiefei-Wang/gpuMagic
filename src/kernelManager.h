@@ -53,7 +53,7 @@ public:
 	//Will throw exception when the kernel does not exist
 	static cl_program getProgram(deviceIdentifier deviceId, programSignature programSig);
 	static cl_program createProgram(deviceIdentifier deviceId, programSignature programSig);
-
+  static void getDeviceFullInfo(deviceIdentifier deviceId);
 
 private:
 	static map< string, cl_program>& getProgramTable(deviceIdentifier deviceId);
