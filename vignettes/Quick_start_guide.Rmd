@@ -285,32 +285,35 @@ parms[which.min(res_cpu),]
 #Supported functions
 The package currently supports a limited funtions, the usage of them are similar but not promised to be the same as the R functions. For example, the **drop** argument in ***[*** function is not supported yet. Therefore, in the current stage, it is better to only call the simplest form of the function. The current available functions are:
 
-| Function | Note                                         |
-|----------|----------------------------------------------|
-| nrow     | the value can be used to create other matrix |
-| ncol     | the value can be used to create other matrix |
-| length   |                                              |
-| matrix   |                                              |
-| [        | ***drop*** does not work                     |
-| floor    |                                              |
-| ceiling  |                                              |
-| t        |                                              |
-| sum      | Supports one argument only                   |
-| rowSums  | Supports one argument only                   |
-| colSums  | Supports one argument only                   |
-| +        |                                              |
-| -        |                                              |
-| *        |                                              |
-| /        |                                              |
-| ^        |                                              |
-| >        |                                              |
-| >=       |                                              |
-| <        |                                              |
-| <=       |                                              |
-| ==       |                                              |
-| abs      |                                              |
-| %*%      |                                              |
-| return   |                                              |
+| Function | Note                                                                |
+|----------|---------------------------------------------------------------------|
+| nrow     | the value can be used as a dimensional parameter to create a matrix |
+| ncol     | the value can be used as a dimensional parameter to create a matrix |
+| length   |                                                                     |
+| matrix   |                                                                     |
+| [        | ***drop*** does not work                                            |
+| floor    |                                                                     |
+| ceiling  |                                                                     |
+| t        |                                                                     |
+| sum      | Supports one argument only                                          |
+| rowSums  | Supports one argument only                                          |
+| colSums  | Supports one argument only                                          |
+| rowMeans | Supports one argument only                                          |
+| colMeans | Supports one argument only                                          |
+| +        |                                                                     |
+| -        |                                                                     |
+| *        |                                                                     |
+| /        |                                                                     |
+| ^        |                                                                     |
+| >        |                                                                     |
+| >=       |                                                                     |
+| <        |                                                                     |
+| <=       |                                                                     |
+| ==       |                                                                     |
+| abs      |                                                                     |
+| %*%      |                                                                     |
+| return   |                                                                     |
+
 
 | Explicit declaration   function | note                                                                                       |
 |-----------------------------|--------------------------------------------------------------------------------------------|
