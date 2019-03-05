@@ -434,6 +434,15 @@ compiler.define<-function(varName,...){
 compiler.promiseDefine<-function(precision,varName){
   #paste0(precision," ",varName;")
 }
+#The compiler will define the variable in the following way
+#1.Find if there is any variable that can be used in the memory pool, use it
+#2.If the memory pool does not have any available variable, define a new variable in the pool to use it.
+compiler.defineInPool<-function(precision,varName,def){
+  
+}
+#TODO: define a variable but not monitored by the memory pool
+
+
 #If the variable is in used, then do the assignment
 compiler.promiseAssign<-function(target,code){
   paste0(GPUVar$promiseAssgin,target,"--",code)

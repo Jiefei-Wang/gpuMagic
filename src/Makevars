@@ -5,8 +5,9 @@ CL_DIR=../inst/include
 CL_INC=$(CL_DIR)/inc
 
 
+#Please see the description file for installing the opencl library.
+PKG_LIBS=`${R_HOME}/bin/Rscript "openCL_lib.R"` 
 
-PKG_LIBS=`${R_HOME}/bin/Rscript "openCL_lib_linux.R"` 
 PKG_CPPFLAGS = -I${R_HOME}/include -I${CL_INC} -DCL_TARGET_OPENCL_VERSION=220 \
 	-DCL_USE_DEPRECATED_OPENCL_1_2_APIS  -DCL_SILENCE_DEPRECATION
 
