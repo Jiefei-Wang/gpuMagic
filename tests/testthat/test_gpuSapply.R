@@ -51,6 +51,25 @@ test_that("for loop iteration",{
   expect_equal(sum(abs(error)),0)
 })
 
+test_that("loop over a variable",{
+  testFunc<-function(ind,A,indice){
+    for(i in indice){
+      A[i]=0
+    }
+    return(A)
+  }
+  
+  
+  A=matrix(runif(n*m),n,m)
+  indice=sample(1:(n*m),m)
+  res_gpu=gpuSapply(1,testFunc,A,indice)
+  res_cpu=sapply(1,testFunc,A,indice)
+  error=range(res_gpu-res_cpu)
+  expect_equal(sum(abs(error)),0)
+})
+
+
+
 test_that("for loop control code, if condition",{
   testFunc<-function(ind,A){
     res=0

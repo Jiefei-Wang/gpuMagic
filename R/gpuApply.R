@@ -15,7 +15,7 @@ gpuApplyFuncList = hash()
 #' @param .macroParms 
 #' The function argument that will be treated as macro in the code. 
 #' If an argument is treated as macro, its value cannot be changed by the code
-#' @param .device The device that the function will be excuted. Running the code on Multiple devices is supported but is still under development
+#' @param .device the device ID(s) indicates the device that the function will be excuted on. Running the code on Multiple devices is supported but is still under development
 #' @param loading The loading of each device, only useful when having multiple devices.
 #' @param .options The package and openCL compilation options, please call `gpuSapply.getOption()` to get all the available options
 #' 
