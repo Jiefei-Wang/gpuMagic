@@ -10,7 +10,7 @@ hash <- function() {
 
 
 is.hash <- function(x) {
-    class(x) == "hash"
+    is(x,"hash")
 }
 
 keys <- function(x) {

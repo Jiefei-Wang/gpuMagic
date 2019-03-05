@@ -247,7 +247,7 @@ gpuMagic.getOptions = function(opt = "all") {
 #' @export
 gpuMagic.setOptions = function(...) {
     parms = list(...)
-    if (length(parms) == 1 && class(parms[[1]]) == "options") {
+    if (length(parms) == 1 && is(parms[[1]],"options")) {
         parms = parms[[1]]
     }
     optNames = names(parms)

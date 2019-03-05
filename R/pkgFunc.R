@@ -16,6 +16,8 @@ GPUVar <- local({
     #Promise series
     GPUVar_env$matrix_temporary_space="gpu_matrix_temporary_space"
     GPUVar_env$promiseAssgin="//compiler promise assign--"
+    GPUVar_env$define="//compiler define--"
+    GPUVar_env$poolDefine="//compiler pool define--"
     GPUVar_env$promiseDef="//compiler promise define--"
     
     #Matrix number
@@ -84,7 +86,6 @@ GPUVar <- local({
     GPUVar_env$functionCount = 0
     GPUVar_env$functionName = "gpu_kernel"
     
-    GPUVar_env$variableDef="GPU_VARIABLE_DEF_"
     
     
     # This number can be reset to 0 in the beggining of the parser The
@@ -427,24 +428,29 @@ compiler.setProperty<-function(varName,...){
 }
 
 #define the variable(s)
-compiler.define<-function(varName,...){
-  
-}
-#If the variable is in used, then define it.
-compiler.promiseDefine<-function(precision,varName){
-  #paste0(precision," ",varName;")
+#The compiler will define the variable in the following way
+#1.Find if there is any variable that can be used in the memory pool, use it
+#2.If the memory pool does not have any available variable, 
+#define the variable without adding it in the pool
+compiler.define<-function(precision,varName,def){
+  if(is.null(def))def="NULL"
 }
 #The compiler will define the variable in the following way
 #1.Find if there is any variable that can be used in the memory pool, use it
 #2.If the memory pool does not have any available variable, define a new variable in the pool to use it.
-compiler.defineInPool<-function(precision,varName,def){
-  
+compiler.poolDefine<-function(precision,varName,def){
+  if(is.null(def))def="NULL"
 }
-#TODO: define a variable but not monitored by the memory pool
+#If the variable is in used, then define it.
+compiler.promiseDefine<-function(precision,varName,def){
+  if(is.null(def))def="NULL"
+  #paste0(precision," ",varName;")
+}
 
 
 #If the variable is in used, then do the assignment
 compiler.promiseAssign<-function(target,code){
+  if(is.null(def))def="NULL"
   paste0(GPUVar$promiseAssgin,target,"--",code)
 }
 
