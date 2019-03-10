@@ -158,7 +158,7 @@ C_element_sub<-function(varInfo, Exp, sub, opt, extCode){
     if(!is.null(args$j)){
       rowNum = R_nrow(varInfo,Exp)
       colNum=R_ncol(varInfo,Exp)
-      res_twoIndex=one_to_two_index(sub1$value,extCode = sub1$extCode,rowNum=rowNum,colNum=colNum)
+      res_twoIndex=one_to_two_index(sub,extCode = sub1$extCode,rowNum=rowNum,colNum=colNum)
       sub_new=c(res_twoIndex$i,res_twoIndex$j)
       res = C_element_sub(varInfo, Exp, sub=sub_new, extCode = res_twoIndex$extCode, opt = opt)
     }else{
@@ -275,19 +275,34 @@ C_row_col_summary_right<-function(varInfo, leftVar,rightVar,
 }
 
 #Exp=quote({ind=sum(A)})[[2]]
-C_sum_right<-function(varInfo, Exp){
+C_sum_mean_right<-function(varInfo, Exp){
   leftVar = Exp[[2]]
   rightExp = Exp[[3]]
+  rightFunc=rightExp[[1]]
   rightVar=rightExp[[2]]
+  assign_func<-function(x,y,parms){
+    if(parms==1)
+      return(paste0(x,"=",y,";"))
+    else{
+      return(paste0(x,"=(",GPUVar$default_float,")",addParenthesis(y),"/",addParenthesis(parms),";"))
+    }
+  }
+  if(rightFunc=="sum"){
+    parms=1
+  }else{
+    parms=R_length(varInfo,rightVar)
+  }
   size_right_1 = R_nrow(varInfo, rightVar)
   size_right_2 = R_ncol(varInfo, rightVar)
   code=C_row_col_summary_right(varInfo, leftVar,rightVar,
                                leftSub =c("0","0"),rightSub =c("gpu_sum_i", "gpu_sum_j"),
                                loopVar=c("gpu_sum_j", "gpu_sum_i"),loopNum=c(size_right_2,size_right_1),
+                               assignmentFunc=assign_func,assignmentFuncParms=parms,
                                pos="endCode0")
   
   code
 }
+
 
 
 
@@ -356,4 +371,230 @@ C_colMeans_right<-function(varInfo, Exp){
   
   code
 }
+
+#Exp=quote({B=sort(A)})[[2]]
+C_ascending_sort_right<-function(varInfo,Exp){
+  sort_macro<-function(dataPrecision,data,attachedInd,index,from,to){
+    if(from==0){
+      len=to
+    }else{
+      len=paste0(to,"-",from)
+    }
+    if(is.null(attachedInd)){
+      attachedCode=NULL
+    }else{
+      attachedCode=c(
+        paste0(GPUVar$default_index_type," gpu_sortMacro_attachTmp=",attachedInd,";"),
+        paste0(attachedInd,"=",replaceIndex(attachedInd,index,"gpu_sortMacro_curInd"),";"),
+        paste0(replaceIndex(attachedInd,index,"gpu_sortMacro_curInd"),"=gpu_sortMacro_attachTmp;"))
+    }
+    code=c(
+      paste0("for(default_index_type gpu_sortMacro_i=1;gpu_sortMacro_i<",len,";gpu_sortMacro_i=gpu_sortMacro_i+1){"),
+      paste0("default_index_type ",index,";"),
+      paste0(dataPrecision," gpu_sortMacro_target;"),
+      paste0("default_index_type gpu_sortMacro_curInd=",from,";"),
+      paste0(dataPrecision," gpu_sortMacro_curvalue=",replaceIndex(data,index,from),";"),
+      paste0("for(",index,"=",from,"+1;",index,"<",to,"-gpu_sortMacro_i;",index,"=",index,"+1){"),
+      paste0("gpu_sortMacro_target=",data,";"),
+      "if(gpu_sortMacro_target>gpu_sortMacro_curvalue){",
+      "gpu_sortMacro_curvalue=gpu_sortMacro_target;",
+      paste0("gpu_sortMacro_curInd=",index,";"),
+      "}",
+      "}",
+      paste0(index,"=",to,"-gpu_sortMacro_i;"),
+      paste0("gpu_sortMacro_target=",data,";"),
+      "if(gpu_sortMacro_target<gpu_sortMacro_curvalue){",
+      paste0(replaceIndex(data,index,"gpu_sortMacro_curInd"),"=gpu_sortMacro_target;"),
+      paste0(data,"=gpu_sortMacro_curvalue;"),
+      attachedCode,
+      "}",
+      "}"
+    )
+    code
+  }
+  
+  
+  replaceIndex<-function(data,index,newInd){
+    gsub(index,newInd,data,fixed = TRUE)
+  }
+  
+  leftVar = Exp[[2]]
+  rightExp = Exp[[3]]
+  args=matchFunArg(sort,rightExp)
+  rightVar=args$x
+  leftInfo=getExpInfo(varInfo,leftVar)$ExpInfo
+  
+  
+  private_vector_size = GPUVar$private_vector_size
+  defaultPrecision = leftInfo$precisionType
+  #privateVecLength = private_vector_size/getTypeSize(defaultPrecision)/2
+  gpu_private_length=12
+  
+  
+  macroDef = c(
+    paste0("gpu_sort_vec_len ", addParenthesis(R_length(varInfo, leftVar))), 
+    paste0("gpu_private_length ",gpu_private_length)
+  )
+  
+  macroDef = paste0("#define ", macroDef)
+  macroUndef = c("gpu_sort_vec_len","gpu_private_length")
+  macroUndef = paste0("#undef ", macroUndef)
+  supportVarDef=c(
+  paste0(defaultPrecision, " gpu_private_space[gpu_private_length];"),
+  paste0("default_index_type gpu_private_space_ind[gpu_private_length];")
+  )
+  
+  #Allocate the values
+  leftEle = C_element_getCExp(varInfo, leftVar, 
+                              sub = "gpu_sort_k", 
+                              opt = "gpu_sort_k")
+  
+  rightEle = C_element_getCExp(varInfo, rightVar, 
+                              sub = "gpu_sort_k", 
+                              opt = "gpu_sort_k",
+                              extCode = leftEle$extCode)
+  
+  extCode = finalizeExtCode(rightEle$extCode)
+  assignValue=c(
+    extCode$L0,
+    "for(default_index_type gpu_sort_k=0;gpu_sort_k<gpu_sort_vec_len;gpu_sort_k++){",
+    extCode$L1,
+    paste0(leftEle$value,"=",rightEle$value,";"),
+    "}"
+  )
+  
+  
+  #Read a part of data info the private space
+  #full read
+  
+  extCode = finalizeExtCode(leftEle$extCode)
+  write_to_private_full=c(
+    extCode$L0,
+    "for(default_index_type gpu_sort_k=0;gpu_sort_k<gpu_private_length;gpu_sort_k++){",
+    extCode$L1,
+    paste0("gpu_private_space[gpu_sort_k]=",leftEle$value,";"),
+    "gpu_private_space_ind[gpu_sort_k]=gpu_sort_k;",
+    "}",
+    "//Sort the private space",
+    sort_macro(defaultPrecision,"gpu_private_space[gpu_sort_k]","gpu_private_space_ind[gpu_sort_k]",
+               "gpu_sort_k",0,"gpu_private_length")
+  )
+  
+  write_to_private_partial=c(
+    "//Sort the last part of the values",
+    extCode$L0,
+    "gpu_sort_length=gpu_sort_vec_len-gpu_private_length*(gpu_sort_length-1);",
+    "for(default_index_type gpu_sort_k=0;gpu_sort_k<gpu_sort_length;gpu_sort_k++){",
+    extCode$L1,
+    paste0("gpu_private_space[gpu_sort_k]=",leftEle$value,";"),
+    "}",
+    "//Sort the private space",
+    sort_macro(defaultPrecision,"gpu_private_space[gpu_sort_k]",NULL,
+               "gpu_sort_k",0,"gpu_sort_length"),
+    "//Write back the result",
+    "for(default_index_type gpu_sort_k=0;gpu_sort_k<gpu_sort_length;gpu_sort_k++){",
+    extCode$L1,
+    paste0(leftEle$value,"=gpu_private_space[gpu_sort_k];"),
+    "}"
+  )
+  
+  
+  curRightValue=C_element_getCExp(varInfo, leftVar, 
+                                  sub = "gpu_sort_j", 
+                                  opt = "gpu_sort_j")
+  curRightValue_extCode=finalizeExtCode(curRightValue$extCode)
+  endValue=C_element_getCExp(varInfo, leftVar, 
+                                  sub = "gpu_sort_j", 
+                                  opt = NULL)
+  endOriginValue=C_element_getCExp(varInfo, leftVar, 
+                                        sub = "gpu_private_space_ind[gpu_sort_t]", 
+                                        opt = NULL,extCode = endValue$extCode)
+  end_extCode=finalizeExtCode(endOriginValue$extCode)
+  
+  
+  code=c(
+    "{",
+    macroDef,
+    supportVarDef,
+    assignValue,
+    paste0("default_index_type gpu_sort_length=ceil((default_float)gpu_sort_vec_len/gpu_private_length);"),
+    "for(default_index_type gpu_sort_i=0;gpu_sort_i<gpu_sort_length-1;gpu_sort_i++){",
+    write_to_private_full,
+    paste0(defaultPrecision," gpu_sort_curValue;"),
+    curRightValue_extCode$L0,
+    "for(default_index_type gpu_sort_j=gpu_private_length;gpu_sort_j<gpu_sort_vec_len-gpu_private_length*gpu_sort_i;
+    gpu_sort_j++){",
+    curRightValue_extCode$L1,
+    paste0("gpu_sort_curValue=",curRightValue$value,";"),
+    "if(gpu_sort_curValue>gpu_private_space[0]){",
+    "for(default_index_type gpu_sort_t=0;gpu_sort_t<gpu_private_length;gpu_sort_t++){",
+    "if(gpu_sort_curValue>gpu_private_space[gpu_sort_t]){",
+    "if(gpu_sort_t==gpu_private_length-1||gpu_sort_curValue<=gpu_private_space[gpu_sort_t+1]){",
+    "for(default_index_type gpu_sort_t2=0;gpu_sort_t2<gpu_sort_t;gpu_sort_t2++){",
+    "gpu_private_space[gpu_sort_t2]=gpu_private_space[gpu_sort_t2+1];",
+    "gpu_private_space_ind[gpu_sort_t2]=gpu_private_space_ind[gpu_sort_t2+1];",
+    "}",
+    "gpu_private_space[gpu_sort_t]=gpu_sort_curValue;",
+    "gpu_private_space_ind[gpu_sort_t]=gpu_sort_j;",
+    "break;",
+    "}",
+    "}",
+    "}",
+    "}",
+    "}",
+    "//When the boat arrive to the end, release all the values",
+    "for(default_index_type gpu_sort_last=0;gpu_sort_last<gpu_private_length;gpu_sort_last++){",
+    "default_index_type gpu_sort_j=gpu_sort_last+gpu_sort_vec_len-gpu_private_length*(gpu_sort_i+1);",
+    curRightValue_extCode$L1,
+    paste0(defaultPrecision," gpu_sort_curValue=",curRightValue$value,";"),
+    "//Move the non-interested value to a safe place",
+    end_extCode$L0,
+    "if(gpu_sort_curValue<gpu_private_space[0]){",
+    "for(default_index_type gpu_sort_t=0;gpu_sort_t<gpu_private_length;gpu_sort_t++){",
+    "if(gpu_private_space_ind[gpu_sort_t]<gpu_sort_vec_len-gpu_private_length*(gpu_sort_i+1)){",
+    paste0(endOriginValue$value,"=gpu_sort_curValue;"),
+    paste0(endValue$value,"=gpu_private_space[gpu_sort_last];"),
+    "gpu_private_space_ind[gpu_sort_t]=gpu_sort_j;",
+    "break;",
+    "}",
+    "}",
+    "}else{",
+    paste0(endValue$value,"=gpu_private_space[gpu_sort_last];"),
+    "}",
+    "}",
+    "}",
+    write_to_private_partial,
+    macroUndef,
+    "}"
+  )
+  code
+}
+# sort_macro<-function(data,index,from,to){
+#   len=to-from+1
+#   for(i in 1:(len-1)){
+#     curind=from
+#     curValue=data[curind]
+#     for(index in (from+1):(to-i)){
+#       if(data[index]>curValue){
+#         curValue=data[index]
+#         curind=index
+#       }
+#     }
+#     if(data[to-i+1]<curValue){
+#       data[curind]=data[to-i+1]
+#       data[to-i+1]=curValue
+#     }
+#     data
+#   }
+#   
+#   data
+# }
+
+
+  
+  
+  
+  
+  
+  
 

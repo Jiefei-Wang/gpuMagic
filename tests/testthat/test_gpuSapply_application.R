@@ -166,9 +166,35 @@ test_that("T-test2",{
 
 
 
+test_that("T-test3",{
+
+t_stat_gpu=function(ind,data,sample,rowNum){
+  sampleX=t_nocpy(subRef(sample,ind,))
+  sampleY=1-sampleX
+  x_m=colSums(sweep(data,1,sampleX,"*"))/rowNum[1]
+  y_m=colSums(sweep(data,1,sampleY,"*"))/rowNum[2]
+  df=rowNum[1]+rowNum[2]-2
+  s=(colSums(sweep(sweep(data, 2, t_nocpy(x_m), `-`)^2,1,sampleX,"*"))+
+       colSums(sweep(sweep(data, 2, t_nocpy(y_m), `-`)^2,1,sampleY,"*")))/df
+  
+  t=abs((x_m-y_m)/(s*(1/rowNum[1]+1/rowNum[2]))^0.5)
+  return(t)
+}
 
 
+x_sampleN=50
+y_sampleN=50
+sampleN=c(x_sampleN,y_sampleN)
+permute_num=10
+total_sampleN=x_sampleN+y_sampleN
+nParms=20
+data=matrix(rnorm(total_sampleN*nParms),total_sampleN,nParms)
 
 
+permute_ind=t(sapply(seq_len(permute_num),function(x)sample(c(rep(0,y_sampleN),rep(1,x_sampleN)))))
 
+res_gpu=gpuSapply(1:permute_num,t_stat_gpu,data,permute_ind,sampleN)
+res_cpu=sapply(1:permute_num,t_stat_gpu,data,permute_ind,sampleN)
+expect_equal(res_gpu,res_cpu)
+})
 

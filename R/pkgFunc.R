@@ -143,21 +143,27 @@ GPUVar <- local({
 .profileFuncs[["nrow"]] = profile_size
 .profileFuncs[["ncol"]] = profile_size
 .profileFuncs[["length"]] = profile_size
-.profileFuncs[["matrix"]] = profile_matrix
+.profileFuncs[["Matrix"]] = profile_Matrix
 .profileFuncs[["["]] = profile_subset
+.profileFuncs[["("]]=profile_parenthesis
+
+
 .profileFuncs[["floor"]] = profile_floor
 .profileFuncs[["ceiling"]] = profile_ceil
-.profileFuncs[["Matrix"]] = profile_Matrix
-.profileFuncs[["Scalar"]] = profile_Scalar
 .profileFuncs[["t"]] = profile_transpose
 .profileFuncs[["t_nocpy"]] = profile_transpose_nocpy
+
+.profileFuncs[["Scalar"]] = profile_Scalar
+.profileFuncs[["matrix"]] = profile_matrix
+
 .profileFuncs[["sum"]]=profile_sum
 .profileFuncs[["rowSums"]]=profile_rowSums
 .profileFuncs[["colSums"]]=profile_colSums
+.profileFuncs[["mean"]]=profile_mean
 .profileFuncs[["rowMeans"]]=profile_rowMeans
 .profileFuncs[["colMeans"]]=profile_colMeans
 .profileFuncs[["sweep"]]=profile_sweep
-.profileFuncs[["("]]=profile_parenthesis
+.profileFuncs[["sort"]]=profile_sort
 
 
 #element op
@@ -209,11 +215,13 @@ GPUVar <- local({
 .cFuncs[["<-t_nocpy"]] = C_NULL
 
 # No parent opration
-.cFuncs[["<-sum"]] = C_sum_right
+.cFuncs[["<-sum"]] = C_sum_mean_right
 .cFuncs[["<-rowSums"]] = C_rowSums_right
 .cFuncs[["<-colSums"]] = C_colSums_right
+.cFuncs[["<-mean"]] = C_sum_mean_right
 .cFuncs[["<-rowMeans"]] = C_rowMeans_right
 .cFuncs[["<-colMeans"]] = C_colMeans_right
+.cFuncs[["<-sort"]] = C_ascending_sort_right
 
 
 # Element op
@@ -450,7 +458,6 @@ compiler.promiseDefine<-function(precision,varName,def){
 
 #If the variable is in used, then do the assignment
 compiler.promiseAssign<-function(target,code){
-  if(is.null(def))def="NULL"
   paste0(GPUVar$promiseAssgin,target,"--",code)
 }
 

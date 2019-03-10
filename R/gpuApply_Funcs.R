@@ -199,20 +199,34 @@ completeGPUcode <- function(GPUcode) {
         code = c(code, curCode)
     }
     paste0(arg_prefix_list, " ", arg_type_list, "* ", arg_list)
+    code=paste0(code, collapse = ",\n")
     
     
-    code = paste0(code, collapse = ",\n")
+    
     
     
     
     # add the kernel function definition
-    code = paste0(code, "){\n", paste0(GPUcode$gpu_code, collapse = "\n"), 
-        "\n}")
+    code = paste0(
+      code, 
+      "){\n", 
+      paste0(GPUcode$gpu_code, collapse = "\n"), 
+      "\n}")
+    
+    code=c(
+      paste0("#define default_index_type ",GPUVar$default_index_type),
+      paste0("#define default_float ",GPUVar$default_float),
+      paste0("#define default_int ",GPUVar$default_int),
+      code
+    )
     
     # Add the double vector support if appliable
     if (GPUVar$default_float == "double") 
-        code = paste0("#pragma OPENCL EXTENSION cl_khr_fp64:enable\n", 
+        code = c("#pragma OPENCL EXTENSION cl_khr_fp64:enable", 
             code)
+    
+    code=paste0(code, collapse = "\n")
+    
     
     GPUcode$gpu_code = code
     GPUcode$kernel = kernelName

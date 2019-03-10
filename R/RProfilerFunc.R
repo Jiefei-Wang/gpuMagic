@@ -816,9 +816,18 @@ profile_sum <- function(varInfo, Exp) {
     curInfo = getEmpyTable(T_scale)
     curInfo$precisionType = typeTruncate(ExpInfo$precisionType)
     res$ExpInfo = curInfo
-    res$Exp=parse(text=paste0("sum(",deparse(res$Exp),")"))[[1]]
+    Exp[[2]]=res$Exp
+    res$Exp=Exp
     return(res)
 }
+
+profile_mean <- function(varInfo, Exp) {
+  res=profile_sum(varInfo, Exp)
+  res$ExpInfo$precisionType=typeInherit(res$ExpInfo$precisionType,"float")
+  res$Exp[[1]]=as.symbol("mean")
+  return(res)
+}
+
 
 profile_rowSums <- function(varInfo, Exp) {
   res = getExpInfo(varInfo,Exp[[2]])
@@ -828,7 +837,8 @@ profile_rowSums <- function(varInfo, Exp) {
   curInfo$size1=ExpInfo$size1
   curInfo$size2=1
   res$ExpInfo = curInfo
-  res$Exp=parse(text=paste0("rowSums(",deparse(res$Exp),")"))[[1]]
+  Exp[[2]]=res$Exp
+  res$Exp=Exp
   return(res)
 }
 profile_colSums <- function(varInfo, Exp) {
@@ -839,7 +849,8 @@ profile_colSums <- function(varInfo, Exp) {
   curInfo$size1=ExpInfo$size2
   curInfo$size2=1
   res$ExpInfo = curInfo
-  res$Exp=parse(text=paste0("colSums(",deparse(res$Exp),")"))[[1]]
+  Exp[[2]]=res$Exp
+  res$Exp=Exp
   return(res)
 }
 
@@ -896,6 +907,21 @@ profile_sweep<-function(varInfo,Exp){
   
   res$errorCheck=rbind(res$errorCheck,
                        setErrorCheck("error",deparse(Exp),check,"Uncomfortable matrix dimension"))
+  return(res)
+}
+
+
+profile_sort<-function(varInfo,Exp){
+  args=matchFunArg(sort,Exp)
+  curVar=args$x
+  res=getExpInfo(varInfo,curVar)
+  Exp[[2]]=res$Exp
+  res$Exp=Exp
+  size1=res$ExpInfo$size1
+  size2=res$ExpInfo$size2
+  length=paste0(size1,"*",size2)
+  res$ExpInfo$size1=length
+  res$ExpInfo$size2=1
   return(res)
 }
 

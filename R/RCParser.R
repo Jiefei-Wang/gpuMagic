@@ -242,13 +242,14 @@ RCTranslation <- function(varInfo, parsedExp,isTop=FALSE) {
             
             extCode=unlist(finalizeExtCode(loopRange_end$extCode))
             loopFunc = paste0("for(",
-                              loopInd, "=", loopRange_start$value, 
-                ";", loopInd, "<=", loopRange_end$value, ";", loopInd, "=",loopInd,"+1){")
+                              loopInd, "=", loopRange_start$value, ";", 
+                              loopInd, "<=", loopRange_end$value, ";",
+                              loopInd, "=",loopInd,"+1){")
             
             if(is.null(extCode)){
               loopState=c(loopFunc, curCode, "}")
             }else{
-              loopState=c("{",extCode$L0,
+              loopState=c("{",extCode,
                           loopFunc, curCode, "}","}")
             }
             gpu_code = c(gpu_code,loopState)

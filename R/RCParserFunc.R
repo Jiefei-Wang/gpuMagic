@@ -412,8 +412,10 @@ C_matMul_right <- function(varInfo, Exp) {
     
     # define macro for the matrix dimension
     dimMacroDef = c(
-      paste0("gpu_A_row ", R_nrow(varInfo, rightVar1)), paste0("gpu_A_col ", R_ncol(varInfo, rightVar1)), 
-      paste0("gpu_B_row ", R_nrow(varInfo, rightVar2)), paste0("gpu_B_col ", R_ncol(varInfo, rightVar2)), 
+      paste0("gpu_A_row ", R_nrow(varInfo, rightVar1)), 
+      paste0("gpu_A_col ", R_ncol(varInfo, rightVar1)), 
+      paste0("gpu_B_row ", R_nrow(varInfo, rightVar2)), 
+      paste0("gpu_B_col ", R_ncol(varInfo, rightVar2)), 
       paste0("gpu_vectorize_size ", vectorize_size), 
       paste0("gpu_private_length (", privateVecLength, "/cl_local_thread_num)"), 
       paste0("gpu_private_vectorize_length (gpu_private_length/gpu_vectorize_size)")
@@ -426,10 +428,15 @@ C_matMul_right <- function(varInfo, Exp) {
     dimMacroUndef = paste0("#undef ", dimMacroUndef)
     
     
-    supportVarDef = c(paste0(defaultIndex, " gpu_group_worker_id=get_local_id(0);"), paste0(defaultFloat, " gpu_private_spcae[gpu_private_length];"), 
-        paste0(defaultFloatV, "* gpu_private_vectorized_spcae=(", defaultFloatV, "*)gpu_private_spcae;"), paste0(defaultIndex, 
-            " gpu_loopNum=ceil((", defaultFloat, ")gpu_A_col/gpu_private_length);"), paste0(defaultIndex, " gpu_start=0;"), 
-        paste0(defaultIndex, " gpu_end=0;"), paste0(defaultIndex, " gpu_cur_length=0;"))
+    supportVarDef = c(
+      paste0(defaultIndex, " gpu_group_worker_id=get_local_id(0);"),
+      paste0(defaultFloat, " gpu_private_spcae[gpu_private_length];"), 
+      paste0(defaultFloatV, "* gpu_private_vectorized_spcae=(", defaultFloatV, "*)gpu_private_spcae;"), 
+      paste0(defaultIndex, " gpu_loopNum=ceil((", defaultFloat, ")gpu_A_col/gpu_private_length);"),
+      paste0(defaultIndex, " gpu_start=0;"), 
+      paste0(defaultIndex, " gpu_end=0;"), 
+      paste0(defaultIndex, " gpu_cur_length=0;")
+    )
     
     # C=A%*%B optimize the left matrix A
     A_opt_code = C_matMul_right_A(varInfo, Exp)
@@ -438,19 +445,33 @@ C_matMul_right <- function(varInfo, Exp) {
     
     A_row = R_nrow(varInfo, rightVar1)
     B_col = R_ncol(varInfo, rightVar2)
-    if (isNumeric(A_row) && A_row == 1) {
+    if(A_row==B_col){
+      mainCode = A_opt_code
+    }else{
+      if (isNumeric(A_row) && A_row == 1) {
         mainCode = A_opt_code
-    } else {
+      } else {
         if (isNumeric(B_col) && B_col == 1) {
-            mainCode = B_opt_code
+          mainCode = B_opt_code
         } else {
-            mainCode = c(paste0("if(gpu_A_row>gpu_B_col){"), B_opt_code, "}else{", A_opt_code, "}")
+          mainCode = c(
+            paste0("if(gpu_A_row>gpu_B_col){"),
+            B_opt_code, 
+            "}else{",
+            A_opt_code,
+            "}"
+          )
         }
+      }
     }
     
     
     
-    code = c("{", dimMacroDef, supportVarDef, mainCode, dimMacroUndef, "}")
+    code = c("{", 
+             dimMacroDef, 
+             supportVarDef, 
+             mainCode, 
+             dimMacroUndef, "}")
     code
 }
 
