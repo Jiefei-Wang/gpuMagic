@@ -624,13 +624,14 @@ profile_return <- function(varInfo, Exp) {
     return(ExpInfoPack)
 }
 
-# Exp=quote(Matrix(1,10))
+# Exp=quote(Matrix(rowNum,nrow=10))
 profile_Matrix <- function(varInfo, Exp) {
+    Exp=standardise_call(Exp)
     args = matchFunArg(Matrix, Exp)
     rowInfoPack = getExpInfo(varInfo, args$nrow)
     colInfoPack = getExpInfo(varInfo, args$ncol)
     result=list(Exp=Exp)
-    result=combineExpInfo(result,rowInfoPack,colInfoPack,offset=1,autoOffset = FALSE)
+    result=combineExpInfo(result,rowInfoPack,colInfoPack,offset=2,autoOffset = FALSE)
     
     rowInfo = rowInfoPack$ExpInfo
     colInfo = colInfoPack$ExpInfo
