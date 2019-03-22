@@ -22,6 +22,7 @@ knitr::opts_chunk$set(
 )
 library("gpuMagic")
 ```
+#This documentation is still underdevelopment and not intended for public
 In this documentation, you will learn how the magic happens and how to make your own ingredients. The reader should have the basic understanding of the C language, the knowledge of the openCL language is preferred but not required.
 
 #A basic introduction to the openCL 

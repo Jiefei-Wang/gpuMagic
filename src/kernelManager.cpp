@@ -1,7 +1,6 @@
 #include "kernelManager.h"
 
 map< deviceIdentifier, deviceContext> kernelManager::deviceTable;
-
 map< deviceIdentifier, map< string, cl_program>> kernelManager::device_programTable;
 map< deviceIdentifier, map< string, cl_kernel>> kernelManager::device_kernelTable;
 
@@ -327,6 +326,7 @@ bool kernelManager::isCurDeviceValid(deviceIdentifier deviceId)
 
 void kernelManager::getDeviceFullInfo(deviceIdentifier deviceId)
 {
+  /*
   int strlen = 1024;
   char* buffer = new char[strlen];
   
@@ -385,5 +385,5 @@ void kernelManager::getDeviceFullInfo(deviceIdentifier deviceId)
   (clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(max_work_group_size), &max_work_group_size, NULL));
   printf("CL_DEVICE_MAX_WORK_GROUP_SIZE: %lu\n", max_work_group_size);
   delete[] buffer;
-  
+  */
 }
