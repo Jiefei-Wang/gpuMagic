@@ -1,3 +1,5 @@
+##This is actually an R file##
+
 get_os <- function(){
   sysinf <- Sys.info()
   if (!is.null(sysinf)){

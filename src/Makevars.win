@@ -10,7 +10,7 @@ CL_INC=$(CL_DIR)/inc
 #eg. C:/windows/system32/OpenCL.dll
 #If you do not have this file, it is very possible that you don't have an appropriate graphic driver installed.
 #You can also download this file from the web.
-PKG_LIBS=`${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe "openCL_lib.R"` 
+PKG_LIBS=`${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe "openCL_lib.h"` 
 
 PKG_CPPFLAGS = -I${R_HOME}/include -I${CL_INC} -DCL_TARGET_OPENCL_VERSION=220 -DCL_USE_DEPRECATED_OPENCL_1_2_APIS
 all: $(SHLIB)
