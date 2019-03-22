@@ -29,7 +29,7 @@ createSapplySignature <- function(parms, FUN, .macroParms, .device, .options) {
         varSig = ""
         # Precision type of the parameter when it is a gpuMatrix class
         if (is(parms[[i]],"gpuMatrix")) {
-            varSig = paste0(varSig, parms[[i]]$type)
+            varSig = paste0(varSig, .type(parms[[i]]))
         }
         # When it is a macro, add the dim and data
         sig = c(sig, varSig)
@@ -97,7 +97,7 @@ fillGPUdata <- function(GPUcode1, .options, .device) {
     
     # return size, gp,gs,lp offset, gp,gs,lp,ls number, gp,gs,lp,ls dim(row,col) 
     kernel_args$sizeInfo = NULL
-    returnSize=1
+    returnSize=0
     
     
     #The size of the matrix in gp,gs,lp,ls
@@ -153,7 +153,11 @@ fillGPUdata <- function(GPUcode1, .options, .device) {
     device_argument$ls_data = kernel.getSharedMem(sizeInfo_ls$totalSize, 
                                                   type = "char")
     # The return size for each thread
+    if(returnSize!=0){
     device_argument$return_var = gpuEmptMatrix(returnSize, totalWorkerNum, type = GPUVar$default_float, device = .device)
+    }else{
+      device_argument$return_var = gpuEmptMatrix(1,1, type = GPUVar$default_float, device = .device)
+    }
     device_argument$sizeInfo = gpuMatrix(kernel_args$sizeInfo, type = IntType, device = .device)
     
     
@@ -251,7 +255,13 @@ evaluateProfileTbl <- function(parms, table) {
 
 completeProfileTbl <- function(GPUExp3) {
     parms = GPUExp3$parms
-    parms=lapply(parms,as.matrix)
+    parms=lapply(parms,function(curParm){
+      if(!is(curParm,"gpuMatrix")&&!is(curParm,"matrix")){
+        message(is(curParm,"gpuMatrix"))
+        curParm=as.matrix(curParm)
+      }
+      curParm
+    })
     varInfo = GPUExp3$varInfo
     varInfo$matrix_gs = evaluateProfileTbl(parms, varInfo$matrix_gs)
     varInfo$matrix_gp = evaluateProfileTbl(parms, varInfo$matrix_gp)

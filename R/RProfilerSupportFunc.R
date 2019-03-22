@@ -218,11 +218,14 @@ getExpInfo_hidden <- function(varInfo, Exp) {
     
     stop("Unknow code: ", deparse(Exp))
 }
-
+test<-function(...){
+  parms=list(...)
+  return(parms)
+}
 
 # combine the expression info from several expInfo
 combineExpInfo <- function(result, ...,infoPack=NULL,offset=0,autoOffset=TRUE) {
-  if(is.language(result))stop("Incorrect old code")
+  
   result=combineInsertCode(result, ...,infoPack=infoPack,offset=offset,autoOffset=autoOffset)
   if(is.null(infoPack)){
     parms = list(...)

@@ -246,6 +246,7 @@ GPUVar <- local({
 .cFuncs[["<-nrow"]] = C_element_nrow
 .cFuncs[["<-ncol"]] = C_element_ncol
 .cFuncs[["<-sweep"]] = C_element_sweep
+#Bug fix
 .cFuncs[["[<-"]] = C_assignment_symbols
 
 
