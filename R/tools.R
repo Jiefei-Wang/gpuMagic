@@ -245,11 +245,17 @@ extractVars.default <- function(x) {
 #' @rdname internalFunctions
 #' @export
 extractVars.expression <- function(x) {
-  if(!is.call(x)&&(is.numeric(x)||is_valid_variable_name(x))){
-    return(deparse(x))
+  if(length(x)==1){
+    if(!is.call(x)&&is_valid_variable_name(toCharacter(x))){
+      return(deparse(x))
+    }
+    if(deparse(x)==""){
+      return(NULL)
+    }
   }
-  if(isNumeric(x)||deparse(x)=="")
+  if(isNumeric(x)){
     return(NULL)
+  }
   res=c()
   for(i in seq_len(length(x)-1)+1){
     if(!is.call(x[[i]])&&deparse(x[[i]])=="")next
@@ -257,6 +263,7 @@ extractVars.expression <- function(x) {
   }
   return(res)
 }
+
 
 reconstructExp<-function(funcName,...,dotParms){
   parms=list(...)
