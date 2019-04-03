@@ -127,7 +127,7 @@ C_element_power<-function(varInfo, Exp, sub, opt, extCode){
   rightEle = Exp[[3]]
   left_res = C_element_getCExp(varInfo, leftEle, sub, extCode = extCode, opt = opt)
   right_res = C_element_getCExp(varInfo, rightEle, sub, extCode = left_res$extCode, opt = opt)
-  
+  return(right_res)
 }
 C_element_abs<-function(varInfo, Exp, sub, opt, extCode){
   element = Exp[[2]]

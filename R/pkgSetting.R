@@ -17,7 +17,9 @@
     library.dynam.unload("gpuMagic", libpath)
 }
 .onLoad <- function(libname, pkgname) {
-    # setDevice(1)
+    if(getPlatformNum()!=0){
+      setDevice(1)
+    }
 }
 
 DEBUG = TRUE

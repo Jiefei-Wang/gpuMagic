@@ -253,7 +253,7 @@ getIndexFromExp <- function(Exp) {
 #'
 #' @inheritParams upload
 #' @param i,j indices specifying elements to extract or replace. The index j can be missing or empty.
-#' @param ... This argument is only for compatibility. It does not take any effect.
+#' @param ... This argument is only for compatibility. It does not have any effect.
 #' @param drop For matrices and arrays. If TRUE the result is coerced to the lowest possible dimension.
 #' @family Extract
 #' @rdname extract-methods

@@ -107,14 +107,16 @@
         gc()
         invisible()
     }, getGPUusage = function() {
-        deviceList = c()
-        maxMem = c()
-        usedMem = c()
-        for (i in keys(internalVars$totalMemory)) {
-            deviceList = c(deviceList, paste0("Device ", i))
-            maxMem = c(maxMem, internalVars$totalMemory[[i]])
-            usedMem = c(usedMem, internalVars$memoryUsage[[i]])
-        }
+      deviceKey=keys(internalVars$totalMemory)
+      nKey=length(deviceKey)
+      deviceList = vector("character",nKey)
+      maxMem = vector("numeric",nKey)
+      usedMem = vector("numeric",nKey)
+      for (i in seq_along(deviceKey)) {
+        deviceList[i] = paste0("Device ", deviceKey[i])
+        maxMem[i] =internalVars$totalMemory[[deviceKey[i]]]
+        usedMem[i] = internalVars$memoryUsage[[deviceKey[i]]]
+      }
         memPercent = paste0("(", ceiling(usedMem/maxMem * 100), "%)")
         
         usedMem_char = vapply(usedMem, format_memory_size_output,character(1))

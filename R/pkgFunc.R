@@ -391,7 +391,7 @@ subRef <- function(variable, i = "", j = "") {
 }
 #' No copy method
 #' 
-#' Doing some opration without memory copy
+#' Doing some opration without copying memory
 #' 
 #' @details 
 #' `return_nocpy`: The usage of the `return_nocpy` is same as `return`. This feature is for openCL code only, 

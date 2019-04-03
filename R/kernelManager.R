@@ -1,7 +1,7 @@
 #' Excute the openCL function
 #' 
 #' The function serves as a bridge between R and openCL, it sends the openCL code and 
-#' R matrix object to the device and excute it on the device. The function has an auto type 
+#' R matrix object to the device and excutes it on the device. The function has an auto-type 
 #' ability which can make the openCL code independent with the type of its function argument,
 #' see detail and examples for the usage.
 #' 
@@ -13,13 +13,13 @@
 #' You can specify with device the code should be run on by specifying the `.device` argument.
 #' By default, if you do not specify any device, the first device in the device list will be used
 #' 
-#' The argument `.globalThreadNum` specifys the number of thread that will be used to excute the kernel.
-#' The concept is the same as `global_work_size`` in openCL function
+#' The argument `.globalThreadNum` specifys the number of threads that will be used to excute the kernel.
+#' The concept is the same as `global_work_size`` in openCL functions
 #' 
 #' There are multiple options that you can change in the kernel function. 
 #' You can call the function `kernel.getOption()` to obtain the default setting. 
 #' The most distinguishable feature in this package is probably the auto type function, which 
-#' can set the type of the kernel arguments as an macro in the openCL code. This feature allow the 
+#' can set the type of the kernel arguments as an macro in the openCL code. This feature allows the 
 #' user to create a type-free code. If the `kernelOption$autoType` in `.options` is true(Default),
 #' four macros will be defined, they are(X is the position of the function arguments):
 #' 
@@ -36,11 +36,11 @@
 #' 
 #' @param src the source code, it can be either a file directory or the code
 #' @param kernel the kernel function that will be called on the device
-#' @param parms a list containning the function arguments. 
+#' @param parms a list containing the function arguments. 
 #' The number of elements in the list has to match the number of function arguments.
 #' @param .device the device that will excute the function. 
 #' If not specified, all the selected devices will be used.
-#' @param .globalThreadNum the number of thread that will be created to excute the kernel. 
+#' @param .globalThreadNum the number of threads that will be created to excute the kernel. 
 #' If not specified, the length of the first argument will be used as the thread number
 #' @param .options the kernel options
 #' @examples 
@@ -62,7 +62,7 @@
 #' #Send the data to GPU
 #' A_dev=gpuMatrix(A,type='double')
 #' B_dev=gpuMatrix(B,type='double')
-#' #Create an empty data in GPU
+#' #Create an empty data matrix in GPU
 #' C_dev=gpuEmptMatrix(row=m,col=n,type='double')
 #' 
 #' #Get the default options

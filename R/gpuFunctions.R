@@ -64,6 +64,15 @@ print.plainText<-function(x,...){
   cat(x)
 }
 
+#' @rdname printFunctions
+#' @method print deviceList
+#' @export
+print.deviceList<-function(x,...){
+  class(x)="data.frame"
+  print(x, row.names = FALSE, right = FALSE)
+  
+}
+
 # ===========================Obtain device infomation==============
 #' Query and select the devices
 #' 
@@ -82,11 +91,11 @@ getDeviceList = function() {
     deviceInfo = .gpuResourcesManager$globalVars$deviceInfo[, c("id", "platform", 
         "device", "deviceName", "globalMemory")]
     deviceInfo$globalMemory = vapply(deviceInfo$globalMemory, format_memory_size_output,character(1))
-    print(deviceInfo, row.names = FALSE, right = FALSE)
-    invisible()
+    deviceInfo=structure(deviceInfo,class="deviceList")
+    deviceInfo
 }
 
-#' @details 'getDeviceInfo()': Get the ith device information, call 'getDeviceList()' first to figure out the index before use this function
+#' @details 'getDeviceInfo()': Get the ith device information, call 'getDeviceList()' first to figure out the index before using this function
 #' @param i A 1-based device index, it should be an integer
 #' @examples 
 #' #Get the information of the first device
@@ -182,7 +191,7 @@ gpuMagic.options$supportedType <- c("bool", "char", "half", "float", "double",
 
 #' Get the openCL options
 #' 
-#' The functions get the computing precision when compile the GPU code and the number of workers in a computing group.
+#' The functions gets the computing precision when compile the GPU code and the number of workers in a computing group.
 #' 
 #' The fields `default.float`, `default.int` and `default.index.type` are used to control the computing precision. 
 #' When transferring data from R to GPU, if the data in R has a numeric or double storage mode,

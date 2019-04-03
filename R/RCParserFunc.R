@@ -1,6 +1,7 @@
-# Dispatch the assignment expression to the destinated function If the function is called in the left expression, func<-
-# will be called If the function is called in the right expression, <-func will be called otherwise,
-# C_assignment_symbols will be called
+# Dispatch the assignment expression to the destinated function 
+# If the function is called on the left expression, func<- will be called 
+# If the function is called on the right expression, <-func will be called 
+# otherwise, C_assignment_symbols will be called
 C_assignment_dispatch <- function(varInfo, Exp) {
     leftExp = Exp[[2]]
     rightExp = Exp[[3]]
@@ -518,19 +519,22 @@ C_matMul_right_A <- function(varInfo, Exp) {
     
     
     
-    # matrix multiplication in vector format Data preparation
-    B_vec = c()
-    B_multi_sub_vector = list()
-    B_multi_sub_vector$extCode = NULL
+    # matrix multiplication in vector format 
+    # Data preparation
+    B_vec = rep("",vectorize_size)
+    B_multi_sub_vector = list(extCode=NULL)
     # tmp_var=GPUVar$getTmpVar()
     for (i in seq_len(vectorize_size)) {
       B_multi_sub_vector = C_element_getCExp(
-        varInfo, rightVar2, sub = c(paste0("gpu_k*gpu_vectorize_size+gpu_start+", i - 1), "gpu_j"), 
-        opt = list("gpu_j", c("gpu_k")), extCode = B_multi_sub_vector$extCode)
-      B_vec = c(B_vec, B_multi_sub_vector$value)
+        varInfo, rightVar2, 
+        sub = c(paste0("gpu_k*gpu_vectorize_size+gpu_start+", i - 1), "gpu_j"), 
+        opt = list("gpu_j", c("gpu_k")),
+        extCode = B_multi_sub_vector$extCode)
+      B_vec[i] =  B_multi_sub_vector$value
     }
     
-    # matrix multiplication in vector format Perform multiplication
+    # matrix multiplication in vector format 
+    # Perform multiplication
     B_vector_code = paste0(defaultFloatV, " gpu_B_vector=(", defaultFloatV, ")(", paste0(B_vec, collapse = ","), ");")
     extCode_B_vec = finalizeExtCode(B_multi_sub_vector$extCode)
     
@@ -674,14 +678,14 @@ C_matMul_right_B <- function(varInfo, Exp) {
     
     
     # matrix multiplication in vector format Data preparation
-    A_vec = c()
+    A_vec = rep("",vectorize_size)
     A_multi_sub_vector = list()
     A_multi_sub_vector$extCode = NULL
     for (i in seq_len(vectorize_size)) {
       A_multi_sub_vector = C_element_getCExp(
         varInfo, rightVar1, sub = c("gpu_i", paste0("gpu_k*gpu_vectorize_size+gpu_start+",  i - 1)),
         opt = list("gpu_i", "gpu_k"), extCode = A_multi_sub_vector$extCode)
-      A_vec = c(A_vec, A_multi_sub_vector$value)
+      A_vec[i] = A_multi_sub_vector$value
     }
     
     # matrix multiplication in vector format Perform multiplication

@@ -1,0 +1,89 @@
+---
+title: "Installation guide"
+author: 
+- name: Jiefei Wang
+  affiliation: Roswell Park Comprehensive Cancer Center, Buffalo, NY
+date: "`r Sys.Date()`"
+output:
+    BiocStyle::html_document:
+        toc: true
+        toc_float: true
+vignette: >
+  %\VignetteIndexEntry{geeksBook}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+#For all platforms
+The package requires a compilation tool to compile its C++ code. Here is an installation instruction from
+
+https://www.rstudio.com/products/rpackages/devtools/
+
+"On Windows, download and install Rtools, and devtools takes care of the rest. On Mac, install the Xcode command line tools. On Linux, install the R development package, usually called r-devel or r-base-dev."
+
+After you successfully install the compiler, the next step is to install the graphics driver.
+
+#Windows
+For windows user, the easiest way to check if you have a graphics driver properly installed is to search for the file `OpenCL.dll` under `C:\Windows\System32\` directory. If the file does exist and gpuMagic package can find your devices through `getDeviceList`, you can safely skip this instruction. Otherwise, please follow the instruction below to install/reinstall a driver.
+
+##Find the name of GPU(s)
+1.Press win+R shortcut
+
+2.type `CMD` and press OK button
+
+3.type `wmic path win32_VideoController get name` in the popped up black window, then you can see the name and vendor of your GPU(s).
+
+##install the driver
+According to your GPU vendor:
+
+For intel:
+
+https://downloadcenter.intel.com/product/80939/Graphics-Drivers
+
+For Nvidia: 
+
+https://www.nvidia.com/Download/index.aspx?lang=en-us
+
+For AMD/ATI: 
+
+https://www.amd.com/en/support/kb/faq/gpu-131
+
+If vendors offer a selection between developer and gamer drivers(at leaset Nvidia do it), please choose developer one.
+
+##Reboot and check the file again
+After the installation, reboot your system and check the file `OpenCL.dll` again, if it still does not exist, please contact the vendor through its support website to locate the `OpenCL.dll`. A manual file moving may be required to fix this issue.
+
+
+#Linux
+##Install the driver
+Like on windows, please go to the vendor's support site to find the correct driver and install it.
+
+##Install Installable Client Driver(ICD)
+Please run the following command to install ICD:
+
+`sudo apt update`
+
+`sudo apt install ocl-icd-opencl-dev`
+
+##Check if the device is available
+You can use the command-line tool `clinfo` to check the device availability.
+
+To install `clinfo`, run
+
+`sudo apt-get install clinfo`
+
+If you can see your devices, the drivers are installed and you should be able to use the package. If you cannot see any device, you may need to reinstall the driver and see if it works.
+
+#MAC
+There is no special requirement for MAC, the package can be installed normally.
+
+
+
+
+

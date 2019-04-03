@@ -124,7 +124,7 @@ fillGPUdata <- function(GPUcode1, .options, .device) {
         returnInfo = varInfo$returnInfo
         if(sum(is.na(returnInfo$designSize))>0) {
           warning("Undetermined return size has been found!")
-          returnInfo=returnInfo[!is.na(returnInfo$designSize)]
+          returnInfo=returnInfo[!is.na(returnInfo$designSize),]
         }
         if (length(returnInfo$designSize) != 0) {
             if (sum(returnInfo$designSize[1] != returnInfo$designSize) > 0) 

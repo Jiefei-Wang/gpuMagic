@@ -2,15 +2,15 @@
 gpuApplyFuncList = hash()
 
 
-#' A GPU version sapply function
+#' A GPU version of the sapply function
 #' 
 #' Please refer to sapply to see the basic usage
 #' 
-#' This function compile the R code and run it on the openCL-compatible devices. The usage is similar to the sapply function with 
+#' This function compiles the R code and runs it on the openCL-compatible devices. The usage is similar to the sapply function with 
 #' some addtional opencl-related arguments.
 #' 
 #' @param X a vector that `FUN` will loop over.
-#' @param FUN The function to be applied to each elemtn of `X`
+#' @param FUN The function to be applied to each element of `X`
 #' @param ... optional arguments to `FUN`
 #' @param .macroParms 
 #' The function argument that will be treated as macro in the code. 
@@ -216,7 +216,7 @@ gpuSapply_multiDev <- function(X, FUN, ..., .macroParms = NULL, .device,
 #' Get the package compilation options, the openCl compilation options(`kernel.getOption()`) are also included.
 #' 
 #' @details 
-#' There are a few options that is allowed to be changed, they are:
+#' There are a few options that are allowed to be changed, they are:
 #' `sapplyOption.debugCode`: Replace the compiled GPU code with your customized code, this option is
 #' useful when you want to debug the compiled code, or when you want to customize the compiled code.
 #' 
