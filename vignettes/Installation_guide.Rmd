@@ -21,7 +21,7 @@ knitr::opts_chunk$set(
 )
 ```
 #For all platforms
-The package requires a compilation tool to compile its C++ code. Here is an installation instruction from
+The package requires a compilation tool to compile its C++ code. Here are installation instructions from
 
 https://www.rstudio.com/products/rpackages/devtools/
 
@@ -30,7 +30,7 @@ https://www.rstudio.com/products/rpackages/devtools/
 After you successfully install the compiler, the next step is to install the graphics driver.
 
 #Windows
-For windows user, the easiest way to check if you have a graphics driver properly installed is to search for the file `OpenCL.dll` under `C:\Windows\System32\` directory. If the file does exist and gpuMagic package can find your devices through `getDeviceList`, you can safely skip this instruction. Otherwise, please follow the instruction below to install/reinstall a driver.
+For windows users, the easiest way to check if you have a graphics driver properly installed is to search for the file `OpenCL.dll` under `C:\Windows\System32\` directory. If the file does exist and gpuMagic package can find your devices through `getDeviceList`, you can safely skip this instruction. Otherwise, please follow the instructions below to install/reinstall a driver.
 
 ##Find the name of GPU(s)
 1.Press win+R shortcut
@@ -54,10 +54,10 @@ For AMD/ATI:
 
 https://www.amd.com/en/support/kb/faq/gpu-131
 
-If vendors offer a selection between developer and gamer drivers(at leaset Nvidia do it), please choose developer one.
+If vendors offer a selection between developer and gamer drivers(at leaset Nvidia does it), please choose the developer one.
 
 ##Reboot and check the file again
-After the installation, reboot your system and check the file `OpenCL.dll` again, if it still does not exist, please contact the vendor through its support website to locate the `OpenCL.dll`. A manual file moving may be required to fix this issue.
+After the installation, reboot your system and check the file `OpenCL.dll` again, if it still does not exist, please contact the vendor through its support website to locate the `OpenCL.dll`. It may be necessary to manually move this file to fix this issue.
 
 
 #Linux

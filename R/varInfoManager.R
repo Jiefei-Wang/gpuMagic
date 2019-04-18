@@ -44,6 +44,7 @@ getEmpyTable<-function(type=""){
   tbl=data.frame(
     var="NA",dataType=T_matrix,precisionType=GPUVar$default_float,
     size1="NA",size2="NA",
+    #If the sizes are fixed or not
     dynSize1=FALSE,dynSize2=FALSE,
     value="NA",transpose=FALSE,
     version=1,

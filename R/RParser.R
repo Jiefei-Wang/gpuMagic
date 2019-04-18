@@ -16,7 +16,8 @@ codePreprocessing <- function(codeMetaInfo) {
 }
 # Level 1 compiler Functions: 1.simplify the R code, each line should
 # only have one function call, If not, a temporary variable will be
-# created to replace it. 2.If the code only has a symbol and the symbol
+# created to replace it. 
+# 2.If the code only has a symbol and the symbol
 # is not recognized, it will be removed
 RParser1 <- function(codeMetaInfo) {
     codeMetaInfo1 = parserFrame(RLevel1_parserFunc, RLevel1_checkFunc, 
