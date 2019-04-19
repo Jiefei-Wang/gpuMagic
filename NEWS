@@ -13,6 +13,7 @@ Changes in version 0.1.16 (2019-03-5)
 + Implement memory pool
 Changes in version 0.1.19 (2019-03-5)
 + Add "customized opencl code" vignette
-Changes in version 0.99.5 (2019-03-5)
+Changes in version 0.99.5 (2019-04-18)
 + Fix grammar issue
-
+Changes in version 0.99.6 (2019-04-19)
++ Add more function documentation

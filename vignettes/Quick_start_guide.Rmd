@@ -296,6 +296,7 @@ The package currently supports a limited number of functions, the usage of them 
 | length   |                                                                     |
 | matrix   |                                                                     |
 | [        | ***drop*** does not work                                            |
+| abs      |                                                                     |
 | floor    |                                                                     |
 | ceiling  |                                                                     |
 | t        |                                                                     |
@@ -304,6 +305,8 @@ The package currently supports a limited number of functions, the usage of them 
 | colSums  | Supports one argument only                                          |
 | rowMeans | Supports one argument only                                          |
 | colMeans | Supports one argument only                                          |
+| sort     | Supports one argument only, ascending sort                          |
+| sweep    |                                                                     |
 | +        |                                                                     |
 | -        |                                                                     |
 | *        |                                                                     |
@@ -314,7 +317,6 @@ The package currently supports a limited number of functions, the usage of them 
 | <        |                                                                     |
 | <=       |                                                                     |
 | ==       |                                                                     |
-| abs      |                                                                     |
 | %*%      |                                                                     |
 | return   |                                                                     |
 
