@@ -13,7 +13,7 @@ An options class
 Get the package compilation options, the openCl compilation options(\code{kernel.getOption()}) are also included.
 }
 \details{
-There are a few options that is allowed to be changed, they are:
+There are a few options that are allowed to be changed, they are:
 \code{sapplyOption.debugCode}: Replace the compiled GPU code with your customized code, this option is
 useful when you want to debug the compiled code, or when you want to customize the compiled code.
 

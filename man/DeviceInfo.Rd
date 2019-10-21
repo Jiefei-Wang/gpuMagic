@@ -43,7 +43,7 @@ This is a set of functions to query the device information and select which devi
 \details{
 'getDeviceList()': The function is used to obtain all the opencl-enable devices
 
-'getDeviceInfo()': Get the ith device information, call 'getDeviceList()' first to figure out the index before use this function
+'getDeviceInfo()': Get the ith device information, call 'getDeviceList()' first to figure out the index before using this function
 
 'getCurDevice()': Get the information of the current devices
 

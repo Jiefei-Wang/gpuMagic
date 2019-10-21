@@ -1,7 +1,7 @@
 Package: gpuMagic
 Type: Package
 Title: An openCL compiler with the capacity to compile R functions and run the code on GPU
-Version: 0.99.6
+Version: 0.99.7
 Date: 2018-10-07
 Author: Jiefei Wang
 Maintainer: Jiefei Wang <szwjf08@gmail.com>
@@ -21,17 +21,22 @@ Imports:
   pryr, 
   stringr, 
   BiocGenerics
-biocViews: Infrastructure
-BugReports: https://github.com/Jiefei-Wang/gpuMagic/issues
-SystemRequirements: C++11, a graphic driver or a CPU SDK.
-  For windows user, an ICD loader is required at C:/windows/system32/OpenCL.dll (Usually it is installed by the graphic driver).
-  For linux user (Except mac): ocl-icd-opencl-dev package is required.
-RoxygenNote: 6.1.1
-Roxygen: list(markdown = TRUE)
-Suggests: testthat,
+Suggests: 
+    testthat,
     knitr,
     rmarkdown,
     BiocStyle
+biocViews: Infrastructure
+BugReports: https://github.com/Jiefei-Wang/gpuMagic/issues
+SystemRequirements: 
+  1. C++11, 
+  2. a graphic driver or a CPU SDK.
+  3. ICD loader
+  For windows user, an ICD loader is required at C:/windows/system32/OpenCL.dll (Usually it is installed by the graphic driver).
+  For linux user (Except mac): ocl-icd-opencl-dev package is required.
+  For mac user, no action is needed for the system has installed the dependency.
+RoxygenNote: 6.1.1
+Roxygen: list(markdown = TRUE)
 Collate:
     'ParserFramework.R'
     'RCParserFunc_Rlevel.R'

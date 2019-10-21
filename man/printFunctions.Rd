@@ -3,12 +3,15 @@
 \name{print.options}
 \alias{print.options}
 \alias{print.plainText}
+\alias{print.deviceList}
 \alias{print.varInfo}
 \title{Print the available options in a pretty format}
 \usage{
 \method{print}{options}(x, ...)
 
 \method{print}{plainText}(x, ...)
+
+\method{print}{deviceList}(x, ...)
 
 \method{print}{varInfo}(x, simplify = TRUE, printDef = FALSE, ...)
 }

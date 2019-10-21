@@ -13,7 +13,7 @@ gpuMagic.getOptions(opt = "all")
 A list of the options
 }
 \description{
-The functions get the computing precision when compile the GPU code and the number of workers in a computing group.
+The functions gets the computing precision when compile the GPU code and the number of workers in a computing group.
 }
 \details{
 The fields \code{default.float}, \code{default.int} and \code{default.index.type} are used to control the computing precision.

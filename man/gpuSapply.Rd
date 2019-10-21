@@ -2,7 +2,7 @@
 % Please edit documentation in R/gpuApply.R
 \name{gpuSapply}
 \alias{gpuSapply}
-\title{A GPU version sapply function}
+\title{A GPU version of the sapply function}
 \usage{
 gpuSapply(X, FUN, ..., .macroParms = NULL, .device = "auto",
   loading = "auto", .options = gpuSapply.getOption())
@@ -10,14 +10,14 @@ gpuSapply(X, FUN, ..., .macroParms = NULL, .device = "auto",
 \arguments{
 \item{X}{a vector that \code{FUN} will loop over.}
 
-\item{FUN}{The function to be applied to each elemtn of \code{X}}
+\item{FUN}{The function to be applied to each element of \code{X}}
 
 \item{...}{optional arguments to \code{FUN}}
 
 \item{.macroParms}{The function argument that will be treated as macro in the code.
 If an argument is treated as macro, its value cannot be changed by the code}
 
-\item{.device}{The device that the function will be excuted. Running the code on Multiple devices is supported but is still under development}
+\item{.device}{the device ID(s) indicates the device that the function will be excuted on. Running the code on Multiple devices is supported but is still under development}
 
 \item{loading}{The loading of each device, only useful when having multiple devices.}
 
@@ -30,7 +30,7 @@ A vector or a matrix
 Please refer to sapply to see the basic usage
 }
 \details{
-This function compile the R code and run it on the openCL-compatible devices. The usage is similar to the sapply function with
+This function compiles the R code and runs it on the openCL-compatible devices. The usage is similar to the sapply function with
 some addtional opencl-related arguments.
 }
 \examples{

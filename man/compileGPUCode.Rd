@@ -10,7 +10,7 @@ compileGPUCode(X, FUN, ..., .macroParms = NULL,
 \arguments{
 \item{X}{a vector that \code{FUN} will loop over.}
 
-\item{FUN}{The function to be applied to each elemtn of \code{X}}
+\item{FUN}{The function to be applied to each element of \code{X}}
 
 \item{...}{optional arguments to \code{FUN}}
 

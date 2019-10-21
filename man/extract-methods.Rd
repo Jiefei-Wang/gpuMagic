@@ -18,7 +18,7 @@
 
 \item{i, j}{indices specifying elements to extract or replace. The index j can be missing or empty.}
 
-\item{...}{This argument is only for compatibility. It does not take any effect.}
+\item{...}{This argument is only for compatibility. It does not have any effect.}
 
 \item{drop}{For matrices and arrays. If TRUE the result is coerced to the lowest possible dimension.}
 

@@ -18,7 +18,7 @@ t_nocpy(x)
 \code{t_nocpy}: the transpose of \code{x}
 }
 \description{
-Doing some opration without memory copy
+Doing some opration without copying memory
 }
 \details{
 \code{return_nocpy}: The usage of the \code{return_nocpy} is same as \code{return}. This feature is for openCL code only,
