@@ -63,7 +63,7 @@ n=10
 m=50
 k=100
 A=matrix(runif(n*m),n,m)
-B=matrix(runif(n*m),m,k)
+B=matrix(runif(m*k),m,k)
 C_sapply=sapply(1:k,matMul,A,B)
 #The internal matrix operation function in R
 C_internel=A%*%B

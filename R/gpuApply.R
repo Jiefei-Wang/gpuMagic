@@ -44,7 +44,7 @@ gpuApplyFuncList = hash()
 #' @return A vector or a matrix
 gpuSapply <- function(X, FUN, ..., .macroParms = NULL, .device = "auto", 
     loading = "auto", .options = gpuSapply.getOption()) {
-    if (.device == "auto") {
+    if (is.character(.device) && .device == "auto") {
         .device = as.integer(keys(.gpuResourcesManager$globalVars$curDevice))
     } else {
         .device = as.integer(.device)
