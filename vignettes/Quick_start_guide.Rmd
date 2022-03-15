@@ -1,6 +1,6 @@
 ---
 title: "gpuMagic quick start guide"
-author: 
+author:
 - name: Jiefei Wang
   affiliation: Roswell Park Comprehensive Cancer Center, Buffalo, NY
 date: "`r Sys.Date()`"
@@ -25,7 +25,7 @@ library("gpuMagic")
 # Introduction
 The gpuMagic package is designed for ultilizing the computing power of modern GPU. The package has the ability to compile R code and implement the code on a GPU kernel. Therefore, it is easy for the user to design their own algorithm in pure R language and run the code in GPU. The package uses openCL as its parallel language so parallelization using the CPU is also supported.
 
-### Program setting
+## Program setting
 To get started, it is always a good idea to check your GPU avalability.
 
 ```{r}
@@ -40,18 +40,18 @@ The package also has a GPU resources manager. You can check your memory usage at
 ```{r}
 gpuMagic.getMemUsage()
 ```
-After the proper device has been selected, you are ready to write your GPU code. 
+After the proper device has been selected, you are ready to write your GPU code.
 
-###Warning
+## Warning
 If you are using a Nvidia graphics card, it is a good practice to change your Timeout Detection and Recovery(TDR) setting as the driver will reset the graphics card if the function takes too long to run the code. The default setting is 2 seconds, which is too short for most operations. If you are using another device such as an Intel graphic card, you are safe to continue.
 
 The setting can be found in NVIDIA Nsight. Change it to a larger number such as 20 seconds will make most programs work.
 
-### GPU code
+## GPU code
 The GPU code should be written as an R function and should be compatible with the **sapply** function. Here is an example of matrix multiplication
 ```{r}
-#C=A%*%B
-#Each time the function will compute a column of C
+# C=A%*%B
+# Each time the function will compute a column of C
 matMul<-function(ind,A,B){
   C=A%*%B[,ind]
   return(C)
@@ -65,15 +65,15 @@ k=100
 A=matrix(runif(n*m),n,m)
 B=matrix(runif(m*k),m,k)
 C_sapply=sapply(1:k,matMul,A,B)
-#The internal matrix operation function in R
+# The internal matrix operation function in R
 C_internel=A%*%B
-#Compute error
+# Compute error
 max(abs(C_sapply-C_internel))
 ```
 As you see here, the result from sapply is consistent with the result from the R internal matrix multiplication function. To run the above function in GPU, it can be simply achieved by changing **sapply** to **gpuSapply**
 ```{r}
 C_gpu=gpuSapply(1:k,matMul,A,B)
-#Compute error
+# Compute error
 max(abs(C_gpu-C_internel))
 ```
 That is all you need to do to run the GPU code! We can try a larger sample size to see the speed differences between GPU and R code.
@@ -90,12 +90,12 @@ system.time(
   A%*%B
 )
 ```
-In my test environment(GF 940m), the above code takes about 0.1 secs and CPU(i5-6300U) takes 0.6 secs to finish, a 6 times speed up in the matrix operation! 
+In my test environment(GF 940m), the above code takes about 0.1 secs and CPU(i5-6300U) takes 0.6 secs to finish, a 6 times speed up in the matrix operation!
 
 # Known issues & Keys to success
 Here we discuss some common questions that you will have when using the package. Some are due to the limitations of openCL language and some are due to the lazyness of the package author.
 
-##Important notes
+## Important notes
 + All objects in openCL are either a scalar or a matrix, vector is not supported
 + `NA` and `NULL` values are not supported, I did not test them yet but it should be OK to pass them to the device, it just may not work as you expect. This feature will be added in the near future.
 + Do not allocate(create) variables in for-loops or if-statements, it may cause an unexpected error. Please allocate them before the loops or if-statements.
@@ -120,12 +120,12 @@ dynamic_example1<-function(ind,A,n){
 }
 n=10
 A=matrix(runif(n),n)
-#The code below wouldn't work, 
-#the value of n is unknown in the compilation stage
+# The code below wouldn't work,
+# the value of n is unknown in the compilation stage
 
-#res_device=gpuSapply(1,dynamic_example1,A,n)
+# res_device=gpuSapply(1,dynamic_example1,A,n)
 
-#works, the value of n is knwown as a macro in the compilation stage
+# works, the value of n is knwown as a macro in the compilation stage
 res_device=gpuSapply(1,dynamic_example1,A,n,.macroParms = c("n"))
 ```
 Please note that when you specify a variable as a macro, you cannot change the value of it inside the function since it is fixed
@@ -134,11 +134,11 @@ Please note that when you specify a variable as a macro, you cannot change the v
 If you do need a dynamic feature in your code, you can use the reference function to create it. The reference function works like a macro. For example
 
 ```{r}
-#Perform the column sum of the first n elements in each column of A
+# Perform the column sum of the first n elements in each column of A
 dynamic_example2<-function(ind,A,n){
-  #Dynamically subsetting the first n elements in the ind column of the matrix A
-  #Almost equivalent to A_dyn=A[1:n,ind]
-  #The size of A_dyn is unknown in the compilation stage since the value of n is unknown
+  # Dynamically subsetting the first n elements in the ind column of the matrix A
+  # Almost equivalent to A_dyn=A[1:n,ind]
+  # The size of A_dyn is unknown in the compilation stage since the value of n is unknown
   A_dyn=subRef(A,1:n,ind)
   C=sum(A_dyn)
   return(C)
@@ -148,76 +148,76 @@ M=100
 A=matrix(runif(M),M,M)
 res_device=gpuSapply(1:M,dynamic_example2,A,n)
 res_cpu=sapply(1:M,dynamic_example2,A,n)
-#check error
+# check error
 range(res_device-res_cpu)
 ```
 With the reference function, you can allocate a large matrix and then dynamically subset it to create the matrix with the size you need. However, you need to be careful when you do the operations on the reference object. In the example above, any changes to the reference object `A_dyn` will cause the change in its target object `A`. Please refer to the function list to see the available reference functions.
 
-##Dynamic return
+## Dynamic return
 Since dynamic allocation is not possible, you may wonder if returning an object with dynamic size is possible. The answer is yes but it is depreciated. If you write multiple `return` functions in your code. The package will first compute the maximum length of your return variables, and then allocate the memory according to the maximum length. If the length of one return variable cannot be correctly infered, you will get a warning message, and the length of that variable will be ignored. Therefore, in order to correctly return a variable of undetermined length, you should create a matrix which size is always larger than the return variable, then you return that matrix in the end. Therefore the compiler will always have enough space for your return variable( but with redundant space). For example:
 
 ```{r}
 dynamic_return<-function(ind,A,n){
-  #Dynamically subsetting the first n elements in the ind column of the matrix A
-  #equivalent to A_dyn=A[1:n,ind]
+  # Dynamically subsetting the first n elements in the ind column of the matrix A
+  # equivalent to A_dyn=A[1:n,ind]
   A_dyn=subRef(A,1:n,ind)
-  #return A_dyn, the size is unknown
+  # return A_dyn, the size is unknown
   return(A_dyn)
-  
-  #The largest length of the variable A_dyn
+
+  # The largest length of the variable A_dyn
   tmp=matrix(0,nrow(A))
-  #tell the compiler the return size should be at least the same as the variable tmp
+  # tell the compiler the return size should be at least the same as the variable tmp
   return(tmp)
 
 }
 n=10
 M=20
 A=matrix(runif(M*M),M,M)
-#Expect a warning message: Undetermined return size has been found
+# Expect a warning message: Undetermined return size has been found
 suppressWarnings({
   res_device=gpuSapply(1:M,dynamic_return,A,n)
 })
-#retrieve the result (The first n rows)
+# retrieve the result (The first n rows)
 res_device=res_device[1:n,]
 
-#check error
+# check error
 range(res_device-A[1:n,])
 ```
 In the future, the package will provide a more concise way to specify the return size.
 
-##Oprations between two matrice with different size? Not implemented.
+## Oprations between two matrice with different size? Not implemented.
 The language used in the package is only a subset of the R language, it fully supports scalar to scalar, matrix to matrix, scalar to matrix, and matrix to scalar opration. However, for the matrix to matrix operations, they must have the same size, otherwise an error will be given(eg. matrix + vector is not allowed). An alternative solution for the matrix to vector operations is using the `sweep` function, please refer to the R documentation to see the usage.
 
-##Error checking
+## Error checking
 For performance reasons, the package only performs the error checking in the compilation stage. Therefore, when an error occurs on GPU, the code will continue to run silently, and crash R at some point without any hint. It is always a good idea to run a sample code with the`sapply` function to check for possible errors before you launch the rocker with your precious data.
 
-##Sequence variable
+## Sequence variable
 For the sequence variable, you can create it without limitation. As you see in the `dynamic_example2` function, we have implicitly created a sequence variable `1:n`, whose size is unknown. You can use the function `seq` or `:` to create the sequence. the only exception is that you cannot change the value of the sequence variable, because the variable is in a compact format and does not own a memory. If you do want to create a sequence variable in memory, an alternative way is to create the sequence first and assign it to a new variable, then the compiler will allocate the memory for the new variable.
 
-##Calling another user-defined R function inside the R function
+## Calling another user-defined R function inside the R function
 The current version does not support calling user-defined R functions inside your main function, this feature is under development and will come in the near future.
 
 
-#More examples
+# More examples
 
 Here we provide more examples to show the usage of the package. Please note that not all the functions will be efficient when running on the GPU, it is possible that the CPU code can be faster than the GPU. Depending on the job type, you should decide which device you want to run on by calling `setDevice()` .
 
-##Finding the indices of largest k values in each column of A
+## Finding the indices of largest k values in each column of A
 
 ```{r}
 largestK<-function(ind,A,k){
-  #get a column of A
+  # get a column of A
   A_col=subRef(A,,ind)
-  #the largest k values and indices of A_col
+  # the largest k values and indices of A_col
   largest_value=matrix(0,k)
   largest_ind=matrix(0,k)
-  #loop over A_col to find the largest k values
+  # loop over A_col to find the largest k values
   for(i in 1:length(A_col)){
     for(j in 1:k){
       if(A_col[i]>largest_value[j]){
         if(j!=k){
-          #Backward assignment to avoid self assignment problem
-          #(see section: Important note)
+          # Backward assignment to avoid self assignment problem
+          # (see section: Important note)
           ind_src=(k-1):j
           largest_value[ind_src+1]=largest_value[ind_src]
           largest_ind[ind_src+1]=largest_ind[ind_src]
@@ -235,58 +235,58 @@ N=1000
 M=1000
 k=10
 A=matrix(runif(N*M),N,M)
-#Warmup
+# Warmup
 warm_res=gpuSapply(1:M,largestK,A=A,k=k,.macroParms = "k")
 warm_res=sapply(1:M,largestK,A=A,k=k)
-#count the time
+# count the time
 system.time({res_device=gpuSapply(1:M,largestK,A=A,k=k,.macroParms = "k")})
 system.time({res_cpu=sapply(1:M,largestK,A=A,k=k)})
-#Check the error
+# Check the error
 range(res_device-res_cpu)
 ```
 
-##Brute-force method to find the solution of the linear regression with L1 loss function
+## Brute-force method to find the solution of the linear regression with L1 loss function
 
 ```{r}
 computeLoss<-function(ind,x,y,parms){
-  #Find the parameters for the thread
+  # Find the parameters for the thread
   parm=parms[ind,]
-  #Compute y hat, use no-copy transpose
+  # Compute y hat, use no-copy transpose
   y_hat=x%*%t_nocpy(parm)
-  #absolute loss value(L1 loss)
+  # absolute loss value(L1 loss)
   loss=sum(abs(y-y_hat))
   return(loss)
 }
-#Sample size
+# Sample size
 n=1000
-#Number of parameters
+# Number of parameters
 p=2
 
 beta=c(2,3)
-#Generate data
+# Generate data
 x=matrix(runif(n*p),n,p)
 e=runif(n)
 y=x%*%beta+e
 
-#Brute-force search
-#The seaching range and precision
+# Brute-force search
+# The seaching range and precision
 search_range=seq(0,10,0.1)
 parms=expand.grid(search_range,search_range)
-#Warmup
+# Warmup
 warm_res=gpuSapply(seq_len(nrow(parms)),computeLoss,x=x,y=y,parms=parms)
 warm_res=sapply(seq_len(nrow(parms)),computeLoss,x=x,y=y,parms=parms)
 
-#count the time
+# count the time
 system.time({res_device=gpuSapply(seq_len(nrow(parms)),computeLoss,x=x,y=y,parms=parms)})
 system.time({res_cpu=sapply(seq_len(nrow(parms)),computeLoss,x=x,y=y,parms=parms)})
 
-#print out the parameters which minimize the loss function
+# print out the parameters which minimize the loss function
 parms[which.min(res_device),]
 parms[which.min(res_cpu),]
 ```
 
 
-#Supported functions
+# Supported functions
 The package currently supports a limited number of functions, the usage of them are similar but not promised to be the same as the R functions. For example, the **drop** argument in ***[*** function is not supported yet. Therefore, in the current stage, it is better to only call the simplest form of the function. The current available functions are:
 
 | Function | Note                                                                |
@@ -330,11 +330,11 @@ The package currently supports a limited number of functions, the usage of them 
 | Scalar                     | Declare a scalar(Depreciated)                                                              |
 
 
-Besides traditional R function, the package also provides a few no-copy methods. 
+Besides traditional R function, the package also provides a few no-copy methods.
 These methods do not allocate memory for the result. Instead, they return a referent(AKA pointer)
 pointing to the target matrix. Therefore, any changes made in the reference object will cause the changes
-in the target matrix. This feature is for saving memory usage, but it is could be very useful 
-when you need "dynamic" allocation. You can first allocate a matrix with fixed dimension and then 
+in the target matrix. This feature is for saving memory usage, but it is could be very useful
+when you need "dynamic" allocation. You can first allocate a matrix with fixed dimension and then
 create a reference object pointing to
 that memory space, the size of the reference object can be undetermined in the compilation stage.
 
@@ -345,10 +345,9 @@ that memory space, the size of the reference object can be undetermined in the c
 | return_nocpy | No-copy return,     return the variable without an additional copy,      it does not support reference object |
 
 
-#R version and Session info
+# R version and Session info
 Here are the platform information used to compile this vignette.
 ```{r}
 version
 sessionInfo()
 ```
-

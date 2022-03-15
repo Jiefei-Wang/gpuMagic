@@ -1,6 +1,6 @@
 ---
 title: "Customized opencl code"
-author: 
+author:
 - name: Jiefei Wang
   affiliation: Roswell Park Comprehensive Cancer Center, Buffalo, NY
 date: "`r Sys.Date()`"
@@ -23,7 +23,7 @@ knitr::opts_chunk$set(
 library("gpuMagic")
 ```
 
-#Introduction
+# Introduction
 There are several reasons that may convince you that writing your own openCL code could be more appealing than purely relying on the package compiler:
 
 1. The functions you need are not available in the package
@@ -34,101 +34,93 @@ There are several reasons that may convince you that writing your own openCL cod
 
 Rather than the traditional boring and painful programming procedure for the openCL language, writing your own code in R is fairly simple: just provide the package your code and the package will set up everything for you. The package also provide a template-like feature to relieve you from the annoying argument type consistency problem. If you are not familar with the openCL language, there are tons of great introductions on the internet, please read them first and make sure you have the basic concept of the openCL before you read the next section.
 
-#Example
+# Example
 It is alway good to start the tutorial with the simplest example, let's suppose we want to compute `A+B` where `A` and `B` are both vector. If we use the native openCL code to write it, it would be.
 ```{r}
-#The kernel code
+# The kernel code
 src="
 kernel void vecAdd(global double* A, global double* B, global double* res){
 uint id=get_global_id(0);
 res[id]=A[id]+B[id];
 }
 "
-#check and set the device
+# check and set the device
 getDeviceList()
 setDevice(1)
-#Data preparation
+# Data preparation
 n=1000
 A=runif(n)
 B=runif(n)
-#Send the data to the device
-#The argument type and device are optional
+# Send the data to the device
+# The argument type and device are optional
 A_dev=gpuMatrix(A,type="double",device = 1)
 B_dev=gpuMatrix(B,type="double",device = 1)
-#Create an empty vector to store the result
+# Create an empty vector to store the result
 res_dev=gpuEmptMatrix(row=n,col=1,type="double",device = 1)
 
-#Call the kernel function to excute the code
-#No return value
+# Call the kernel function to excute the code
+# No return value
 .kernel(src = src,kernel="vecAdd",parms=list(A_dev,B_dev,res_dev),.device = 1,.globalThreadNum = n)
 
-#retrieve the data and convert it into a vector
+# retrieve the data and convert it into a vector
 res_dev=download(res_dev)
 res=as.vector(res_dev)
 
-#Check the error
+# Check the error
 range(res-A-B)
 ```
 As you see here, working with the openCL code in gpuMagic is very similar to working with the C++ code in Rcpp. The major difference is that you need to send and retrieve the data before and after the code excution. The `.kernel` function does not have any return value since the S4 class `gpuMatrix` contains a pointer, it is able to retrieve the final result after the code has been excuted. Please note that the `.kernel` function would not block your console, so you can continue to excute the code in the next line immediately as long as you don't call the `download` function.
 
-#Using template
+# Using template
 You may notice that you can specify the variable types when converting an R object into `gpuMatrix` class. The available types will be list in the end of this documentation. However, when you change the variable type, you need to make sure that the function argument in your openCL code also matched it, which is clumsy. Therefore, the `.kernel` function provice a set of macros to handle the variable types. These macros will automatically find the correct variable type and provide a template-like feature, they are: `auto`, `gAuto`, `lAuto`. The `auto` macro will find the variable type; `gAuto` and `lAuto` are short for `global auto` and `local auto` respectively. If you have no idea of `global` and `local`, please refer to the opencl Address space qualifier. Here we use the same example to illustrate the use of the macro.
 
 ```{r}
-#Use auto macro to declare the function argument
-#The first argument has auto1, second has auto2 and so on.
-#gAuto is short for global auto
+# Use auto macro to declare the function argument
+# The first argument has auto1, second has auto2 and so on.
+# gAuto is short for global auto
 src="
 kernel void vecAdd(gAuto1* A, gAuto2* B, gAuto3* res){
 uint id=get_global_id(0);
 res[id]=A[id]+B[id];
 }
 "
-#Send the data to the device
-#Note that the variable A and B is in a float type
+# Send the data to the device
+# Note that the variable A and B is in a float type
 A_dev=gpuMatrix(A,type="float",device = 1)
 B_dev=gpuMatrix(B,type="float",device = 1)
-#Create an empty vector to store the result
+# Create an empty vector to store the result
 res_dev=gpuEmptMatrix(row=n,col=1,type="float",device = 1)
 
-#Call the kernel function to excute the code
-#No return value
+# Call the kernel function to excute the code
+# No return value
 .kernel(src = src,kernel="vecAdd",parms=list(A_dev,B_dev,res_dev),.device = 1,.globalThreadNum = n)
 
-#retrieve the data and convert it into a vector
+# retrieve the data and convert it into a vector
 res_dev=download(res_dev)
 res=as.vector(res_dev)
 
-#Check the error
+# Check the error
 range(res-A-B)
 ```
-We made two changes in the example. First, we use the `gAuto` macro to declare the function argument in openCL code, so the function definition is independent with the actual data that will be passed to the function. Second, we use the float type variable to store the data. Lowering the variable precision can make the code running faster, but the result is not as accurate as the previous example. 
+We made two changes in the example. First, we use the `gAuto` macro to declare the function argument in openCL code, so the function definition is independent with the actual data that will be passed to the function. Second, we use the float type variable to store the data. Lowering the variable precision can make the code running faster, but the result is not as accurate as the previous example.
 
-#Additional information
+# Additional information
 
 Here we previde some additional information regarding the use of the `.kernel` function, the reader is referred to the documentation `?.kernel` to see more details:
 
 1. Before specifying the device through the `.device` argument, you need to make sure the device has been
-initialized, please doing so by calling the `setDevice` function. 
+initialized, please doing so by calling the `setDevice` function.
 
 2. The `.device` argument only allows a single device id as the input, you can only run the code on one device with one `.kernel` function call. However, since the `.kernel` function does not block the console, you can have multiple `.kernel` function calls with different device IDs to parallelize the hardware.
 
 3. You are able to pass the compilation flag to the openCL compiler(Not `gpuMagic` package compiler, it is the vender's compiler) through the `.options` argument
 
-4. The `src` argument can be either a file directory or the code. 
+4. The `src` argument can be either a file directory or the code.
 
-#Appendix
-##Available data type
+# Appendix
+
+## Available data type
 
 1. Integer type:`bool`,`char`,`uint`,`int`,`ulong`,`long`
 
 2. Float type:`half`,`float`,`double`
-
-
-
-
-
-
-
-
-
